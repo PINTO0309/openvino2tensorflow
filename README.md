@@ -21,8 +21,38 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |11|Tanh|Tanh||
 |12|Result|Identity|Output|
 
-## 3. Execution sample
+## 3. Usage
 ```bash
+usage: openvino2tensorflow.py [-h] --model_path MODEL_PATH
+                              [--model_output_path MODEL_OUTPUT_PATH]
+                              [--output_saved_model OUTPUT_SAVED_MODEL]
+                              [--output_h5 OUTPUT_H5] [--output_pb OUTPUT_PB]
+                              [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
+                              [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
+                              [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --model_path MODEL_PATH
+                        input IR model path (.xml)
+  --model_output_path MODEL_OUTPUT_PATH
+                        The output folder path of the converted model file
+  --output_saved_model OUTPUT_SAVED_MODEL
+                        saved_model output switch
+  --output_h5 OUTPUT_H5
+                        .h5 output switch
+  --output_pb OUTPUT_PB
+                        .pb output switch
+  --output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE
+                        float32 tflite output switch
+  --output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE
+                        weight quant tflite output switch
+  --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
+                        float16 quant tflite output switch
+```
+
+## 4. Execution sample
+```
 $ python3 openvino2tensorflow.py \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
   --output_saved_model=True \
@@ -32,5 +62,5 @@ $ python3 openvino2tensorflow.py \
   --output_no_quant_float32_tflite=True
 ```
 
-## 4. Output sample
+## 5. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)
