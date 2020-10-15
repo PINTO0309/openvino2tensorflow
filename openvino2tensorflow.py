@@ -13,7 +13,6 @@ python3 openvino2tensorflow.py \
 import os
 import sys
 import argparse
-import pickle
 import struct
 import numpy as np
 import xml.etree.ElementTree as et
