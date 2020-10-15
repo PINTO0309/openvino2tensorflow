@@ -33,4 +33,4 @@ $ python3 openvino2tensorflow.py \
 ```
 
 ## 4. Output image
-
+![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)
