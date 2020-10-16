@@ -23,7 +23,7 @@ from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, MaxPool2D, Reshape, Concatenate, Conv2DTranspose, Layer
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.backend import resize_images
-from tensorflow.keras.activations import tanh
+from tensorflow.keras.activations import tanh, elu, sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 import numpy as np
 import sys
@@ -134,6 +134,23 @@ def convert(model,
         elif layer.attrib['type'] == 'ReLU':
             tf_layers_dict[layer_id] = ReLU()(tf_layers_dict[tf_edges[layer_id][0]])
 
+        ### Tanh
+        elif layer.attrib['type'] == 'Tanh':
+            tf_layers_dict[layer_id] = tanh(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Elu
+        elif layer.attrib['type'] == 'Elu':
+            if len(tf_edges[layer_id]) == 1:
+                # No alpha
+                tf_layers_dict[layer_id] = elu(tf_layers_dict[tf_edges[layer_id][0]])
+            else:
+                # With alpha
+                tf_layers_dict[layer_id] = elu(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### Sigmoid
+        elif layer.attrib['type'] == 'Sigmoid':
+            tf_layers_dict[layer_id] = sigmoid(tf_layers_dict[tf_edges[layer_id][0]])
+
         ### MaxPool
         elif layer.attrib['type'] == 'MaxPool':
             kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
@@ -200,10 +217,6 @@ def convert(model,
         ### Multiply
         elif layer.attrib['type'] == 'Multiply':
             tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1))
-
-        ### Tanh
-        elif layer.attrib['type'] == 'Tanh':
-            tf_layers_dict[layer_id] = tanh(tf_layers_dict[tf_edges[layer_id][0]])
 
         ### Result
         elif layer.attrib['type'] == 'Result':
