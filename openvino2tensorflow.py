@@ -479,6 +479,9 @@ def convert(model,
             axis = int(data.attrib['axis'])
             tf_layers_dict[layer_id] = softmax(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
 
+        ### Negative
+            tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[tf_edges[layer_id][0]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
