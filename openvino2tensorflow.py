@@ -140,12 +140,8 @@ def convert(model,
 
         ### Elu
         elif layer.attrib['type'] == 'Elu':
-            if len(tf_edges[layer_id]) == 1:
-                # No alpha
-                tf_layers_dict[layer_id] = elu(tf_layers_dict[tf_edges[layer_id][0]])
-            else:
-                # With alpha
-                tf_layers_dict[layer_id] = elu(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+            alpha = float(data.attrib['alpha'])
+            tf_layers_dict[layer_id] = elu(tf_layers_dict[tf_edges[layer_id][0]], alpha=alpha)
 
         ### Sigmoid
         elif layer.attrib['type'] == 'Sigmoid':
@@ -218,6 +214,27 @@ def convert(model,
         elif layer.attrib['type'] == 'Multiply':
             tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1))
 
+        ### Interpolate
+        elif layer.attrib['type'] == 'Interpolate':
+            mode = data.attrib['mode']
+            in_port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
+            in_height = int(in_port0[2])
+            in_width  = int(in_port0[3])
+            out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
+            out_height = int(out_port0[2])
+            out_width  = int(out_port0[3])
+
+            h_scaling_factor = out_height // in_height
+            w_scaling_factor  = out_width // in_width
+
+            if mode == 'linear':
+                tf_layers_dict[layer_id] = resize_images(tf_layers_dict[tf_edges[layer_id][0]], h_scaling_factor, w_scaling_factor, 'channels_last', interpolation='bilinear')
+            elif mode == 'nearest':
+                tf_layers_dict[layer_id] = resize_images(tf_layers_dict[tf_edges[layer_id][0]], h_scaling_factor, w_scaling_factor, 'channels_last', interpolation='nearest')
+            else:
+                print('The Interpolate - {} is not yet implemented.'.format(mode))
+                sys.exit(-1)
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
@@ -225,7 +242,7 @@ def convert(model,
 
         else:
             print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
-            sys.exit(0)
+            sys.exit(-1)
 
 
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
