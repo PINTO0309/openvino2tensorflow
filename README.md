@@ -5,7 +5,11 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 - TensorFlow v2.3.1
 - OpenVINO 2021.1.110
 
-## 2. Supported Layers
+## 2. Use case
+
+- PyTorch(NCHW) -> ONNX(NCHW) -> OpenVINO(NCHW) -> **openvino2tensorflow** -> Tensorflow/Keras(NHWC) -> TFLite(NHWC)
+
+## 3. Supported Layers
 |No.|OpenVINO Layer|TF Layer|Remarks|
 |:--:|:--|:--|:--|
 |1|Parameter|Input|Input|
@@ -30,7 +34,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |20|Pad|Pad, MirrorPad||
 |21|Result|Identity|Output|
 
-## 3. Usage
+## 4. Usage
 ```bash
 usage: openvino2tensorflow.py [-h] --model_path MODEL_PATH
                               [--model_output_path MODEL_OUTPUT_PATH]
@@ -60,7 +64,7 @@ optional arguments:
                         float16 quant tflite output switch
 ```
 
-## 4. Execution sample
+## 5. Execution sample
 ```
 $ python3 openvino2tensorflow.py \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
@@ -71,11 +75,11 @@ $ python3 openvino2tensorflow.py \
   --output_no_quant_float32_tflite=True
 ```
 
-## 5. Output sample
+## 6. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)
 
 
-## 6. Model Structure
+## 7. Model Structure
 |OpenVINO|TFLite|
 |:--:|:--:|
 |![Resnet34_3inputs_448x448_20200609 xml](https://user-images.githubusercontent.com/33194443/96153010-23f12400-0f48-11eb-8186-4bbad73b517a.png)|![model_float32 tflite](https://user-images.githubusercontent.com/33194443/96153019-26ec1480-0f48-11eb-96be-0c405ee2cbf7.png)|
