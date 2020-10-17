@@ -13,6 +13,11 @@ python3 openvino2tensorflow.py \
   --model_path=openvino/kitti_192x640/FP32/footprints_kitti_192x640.xml \
   --output_saved_model=True \
   --output_no_quant_float32_tflite=True
+
+python3 openvino2tensorflow.py \
+  --model_path=openvino/dense_depth_nyu_480x640/FP32/dense_depth_nyu_480x640.xml \
+  --output_saved_model=True \
+  --output_no_quant_float32_tflite=True
 '''
 
 import os
@@ -25,7 +30,7 @@ from openvino.inference_engine import IECore
 
 import tensorflow as tf
 from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, MaxPool2D, Reshape, Concatenate, Conv2DTranspose, Layer
+from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, PReLU, MaxPool2D, AveragePooling2D, Reshape, Concatenate, Conv2DTranspose, Layer
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.backend import resize_images, shape
 from tensorflow.keras.activations import tanh, elu, sigmoid
@@ -133,7 +138,13 @@ def convert(model,
             pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
-                padding = 'valid'
+                if 'auto_pad' in data.attrib:
+                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                        padding = 'same'
+                    else:
+                        padding = 'valid'
+                else:
+                    padding = 'valid'
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
@@ -148,7 +159,7 @@ def convert(model,
         ### Add
         elif layer.attrib['type'] == 'Add':
             # 'Fused_Add_' == BiasAdd
-            if 'Fused_Add_' in layer.attrib['name']:
+            if ('fused_add_' in layer.attrib['name'].lower() or 'fusedadd' in layer.attrib['name'].lower() or 'biasadd' in layer.attrib['name'].lower() or 'bias' in layer.attrib['name'].lower()):
                 # Biasadd
                 edge_id0 = tf_edges[layer_id][0]
                 edge_id1 = tf_edges[layer_id][1]
@@ -160,6 +171,10 @@ def convert(model,
         ### ReLU
         elif layer.attrib['type'] == 'ReLU':
             tf_layers_dict[layer_id] = ReLU()(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### PReLU
+        elif layer.attrib['type'] == 'PReLU':
+            tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]]))(tf_layers_dict[tf_edges[layer_id][0]])
 
         ### Tanh
         elif layer.attrib['type'] == 'Tanh':
@@ -182,10 +197,36 @@ def convert(model,
             pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
-                padding = 'VALID'
+                if 'auto_pad' in data.attrib:
+                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                        padding = 'SAME'
+                    else:
+                        padding = 'VALID'
+                else:
+                    padding = 'VALID'
             else:
                 padding = 'SAME'
             tf_layers_dict[layer_id] = tf.nn.max_pool(tf_layers_dict[tf_edges[layer_id][0]], ksize=kernel_size, strides=strides, padding=padding)
+
+        ### AvgPool
+        elif layer.attrib['type'] == 'AvgPool':
+            kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
+            strides = [int(s) for s in data.attrib['strides'].split(',')]
+            # exclude_pad = data.attrib['exclude-pad']
+            pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+            pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+            padding = ''
+            if (pads_begin + pads_end) == 0:
+                if 'auto_pad' in data.attrib:
+                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                        padding = 'same'
+                    else:
+                        padding = 'valid'
+                else:
+                    padding = 'valid'
+            else:
+                padding = 'same'
+            tf_layers_dict[layer_id] = AveragePooling2D(pool_size=kernel_size, strides=strides, padding=padding)(tf_layers_dict[tf_edges[layer_id][0]])
 
         ### GroupConvolution
         elif layer.attrib['type'] == 'GroupConvolution':
@@ -198,7 +239,13 @@ def convert(model,
             pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
-                padding = 'valid'
+                if 'auto_pad' in data.attrib:
+                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                        padding = 'same'
+                    else:
+                        padding = 'valid'
+                else:
+                    padding = 'valid'
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
@@ -221,7 +268,13 @@ def convert(model,
             pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
-                padding = 'valid'
+                if 'auto_pad' in data.attrib:
+                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                        padding = 'same'
+                    else:
+                        padding = 'valid'
+                else:
+                    padding = 'valid'
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
