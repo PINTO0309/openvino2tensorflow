@@ -3,7 +3,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 
 ## 1. Environment
 - TensorFlow v2.3.1
-- OpenVINO_2021.1.110
+- OpenVINO 2021.1.110
 
 ## 2. Supported Layers
 |No.|OpenVINO Layer|TF Layer|Remarks|
