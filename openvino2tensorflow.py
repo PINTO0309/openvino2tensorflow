@@ -164,20 +164,14 @@ def convert(model,
         ### Add
         elif layer.attrib['type'] == 'Add':
             # 'Fused_Add_' == BiasAdd
-            if ('fused_add_' in layer.attrib['name'].lower() or 'fusedadd' in layer.attrib['name'].lower() or 'biasadd' in layer.attrib['name'].lower() or 'bias' in layer.attrib['name'].lower()):
+            if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray):
                 # Biasadd
                 edge_id0 = tf_edges[layer_id][0]
                 edge_id1 = tf_edges[layer_id][1]
                 tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
             else:
-                if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray):
-                    # Biasadd
-                    edge_id0 = tf_edges[layer_id][0]
-                    edge_id1 = tf_edges[layer_id][1]
-                    tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
-                else:
-                    # Add
-                    tf_layers_dict[layer_id] = Add()([tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in tf_edges[layer_id]])
+                # Add
+                tf_layers_dict[layer_id] = Add()([tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in tf_edges[layer_id]])
 
         ### ReLU
         elif layer.attrib['type'] == 'ReLU':
