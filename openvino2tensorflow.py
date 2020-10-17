@@ -43,7 +43,7 @@ from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, PReLU, MaxPool2D, AveragePooling2D, Reshape, Concatenate, Conv2DTranspose, Layer
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.backend import shape, clip
-from tensorflow.keras.activations import tanh, elu, sigmoid
+from tensorflow.keras.activations import tanh, elu, sigmoid, swish
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 import numpy as np
 import sys
@@ -209,6 +209,10 @@ def convert(model,
         ### Sigmoid
         elif layer.attrib['type'] == 'Sigmoid':
             tf_layers_dict[layer_id] = sigmoid(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Swish
+        elif layer.attrib['type'] == 'Swish':
+            tf_layers_dict[layer_id] = swish(tf_layers_dict[tf_edges[layer_id][0]])
 
         ### MaxPool
         elif layer.attrib['type'] == 'MaxPool':
