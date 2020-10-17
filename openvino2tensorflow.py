@@ -100,7 +100,7 @@ def convert(model,
         tf_edges.setdefault(to_layer, []).append(from_layer)
 
     # layers
-    for idx, layer in enumerate(layers):
+    for layer in layers:
         layer_id = int(layer.attrib['id'])
         layer_name = layer.attrib['name'].replace('.', '_').replace('/', '_')
         data = layer.find('data')
