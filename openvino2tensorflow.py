@@ -466,6 +466,10 @@ def convert(model,
         elif layer.attrib['type'] == 'Exp':
             tf_layers_dict[layer_id] = tf.math.exp(tf_layers_dict[tf_edges[layer_id][0]])
 
+        ### Abs
+        elif layer.attrib['type'] == 'Abs':
+            tf_layers_dict[layer_id] = tf.math.abs(tf_layers_dict[tf_edges[layer_id][0]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
