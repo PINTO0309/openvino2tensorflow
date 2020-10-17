@@ -37,7 +37,7 @@ import tensorflow as tf
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, PReLU, MaxPool2D, AveragePooling2D, Reshape, Concatenate, Conv2DTranspose, Layer
 from tensorflow.keras.initializers import Constant
-from tensorflow.keras.backend import resize_images, shape
+from tensorflow.keras.backend import resize_images, shape, clip
 from tensorflow.keras.activations import tanh, elu, sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 import numpy as np
@@ -181,6 +181,16 @@ def convert(model,
         elif layer.attrib['type'] == 'PReLU':
             tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]]))(tf_layers_dict[tf_edges[layer_id][0]])
 
+        ### Clamp
+        elif layer.attrib['type'] == 'Clamp':
+            cmin = float(data.attrib['min'])
+            cmax = float(data.attrib['max'])
+            if cmin == 0.0 and cmax == 6.0:
+                # ReLU6
+                tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[tf_edges[layer_id][0]])
+            else:
+                tf_layers_dict[layer_id] = clip(tf_layers_dict[tf_edges[layer_id][0]], min_value=cmin, max_value=cmax)
+
         ### Tanh
         elif layer.attrib['type'] == 'Tanh':
             tf_layers_dict[layer_id] = tanh(tf_layers_dict[tf_edges[layer_id][0]])
@@ -297,9 +307,22 @@ def convert(model,
 
         ### Multiply
         elif layer.attrib['type'] == 'Multiply':
-            if tf_layers_dict[tf_edges[layer_id][1]].ndim == 4:
-                # 4D - NCHW->NHWC
-                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1))
+            if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray):
+                if tf_layers_dict[tf_edges[layer_id][1]].ndim == 4:
+                    # 4D - NCHW->NHWC
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1))
+                else:
+                    # unknown
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+            elif len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][0]]) == np.ndarray):
+                if tf_layers_dict[tf_edges[layer_id][0]].ndim == 4:
+                    # 4D - NCHW->NHWC
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].transpose(0,2,3,1), tf_layers_dict[tf_edges[layer_id][1]])
+                else:
+                    # unknown
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
             else:
                 # unknown
                 tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
