@@ -32,6 +32,7 @@ python3 openvino2tensorflow.py \
 python3 openvino2tensorflow.py \
   --model_path=openvino/efficientnet-b0-pytorch/FP32/efficientnet-b0-pytorch.xml \
   --output_saved_model=True \
+  --output_pb=True \
   --output_no_quant_float32_tflite=True \
   --debug \
   --debug_layer_number=5
@@ -150,8 +151,6 @@ def convert(model,
 
         ### Convolution
         elif layer.attrib['type'] == 'Convolution':
-            print(tf_layers_dict[tf_edges[layer_id][0]])
-            print('layer_id: {}, layer_name: {}'.format(layer_id, layer_name))
             # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
             port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
             filters = int(port1[0])
