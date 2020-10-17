@@ -18,6 +18,11 @@ python3 openvino2tensorflow.py \
   --model_path=openvino/dense_depth_nyu_480x640/FP32/dense_depth_nyu_480x640.xml \
   --output_saved_model=True \
   --output_no_quant_float32_tflite=True
+
+python3 openvino2tensorflow.py \
+  --model_path=openvino/480x640/FP32/u2netp_480x640.xml \
+  --output_saved_model=True \
+  --output_no_quant_float32_tflite=True
 '''
 
 import os
@@ -165,8 +170,14 @@ def convert(model,
                 edge_id1 = tf_edges[layer_id][1]
                 tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
             else:
-                # Add
-                tf_layers_dict[layer_id] = Add()([tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in tf_edges[layer_id]])
+                if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray):
+                    # Biasadd
+                    edge_id0 = tf_edges[layer_id][0]
+                    edge_id1 = tf_edges[layer_id][1]
+                    tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                else:
+                    # Add
+                    tf_layers_dict[layer_id] = Add()([tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in tf_edges[layer_id]])
 
         ### ReLU
         elif layer.attrib['type'] == 'ReLU':
