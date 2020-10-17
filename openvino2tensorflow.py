@@ -28,6 +28,13 @@ python3 openvino2tensorflow.py \
   --model_path=openvino/deeplabv3/FP32/deeplabv3.xml \
   --output_saved_model=True \
   --output_no_quant_float32_tflite=True
+
+python3 openvino2tensorflow.py \
+  --model_path=openvino/efficientnet-b0-pytorch/FP32/efficientnet-b0-pytorch.xml \
+  --output_saved_model=True \
+  --output_no_quant_float32_tflite=True \
+  --debug \
+  --debug_layer_number=5
 '''
 
 import os
@@ -56,7 +63,9 @@ def convert(model,
             output_pb,
             output_no_quant_float32_tflite,
             output_weight_quant_tflite,
-            output_float16_quant_tflite):
+            output_float16_quant_tflite,
+            debug,
+            debug_layer_number):
 
     # for unpacking binary buffer
     format_config = { 'FP32': ['f', 4], 
@@ -103,6 +112,8 @@ def convert(model,
     tf_inputs = []
     tf_outputs = []
 
+    transpose_squeeze_skip = False
+
     # edges
     for edge in edges:
         to_layer = int(edge.attrib['to-layer'])
@@ -110,7 +121,7 @@ def convert(model,
         tf_edges.setdefault(to_layer, []).append(from_layer)
 
     # layers
-    for layer in layers:
+    for idx, layer in enumerate(layers):
         layer_id = int(layer.attrib['id'])
         layer_name = layer.attrib['name'].replace('.', '_').replace('/', '_')
         data = layer.find('data')
@@ -139,6 +150,8 @@ def convert(model,
 
         ### Convolution
         elif layer.attrib['type'] == 'Convolution':
+            print(tf_layers_dict[tf_edges[layer_id][0]])
+            print('layer_id: {}, layer_name: {}'.format(layer_id, layer_name))
             # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
             port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
             filters = int(port1[0])
@@ -324,7 +337,7 @@ def convert(model,
             if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray):
                 if tf_layers_dict[tf_edges[layer_id][1]].ndim == 4:
                     # 4D - NCHW->NHWC
-                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].astype(np.float32), tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1).astype(np.float32))
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1).astype(np.float32))
                 else:
                     # unknown
                     tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
@@ -335,7 +348,7 @@ def convert(model,
                     tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].transpose(0,2,3,1).astype(np.float32), tf_layers_dict[tf_edges[layer_id][1]])
                 else:
                     # unknown
-                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].astype(np.float32), tf_layers_dict[tf_edges[layer_id][1]].astype(np.float32))
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
             else:
                 # unknown
@@ -442,9 +455,9 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=int(tf_layers_dict[tf_edges[layer_id][1]]))
             transpose_squeeze_skip = False
 
-        ### Gather - TODO
+        ### Gather
         elif layer.attrib['type'] == 'Gather':
-            continue
+            tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[tf_edges[layer_id][0]], int(tf_layers_dict[tf_edges[layer_id][1]]), axis=tf_layers_dict[tf_edges[layer_id][2]])
 
         ### ReduceMean
         elif layer.attrib['type'] == 'ReduceMean':
@@ -455,7 +468,9 @@ def convert(model,
         elif layer.attrib['type'] == 'MatMul':
             transpose_a = True if int(data.attrib['a']) == 1 else False
             transpose_b = True if int(data.attrib['b']) == 1 else False
-            tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], transpose_a, transpose_b)
+            tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]],
+                                                        tf_layers_dict[tf_edges[layer_id][1]],
+                                                        transpose_a, transpose_b)
 
         ### Reshape
         elif layer.attrib['type'] == 'Reshape':
@@ -464,7 +479,9 @@ def convert(model,
         ### Range
         elif layer.attrib['type'] == 'Range':
             dtype = cast_type_ov_tf[data.attrib['output_type']]
-            tf_layers_dict[layer_id] = tf.range(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], delta=int(tf_layers_dict[tf_edges[layer_id][2]]), dtype=dtype)
+            tf_layers_dict[layer_id] = tf.range(tf_layers_dict[tf_edges[layer_id][0]][0],
+                                                tf_layers_dict[tf_edges[layer_id][1]],
+                                                delta=int(tf_layers_dict[tf_edges[layer_id][2]]), dtype=dtype)
 
         ### Exp
         elif layer.attrib['type'] == 'Exp':
@@ -494,6 +511,11 @@ def convert(model,
         else:
             print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
             sys.exit(-1)
+
+        if debug and idx > debug_layer_number:
+            tf_outputs.append(tf_layers_dict[layer_id])
+            break
+
 
 
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
@@ -556,6 +578,8 @@ def main():
     parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', type=bool, default=False, help='float16 quant tflite output switch')
+    parser.add_argument('--debug', action='store_true', help='debug mode switch')
+    parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True.')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
     model_output_path = args.model_output_path.rstrip('/')
@@ -568,6 +592,8 @@ def main():
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
     output_float16_quant_tflite = args.output_float16_quant_tflite
+    debug = args.debug
+    debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
         not output_h5 and \
         not output_pb and \
@@ -577,7 +603,8 @@ def main():
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1) 
     convert(model, model_output_path, output_saved_model, output_h5, output_pb,
-            output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite)
+            output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
+            debug, debug_layer_number)
 
 if __name__ == "__main__":
     main()
