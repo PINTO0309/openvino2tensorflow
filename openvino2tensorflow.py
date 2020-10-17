@@ -67,7 +67,7 @@ def convert(model,
                       'I8'  : ['b', 1],
                       'U8'  : ['B', 1]}
 
-    # vino: u8,       u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
+    # vino:    u8,    u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
     # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
 
     # type conversion table
@@ -452,6 +452,15 @@ def convert(model,
             transpose_a = True if int(data.attrib['a']) == 1 else False
             transpose_b = True if int(data.attrib['b']) == 1 else False
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], transpose_a, transpose_b)
+
+        ### Reshape
+        elif layer.attrib['type'] == 'Reshape':
+            tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### Range
+        elif layer.attrib['type'] == 'Range':
+            dtype = cast_type_ov_tf[data.attrib['output_type']]
+            tf_layers_dict[layer_id] = tf.range(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], delta=int(tf_layers_dict[tf_edges[layer_id][2]]), dtype=dtype)
 
         ### Result
         elif layer.attrib['type'] == 'Result':
