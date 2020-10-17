@@ -446,6 +446,7 @@ def convert(model,
             except:
                 tf_layers_dict[layer_id] = tf.identity(temp_final_output_layer, name=layer.attrib['name'].split('/')[0])
                 tf_outputs.append(tf_layers_dict[layer_id])
+                transpose_squeeze_skip = False
         else:
             print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
             sys.exit(-1)
