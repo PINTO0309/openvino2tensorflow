@@ -9,7 +9,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |No.|OpenVINO Layer|TF Layer|Remarks|
 |:--:|:--|:--|:--|
 |1|Parameter|Input|Input|
-|2|Const|Constant,Bias||
+|2|Const|Constant, Bias||
 |3|Convolution|Conv2D||
 |4|Add|Add||
 |5|ReLU|ReLU||
@@ -21,11 +21,11 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |11|Tanh|Tanh||
 |12|Elu|Elu||
 |13|Sigmoid|Sigmoid||
-|14|Interpolate|ResizeNearestNeighbor/ ResizeBilinear||
+|14|Interpolate|ResizeNearestNeighbor / ResizeBilinear||
 |15|ShapeOf|Shape||
 |16|Convert|Cast||
 |17|StridedSlice|Strided_Slice||
-|18|Pad|Pad,MirrorPad||
+|18|Pad|Pad, MirrorPad||
 |19|Result|Identity|Output|
 
 ## 3. Usage
