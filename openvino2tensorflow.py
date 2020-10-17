@@ -359,7 +359,7 @@ def convert(model,
 
         ### Convert
         elif layer.attrib['type'] == 'Convert':
-            # vino: u8,       u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
+            # vino:    u8,    u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
             # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
             destination_type = data.attrib['destination_type']
             tf_layers_dict[layer_id] = tf.cast(tf_layers_dict[tf_edges[layer_id][0]], cast_type_ov_tf[destination_type])
@@ -461,6 +461,10 @@ def convert(model,
         elif layer.attrib['type'] == 'Range':
             dtype = cast_type_ov_tf[data.attrib['output_type']]
             tf_layers_dict[layer_id] = tf.range(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], delta=int(tf_layers_dict[tf_edges[layer_id][2]]), dtype=dtype)
+
+        ### Exp
+        elif layer.attrib['type'] == 'Exp':
+            tf_layers_dict[layer_id] = tf.math.exp(tf_layers_dict[tf_edges[layer_id][0]])
 
         ### Result
         elif layer.attrib['type'] == 'Result':
