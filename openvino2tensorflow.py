@@ -8,6 +8,11 @@ python3 openvino2tensorflow.py \
   --output_weight_quant_tflite=True \
   --output_float16_quant_tflite=True \
   --output_no_quant_float32_tflite=True
+
+python3 openvino2tensorflow.py \
+  --model_path=openvino/kitti_192x640/FP32/footprints_kitti_192x640.xml \
+  --output_saved_model=True \
+  --output_no_quant_float32_tflite=True
 '''
 
 import os
@@ -22,7 +27,7 @@ import tensorflow as tf
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, MaxPool2D, Reshape, Concatenate, Conv2DTranspose, Layer
 from tensorflow.keras.initializers import Constant
-from tensorflow.keras.backend import resize_images
+from tensorflow.keras.backend import resize_images, shape
 from tensorflow.keras.activations import tanh, elu, sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 import numpy as np
@@ -46,6 +51,28 @@ def convert(model,
                       'I16' : ['h', 2],
                       'I8'  : ['b', 1],
                       'U8'  : ['B', 1]}
+
+    # vino: u8,       u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
+    # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
+
+    # type conversion table
+    cast_type_ov_tf = { 'u8'  : tf.uint8,
+                        'u16' : tf.uint16,
+                        'u32' : tf.uint32,
+                        'u64' : tf.uint64,
+                        'i8'  : tf.int8,
+                        'i16' : tf.int16,
+                        'i32' : tf.int32,
+                        'i64' : tf.int64,
+                        'f16' : tf.float16,
+                        'f32' : tf.float32,
+                        'bf16': tf.bfloat16}
+
+    # pad type conversion table
+    pad_type_ov_tf = { 'constant' : 'CONSTANT',
+                       'reflect'  : 'REFLECT',
+                       'symmetric': 'SYMMETRIC',
+                       'edge'     : 'REFLECT'}
 
     # Read IR weight data
     with open(model+'.bin', 'rb') as f:
@@ -212,7 +239,12 @@ def convert(model,
 
         ### Multiply
         elif layer.attrib['type'] == 'Multiply':
-            tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1))
+            if tf_layers_dict[tf_edges[layer_id][1]].ndim == 4:
+                # 4D - NCHW->NHWC
+                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1))
+            else:
+                # unknown
+                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
         ### Interpolate
         elif layer.attrib['type'] == 'Interpolate':
@@ -234,6 +266,61 @@ def convert(model,
             else:
                 print('The Interpolate - {} is not yet implemented.'.format(mode))
                 sys.exit(-1)
+
+        ### ShapeOf
+        elif layer.attrib['type'] == 'ShapeOf':
+            tf_layers_dict[layer_id] = tf.keras.backend.shape(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Convert
+        elif layer.attrib['type'] == 'Convert':
+            # vino: u8,       u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
+            # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
+            destination_type = data.attrib['destination_type']
+            tf_layers_dict[layer_id] = tf.cast(tf_layers_dict[tf_edges[layer_id][0]], cast_type_ov_tf[destination_type])
+
+        ### StridedSlice
+        elif layer.attrib['type'] == 'StridedSlice':
+            begin_mask       = int(data.attrib['begin_mask'])
+            end_mask         = int(data.attrib['end_mask'])
+            ellipsis_mask    = int(data.attrib['ellipsis_mask'])
+            new_axis_mask    = int(data.attrib['new_axis_mask'])
+            shrink_axis_mask = int(data.attrib['shrink_axis_mask'])
+
+            begin   = [-1] if int(tf_layers_dict[tf_edges[layer_id][1]]) == -1 else [int(tf_layers_dict[tf_edges[layer_id][1]]) - 1]
+            end     = [-1] if int(tf_layers_dict[tf_edges[layer_id][2]]) == -1 else [int(tf_layers_dict[tf_edges[layer_id][2]]) - 1]
+            strides = [int(tf_layers_dict[tf_edges[layer_id][3]])]
+            tf_layers_dict[layer_id] = tf.strided_slice(tf_layers_dict[tf_edges[layer_id][0]],
+                                                        begin=begin,
+                                                        end=end,
+                                                        strides=strides,
+                                                        begin_mask=begin_mask,
+                                                        end_mask=end_mask,
+                                                        ellipsis_mask=ellipsis_mask,
+                                                        new_axis_mask=new_axis_mask,
+                                                        shrink_axis_mask=shrink_axis_mask)
+
+        ### Pad
+        elif layer.attrib['type'] == 'Pad':
+            pad_mode = pad_type_ov_tf[data.attrib['pad_mode']]
+            pads_begin = tf_layers_dict[tf_edges[layer_id][1]] # [0,0,1,1]
+            pads_end   = tf_layers_dict[tf_edges[layer_id][2]] # [0,0,1,1]
+
+            pad_b_top    = 0 if (pads_end[0] == 0 and pads_begin[0] == 0) else  (pads_end[0] - pads_begin[0] + 1)
+            pad_b_bottom = pad_b_top
+
+            pad_c_top    = 0 if (pads_end[1] == 0 and pads_begin[1] == 0) else  (pads_end[1] - pads_begin[1] + 1)
+            pad_c_bottom = pad_c_top
+
+            pad_top    = 0 if (pads_end[2] == 0 and pads_begin[2] == 0) else  (pads_end[2] - pads_begin[2] + 1)
+            pad_bottom = pad_top
+            pad_left   = 0 if (pads_end[3] == 0 and pads_begin[3] == 0) else  (pads_end[3] - pads_begin[3] + 1)
+            pad_right  = pad_left
+            paddings = [[pad_b_top, pad_b_bottom], [pad_top, pad_bottom], [pad_left, pad_right], [pad_c_top, pad_c_bottom]]
+            pad_value  = [0.0]
+            if 'pad_value' in data.attrib:
+                pad_value = [float(data.attrib['pad_value'])]
+            tf_layers_dict[layer_id] = tf.pad(tf_layers_dict[tf_edges[layer_id][0]], paddings, mode=pad_mode, constant_values=pad_value)
+
 
         ### Result
         elif layer.attrib['type'] == 'Result':
