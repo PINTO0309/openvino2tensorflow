@@ -29,26 +29,27 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |10|ConvolutionBackpropData|Conv2DTranspose||
 |11|Concat|Concat||
 |12|Multiply|Multiply||
-|13|Tanh|Tanh||
-|14|Elu|Elu||
-|15|Sigmoid|Sigmoid||
-|16|Swish|Swish||
-|17|Interpolate|ResizeNearestNeighbor, ResizeBilinear||
-|18|ShapeOf|Shape||
-|19|Convert|Cast||
-|20|StridedSlice|Strided_Slice||
-|21|Pad|Pad, MirrorPad||
-|22|Clamp|ReLU6, Clip||
-|23|TopK|ArgMax, top_k||
-|24|Transpose|Transpose||
-|25|Squeeze|Squeeze||
-|26|ReduceMean|reduce_mean||
-|27|MatMul|MatMul||
-|28|Reshape|Reshape||
-|29|Range|Range||
-|30|Exp|Exp||
-|31|Abs|Abs||
-|32|Result|Identity|Output|
+|13|Tan|Tan||
+|14|Tanh|Tanh||
+|15|Elu|Elu||
+|16|Sigmoid|Sigmoid||
+|17|Swish|Swish||
+|18|Interpolate|ResizeNearestNeighbor, ResizeBilinear||
+|19|ShapeOf|Shape||
+|20|Convert|Cast||
+|21|StridedSlice|Strided_Slice||
+|22|Pad|Pad, MirrorPad||
+|23|Clamp|ReLU6, Clip||
+|24|TopK|ArgMax, top_k||
+|25|Transpose|Transpose||
+|26|Squeeze|Squeeze||
+|27|ReduceMean|reduce_mean||
+|28|MatMul|MatMul||
+|29|Reshape|Reshape||
+|30|Range|Range||
+|31|Exp|Exp||
+|32|Abs|Abs||
+|33|Result|Identity|Output|
 
 ## 4. Usage
 ```bash
