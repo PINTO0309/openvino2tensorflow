@@ -37,7 +37,7 @@ import tensorflow as tf
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, PReLU, MaxPool2D, AveragePooling2D, Reshape, Concatenate, Conv2DTranspose, Layer
 from tensorflow.keras.initializers import Constant
-from tensorflow.keras.backend import resize_images, shape, clip
+from tensorflow.keras.backend import shape, clip
 from tensorflow.keras.activations import tanh, elu, sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 import numpy as np
@@ -330,23 +330,18 @@ def convert(model,
         ### Interpolate
         elif layer.attrib['type'] == 'Interpolate':
             mode = data.attrib['mode']
-            in_port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
-            in_height = int(in_port0[2])
-            in_width  = int(in_port0[3])
+            antialias = False if int(data.attrib['antialias']) == 0 else True
             out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
             out_height = int(out_port0[2])
             out_width  = int(out_port0[3])
-
-            h_scaling_factor = out_height // in_height
-            w_scaling_factor  = out_width // in_width
-
             if mode == 'linear':
-                tf_layers_dict[layer_id] = resize_images(tf_layers_dict[tf_edges[layer_id][0]], h_scaling_factor, w_scaling_factor, 'channels_last', interpolation='bilinear')
+                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[tf_edges[layer_id][0]], [out_height, out_width], method='bilinear', antialias=antialias)
             elif mode == 'nearest':
-                tf_layers_dict[layer_id] = resize_images(tf_layers_dict[tf_edges[layer_id][0]], h_scaling_factor, w_scaling_factor, 'channels_last', interpolation='nearest')
+                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[tf_edges[layer_id][0]], [out_height, out_width], method='nearest', antialias=antialias)
             else:
                 print('The Interpolate - {} is not yet implemented.'.format(mode))
                 sys.exit(-1)
+
 
         ### ShapeOf
         elif layer.attrib['type'] == 'ShapeOf':
