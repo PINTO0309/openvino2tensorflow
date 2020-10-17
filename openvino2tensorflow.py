@@ -23,6 +23,11 @@ python3 openvino2tensorflow.py \
   --model_path=openvino/480x640/FP32/u2netp_480x640.xml \
   --output_saved_model=True \
   --output_no_quant_float32_tflite=True
+
+python3 openvino2tensorflow.py \
+  --model_path=openvino/deeplabv3/FP32/deeplabv3.xml \
+  --output_saved_model=True \
+  --output_no_quant_float32_tflite=True
 '''
 
 import os
@@ -124,7 +129,7 @@ def convert(model,
                 if 'offset' in data.attrib and 'size' in data.attrib:
                     offset = int(data.attrib['offset'])
                     size   = int(data.attrib['size'])
-                    shape_str  = data.attrib['shape'].split(',')
+                    shape_str = '1' if data.attrib['shape'] == '' else data.attrib['shape'].split(',')
                     shape = [int(s) for s in shape_str]
                     blobBin = binWeight[offset:offset+size]
                     prec = layer.find('output').find('port').attrib['precision']
@@ -189,6 +194,7 @@ def convert(model,
                 # ReLU6
                 tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[tf_edges[layer_id][0]])
             else:
+                # Other
                 tf_layers_dict[layer_id] = clip(tf_layers_dict[tf_edges[layer_id][0]], min_value=cmin, max_value=cmax)
 
         ### Tanh
@@ -310,7 +316,7 @@ def convert(model,
             if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray):
                 if tf_layers_dict[tf_edges[layer_id][1]].ndim == 4:
                     # 4D - NCHW->NHWC
-                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1))
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].astype(np.float32), tf_layers_dict[tf_edges[layer_id][1]].transpose(0,2,3,1).astype(np.float32))
                 else:
                     # unknown
                     tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
@@ -318,10 +324,10 @@ def convert(model,
             elif len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[tf_edges[layer_id][0]]) == np.ndarray):
                 if tf_layers_dict[tf_edges[layer_id][0]].ndim == 4:
                     # 4D - NCHW->NHWC
-                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].transpose(0,2,3,1), tf_layers_dict[tf_edges[layer_id][1]])
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].transpose(0,2,3,1).astype(np.float32), tf_layers_dict[tf_edges[layer_id][1]])
                 else:
                     # unknown
-                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[tf_edges[layer_id][0]].astype(np.float32), tf_layers_dict[tf_edges[layer_id][1]].astype(np.float32))
 
             else:
                 # unknown
@@ -397,12 +403,49 @@ def convert(model,
                 pad_value = [float(data.attrib['pad_value'])]
             tf_layers_dict[layer_id] = tf.pad(tf_layers_dict[tf_edges[layer_id][0]], paddings, mode=pad_mode, constant_values=pad_value)
 
+        ### TopK
+        elif layer.attrib['type'] == 'TopK':
+            # axis = int(data.attrib['axis'])
+            # index_element_type = data.attrib['index_element_type']
+            # mode = data.attrib['mode']
+            # sort = data.attrib['sort']
+            transpose_squeeze_skip = False
+            k = int(tf_layers_dict[tf_edges[layer_id][1]])
+            if k == 1:
+                tf_layers_dict[layer_id] = tf.math.argmax(tf_layers_dict[tf_edges[layer_id][0]], axis=-1, output_type=tf.dtypes.int32)
+                transpose_squeeze_skip = True
+                temp_final_output_layer = tf_layers_dict[layer_id]
+            else:
+                tf_layers_dict[layer_id] = tf.math.top_k(tf_layers_dict[tf_edges[layer_id][0]], k=int(tf_layers_dict[tf_edges[layer_id][1]]), sorted=True)
+                transpose_squeeze_skip = False
+
+        ### Transpose
+        elif layer.attrib['type'] == 'Transpose':
+            if transpose_squeeze_skip and tf_layers_dict[tf_edges[layer_id][0]].name.split(':')[0] == 'ArgMax':
+                continue
+            else:
+                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### Squeeze
+        elif layer.attrib['type'] == 'Squeeze':
+            if transpose_squeeze_skip:
+                continue
+            else:
+                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=int(tf_layers_dict[tf_edges[layer_id][1]]))
+            transpose_squeeze_skip = False
+
+        ### Gather - TODO
+        elif layer.attrib['type'] == 'Gather':
+            continue
 
         ### Result
         elif layer.attrib['type'] == 'Result':
-            tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
-            tf_outputs.append(tf_layers_dict[layer_id])
-
+            try:
+                tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
+                tf_outputs.append(tf_layers_dict[layer_id])
+            except:
+                tf_layers_dict[layer_id] = tf.identity(temp_final_output_layer, name=layer.attrib['name'].split('/')[0])
+                tf_outputs.append(tf_layers_dict[layer_id])
         else:
             print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
             sys.exit(-1)
