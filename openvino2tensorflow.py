@@ -442,6 +442,11 @@ def convert(model,
         elif layer.attrib['type'] == 'Gather':
             continue
 
+        ### ReduceMean
+        elif layer.attrib['type'] == 'ReduceMean':
+            keep_dims = True if data.attrib['keep_dims'] == "True" else False
+            tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=tf_layers_dict[tf_edges[layer_id][1]], keepdims=keep_dims)
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
