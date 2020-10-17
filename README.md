@@ -62,6 +62,8 @@ usage: openvino2tensorflow.py [-h] --model_path MODEL_PATH
                               [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
                               [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
                               [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
+                              [--debug]
+                              [--debug_layer_number DEBUG_LAYER_NUMBER]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -81,6 +83,10 @@ optional arguments:
                         weight quant tflite output switch
   --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
                         float16 quant tflite output switch
+  --debug               debug mode switch
+  --debug_layer_number DEBUG_LAYER_NUMBER
+                        The last layer number to output when debugging. Used
+                        only when --debug=True.
 ```
 
 ## 5. Execution sample
