@@ -447,6 +447,12 @@ def convert(model,
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
             tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=tf_layers_dict[tf_edges[layer_id][1]], keepdims=keep_dims)
 
+        ### MatMul
+        elif layer.attrib['type'] == 'MatMul':
+            transpose_a = True if int(data.attrib['a']) == 1 else False
+            transpose_b = True if int(data.attrib['b']) == 1 else False
+            tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], transpose_a, transpose_b)
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
