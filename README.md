@@ -25,7 +25,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |15|ShapeOf|Shape||
 |16|Convert|Cast||
 |17|StridedSlice|Strided_Slice||
-|18|Pad|Pad||
+|18|Pad|Pad,MirrorPad||
 |19|Result|Identity|Output|
 
 ## 3. Usage
