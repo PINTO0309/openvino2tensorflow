@@ -8,11 +8,11 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 ## 2. Use case
 
 - PyTorch(NCHW) -> ONNX(NCHW) -> OpenVINO(NCHW) -> 
-  - -> **openvino2tensorflow** -> Tensorflow/Keras(NHWC) -> TFLite(NHWC)
-  - -> **openvino2tensorflow** -> Tensorflow/Keras(NHWC) -> TFJS(NHWC)
-  - -> **openvino2tensorflow** -> Tensorflow/Keras(NHWC) -> TF-TRT(NHWC)
-  - -> **openvino2tensorflow** -> Tensorflow/Keras(NHWC) -> EdgeTPU(NHWC)
-  - -> **openvino2tensorflow** -> Tensorflow/Keras(NHWC) -> CoreML(NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras(NHWC) -> TFLite(NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras(NHWC) -> TFJS(NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras(NHWC) -> TF-TRT(NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras(NHWC) -> EdgeTPU(NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras(NHWC) -> CoreML(NHWC)
 
 ## 3. Supported Layers
 |No.|OpenVINO Layer|TF Layer|Remarks|
