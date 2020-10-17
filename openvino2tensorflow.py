@@ -197,6 +197,10 @@ def convert(model,
                 # Other
                 tf_layers_dict[layer_id] = clip(tf_layers_dict[tf_edges[layer_id][0]], min_value=cmin, max_value=cmax)
 
+        ### Tan
+        elif layer.attrib['type'] == 'Tan':
+            tf_layers_dict[layer_id] = tf.math.tan(tf_layers_dict[tf_edges[layer_id][0]])
+
         ### Tanh
         elif layer.attrib['type'] == 'Tanh':
             tf_layers_dict[layer_id] = tanh(tf_layers_dict[tf_edges[layer_id][0]])
