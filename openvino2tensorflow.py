@@ -586,6 +586,11 @@ def convert(model,
         elif layer.attrib['type'] == 'FloorMod':
             tf_layers_dict[layer_id] = tf.math.floormod(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
+        ### HSwish
+        elif layer.attrib['type'] == 'HSwish':
+            # Hard-Swish
+            tf_layers_dict[layer_id] = tf_layers_dict[tf_edges[layer_id][0]] * tf.nn.relu6(tf_layers_dict[tf_edges[layer_id][0]] + 3) * 0.16666667
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
