@@ -570,6 +570,10 @@ def convert(model,
         elif layer.attrib['type'] == 'Cosh':
             tf_layers_dict[layer_id] = tf.math.cosh(tf_layers_dict[tf_edges[layer_id][0]])
 
+        ### Divide
+        elif layer.attrib['type'] == 'Divide':
+            tf_layers_dict[layer_id] = tf.math.divide_no_nan(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
