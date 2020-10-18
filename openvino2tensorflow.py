@@ -465,19 +465,24 @@ def convert(model,
         elif layer.attrib['type'] == 'Gather':
             tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[tf_edges[layer_id][0]], int(tf_layers_dict[tf_edges[layer_id][1]]), axis=tf_layers_dict[tf_edges[layer_id][2]])
 
-        ### ReduceMean
-        elif layer.attrib['type'] == 'ReduceMean':
+        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum
+        elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or layer.attrib['type'] == 'ReduceSum':
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
-            if (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray) and \
-               len(tf_layers_dict[tf_edges[layer_id][1]]) == 2 and \
-               tf_layers_dict[tf_edges[layer_id][1]][0] == 3 and \
-               tf_layers_dict[tf_edges[layer_id][1]][1] == 2:
-                axis1 = 2
-                axis2 = 1
+            if (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray) and len(tf_layers_dict[tf_edges[layer_id][1]]) == 2 and \
+               ((tf_layers_dict[tf_edges[layer_id][1]][0] == 3 and tf_layers_dict[tf_edges[layer_id][1]][1] == 2) or (tf_layers_dict[tf_edges[layer_id][1]][0] == 2 and tf_layers_dict[tf_edges[layer_id][1]][1] == 3)):
+                axis1 = tf_layers_dict[tf_edges[layer_id][1]][0] - 1
+                axis2 = tf_layers_dict[tf_edges[layer_id][1]][1] - 1
             else:
                 axis1 = tf_layers_dict[tf_edges[layer_id][1]][0]
                 axis2 = tf_layers_dict[tf_edges[layer_id][1]][1]
-            tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+            if layer.attrib['type'] == 'ReduceMean':
+                tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+            elif layer.attrib['type'] == 'ReduceMax':
+                tf_layers_dict[layer_id] = tf.math.reduce_max(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+            elif layer.attrib['type'] == 'ReduceMin':
+                tf_layers_dict[layer_id] = tf.math.reduce_min(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+            elif layer.attrib['type'] == 'ReduceSum':
+                tf_layers_dict[layer_id] = tf.math.reduce_sum(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
 
         ### MatMul
         elif layer.attrib['type'] == 'MatMul':
@@ -489,8 +494,7 @@ def convert(model,
                 transpose_a = True if int(data.attrib['transpose_a']) == 1 else False
             if not data is None and 'transpose_b' in data.attrib:
                 transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
-            tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]],
-                                                        tf_layers_dict[tf_edges[layer_id][1]],
+            tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]],
                                                         transpose_a, transpose_b)
 
         ### Reshape
@@ -500,8 +504,7 @@ def convert(model,
         ### Range
         elif layer.attrib['type'] == 'Range':
             dtype = cast_type_ov_tf[data.attrib['output_type']]
-            tf_layers_dict[layer_id] = tf.range(tf_layers_dict[tf_edges[layer_id][0]][0],
-                                                tf_layers_dict[tf_edges[layer_id][1]],
+            tf_layers_dict[layer_id] = tf.range(tf_layers_dict[tf_edges[layer_id][0]][0], tf_layers_dict[tf_edges[layer_id][1]],
                                                 delta=int(tf_layers_dict[tf_edges[layer_id][2]]), dtype=dtype)
 
         ### Exp
