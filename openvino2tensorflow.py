@@ -574,6 +574,18 @@ def convert(model,
         elif layer.attrib['type'] == 'Divide':
             tf_layers_dict[layer_id] = tf.math.divide_no_nan(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
+        ### Erf
+        elif layer.attrib['type'] == 'Erf':
+            tf_layers_dict[layer_id] = tf.math.erf(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Floor
+        elif layer.attrib['type'] == 'Floor':
+            tf_layers_dict[layer_id] = tf.math.floor(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### FloorMod
+        elif layer.attrib['type'] == 'FloorMod':
+            tf_layers_dict[layer_id] = tf.math.floormod(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
