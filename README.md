@@ -49,7 +49,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |30|ReduceSum|reduce_sum||
 |31|MatMul|MatMul||
 |32|Reshape|Reshape||
-|33|Range|Range||
+|33|Range|Range|WIP|
 |34|Exp|Exp||
 |35|Abs|Abs||
 |36|SoftMax|SoftMax||
