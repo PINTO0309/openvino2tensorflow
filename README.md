@@ -65,7 +65,8 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |46|Ceiling|Ceil||
 |47|Cos|Cos||
 |48|Cosh|Cosh||
-|49|Result|Identity|Output|
+|49|Gather|Gather||
+|50|Result|Identity|Output|
 
 ## 4. Usage
 ```bash
