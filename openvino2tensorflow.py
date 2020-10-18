@@ -591,6 +591,15 @@ def convert(model,
             # Hard-Swish
             tf_layers_dict[layer_id] = tf_layers_dict[tf_edges[layer_id][0]] * tf.nn.relu6(tf_layers_dict[tf_edges[layer_id][0]] + 3) * 0.16666667
 
+        ### Log
+        elif layer.attrib['type'] == 'Log':
+            tf_layers_dict[layer_id] = tf.math.log(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Power
+        elif layer.attrib['type'] == 'Power':
+            # No broadcast
+            tf_layers_dict[layer_id] = tf.math.pow(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
