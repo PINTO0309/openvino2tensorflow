@@ -604,6 +604,10 @@ def convert(model,
         elif layer.attrib['type'] == 'Mish':
             tf_layers_dict[layer_id] = tf_layers_dict[tf_edges[layer_id][0]] * tf.math.tanh(tf.math.softplus(tf_layers_dict[tf_edges[layer_id][0]]))
 
+        ### Selu
+        elif layer.attrib['type'] == 'Selu':
+            tf_layers_dict[layer_id] = tf.nn.selu(tf_layers_dict[tf_edges[layer_id][0]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
