@@ -558,6 +558,18 @@ def convert(model,
         elif layer.attrib['type'] == 'Atanh':
             tf_layers_dict[layer_id] = tf.math.atanh(tf_layers_dict[tf_edges[layer_id][0]])
 
+        ### Ceiling
+        elif layer.attrib['type'] == 'Ceiling':
+            tf_layers_dict[layer_id] = tf.math.ceil(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Cos
+        elif layer.attrib['type'] == 'Cos':
+            tf_layers_dict[layer_id] = tf.math.cos(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Cosh
+        elif layer.attrib['type'] == 'Cosh':
+            tf_layers_dict[layer_id] = tf.math.cosh(tf_layers_dict[tf_edges[layer_id][0]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
