@@ -37,18 +37,18 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |18|Interpolate|ResizeNearestNeighbor, ResizeBilinear||
 |19|ShapeOf|Shape||
 |20|Convert|Cast||
-|21|StridedSlice|Strided_Slice||
+|21|StridedSlice|Strided_Slice|WIP|
 |22|Pad|Pad, MirrorPad||
 |23|Clamp|ReLU6, Clip||
 |24|TopK|ArgMax, top_k||
-|25|Transpose|Transpose||
-|26|Squeeze|Squeeze||
+|25|Transpose|Transpose|WIP|
+|26|Squeeze|Squeeze|WIP|
 |27|ReduceMean|reduce_mean||
 |28|ReduceMax|reduce_max||
 |29|ReduceMin|reduce_min||
 |30|ReduceSum|reduce_sum||
 |31|MatMul|MatMul||
-|32|Reshape|Reshape||
+|32|Reshape|Reshape|WIP|
 |33|Range|Range|WIP|
 |34|Exp|Exp||
 |35|Abs|Abs||
@@ -65,7 +65,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |46|Ceiling|Ceil||
 |47|Cos|Cos||
 |48|Cosh|Cosh||
-|49|Gather|Gather||
+|49|Gather|Gather|WIP|
 |50|Divide|divide_no_nan||
 |51|Erf|Erf||
 |52|Floor|Floor||
