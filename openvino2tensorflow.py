@@ -446,23 +446,51 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf.math.top_k(tf_layers_dict[tf_edges[layer_id][0]], k=int(tf_layers_dict[tf_edges[layer_id][1]]), sorted=True)
                 transpose_squeeze_skip = False
 
-        ### Transpose
+        ### Transpose -TODO
         elif layer.attrib['type'] == 'Transpose':
             if transpose_squeeze_skip and tf_layers_dict[tf_edges[layer_id][0]].name.split(':')[0] == 'ArgMax':
                 continue
             else:
                 tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=tf_layers_dict[tf_edges[layer_id][1]])
 
-        ### Squeeze
+        ### Squeeze - TODO
         elif layer.attrib['type'] == 'Squeeze':
             if transpose_squeeze_skip:
                 continue
             else:
-                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=int(tf_layers_dict[tf_edges[layer_id][1]]))
+                axis = None
+                if len(tf_layers_dict[tf_edges[layer_id][1]]) == 1:
+                    axis = int(tf_layers_dict[tf_edges[layer_id][1]])
+                    if axis == 1:
+                        axis = 3
+                    elif axis >= 2:
+                        axis -= 1
+                else:
+                    for idx, part_axis in enumerate(tf_layers_dict[tf_edges[layer_id][1]]):
+                        if part_axis == 1:
+                            tf_layers_dict[tf_edges[layer_id][1]][idx] = 3
+                        elif part_axis >= 2:
+                            tf_layers_dict[tf_edges[layer_id][1]][idx] -= 1
+                    axis = tf_layers_dict[tf_edges[layer_id][1]]
+                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
             transpose_squeeze_skip = False
 
-        ### Gather
+        ### Gather - TODO
         elif layer.attrib['type'] == 'Gather':
+            axis = None
+            if len(tf_layers_dict[tf_edges[layer_id][2]]) == 1:
+                axis = int(tf_layers_dict[tf_edges[layer_id][2]])
+                if axis == 1:
+                    axis = 3
+                elif axis >= 2:
+                    axis -= 1
+            else:
+                for idx, part_axis in enumerate(tf_layers_dict[tf_edges[layer_id][2]]):
+                    if part_axis == 1:
+                        tf_layers_dict[tf_edges[layer_id][2]][idx] = 3
+                    elif part_axis >= 2:
+                        tf_layers_dict[tf_edges[layer_id][2]][idx] -= 1
+                axis = tf_layers_dict[tf_edges[layer_id][2]]
             tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[tf_edges[layer_id][0]], int(tf_layers_dict[tf_edges[layer_id][1]]), axis=tf_layers_dict[tf_edges[layer_id][2]])
 
         ### ReduceMean, ReduceMax, ReduceMin, ReduceSum
@@ -497,11 +525,11 @@ def convert(model,
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]],
                                                         transpose_a, transpose_b)
 
-        ### Reshape
+        ### Reshape -TODO
         elif layer.attrib['type'] == 'Reshape':
             tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
-        ### Range
+        ### Range - TODO
         elif layer.attrib['type'] == 'Range':
             dtype = cast_type_ov_tf[data.attrib['output_type']]
             tf_layers_dict[layer_id] = tf.range(tf_layers_dict[tf_edges[layer_id][0]][0], tf_layers_dict[tf_edges[layer_id][1]],
@@ -607,6 +635,16 @@ def convert(model,
         ### Selu
         elif layer.attrib['type'] == 'Selu':
             tf_layers_dict[layer_id] = tf.nn.selu(tf_layers_dict[tf_edges[layer_id][0]])
+
+        # ### Split - TODO
+        # elif layer.attrib['type'] == 'Split':
+        #     num_splits = int(data.attrib['num_splits'])
+        #     axis = int(tf_layers_dict[tf_edges[layer_id][1]])
+        #     if axis == 1:
+        #         axis = 3
+        #     elif axis >= 2:
+        #         axis -= 1
+        #     tf_layers_dict[layer_id] = tf.split(tf_layers_dict[tf_edges[layer_id][0]], num_splits, axis=axis)
 
         ### Result
         elif layer.attrib['type'] == 'Result':
