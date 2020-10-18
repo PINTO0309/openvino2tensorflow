@@ -462,7 +462,7 @@ def convert(model,
                 if len(tf_layers_dict[tf_edges[layer_id][1]]) == 1:
                     axis = int(tf_layers_dict[tf_edges[layer_id][1]])
                     if axis == 1:
-                        axis = 3
+                        axis = -1
                     elif axis >= 2:
                         axis -= 1
                 else:
@@ -481,7 +481,7 @@ def convert(model,
             if len(tf_layers_dict[tf_edges[layer_id][2]]) == 1:
                 axis = int(tf_layers_dict[tf_edges[layer_id][2]])
                 if axis == 1:
-                    axis = 3
+                    axis = -1
                 elif axis >= 2:
                     axis -= 1
             else:
