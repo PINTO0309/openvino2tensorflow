@@ -36,6 +36,13 @@ python3 openvino2tensorflow.py \
   --output_no_quant_float32_tflite=True \
   --debug \
   --debug_layer_number=5
+
+python3 openvino2tensorflow.py \
+  --model_path=openvino/mobilenet-v2-pytorch/FP32/mobilenet-v2-pytorch.xml \
+  --output_saved_model=True \
+  --output_no_quant_float32_tflite=True \
+  --debug \
+  --debug_layer_number=258
 '''
 
 import os
@@ -461,12 +468,27 @@ def convert(model,
         ### ReduceMean
         elif layer.attrib['type'] == 'ReduceMean':
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
-            tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=tf_layers_dict[tf_edges[layer_id][1]], keepdims=keep_dims)
+            if (type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray) and \
+               len(tf_layers_dict[tf_edges[layer_id][1]]) == 2 and \
+               tf_layers_dict[tf_edges[layer_id][1]][0] == 3 and \
+               tf_layers_dict[tf_edges[layer_id][1]][1] == 2:
+                axis1 = 2
+                axis2 = 1
+            else:
+                axis1 = tf_layers_dict[tf_edges[layer_id][1]][0]
+                axis2 = tf_layers_dict[tf_edges[layer_id][1]][1]
+            tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
 
         ### MatMul
         elif layer.attrib['type'] == 'MatMul':
-            transpose_a = True if int(data.attrib['a']) == 1 else False
-            transpose_b = True if int(data.attrib['b']) == 1 else False
+            if not data is None and 'a' in data.attrib:
+                transpose_a = True if int(data.attrib['a']) == 1 else False
+            if not data is None and 'b' in data.attrib:
+                transpose_b = True if int(data.attrib['b']) == 1 else False
+            if not data is None and 'transpose_a' in data.attrib:
+                transpose_a = True if int(data.attrib['transpose_a']) == 1 else False
+            if not data is None and 'transpose_b' in data.attrib:
+                transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]],
                                                         tf_layers_dict[tf_edges[layer_id][1]],
                                                         transpose_a, transpose_b)
