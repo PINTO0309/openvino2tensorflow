@@ -521,7 +521,18 @@ def convert(model,
             tf_layers_dict[layer_id] = softmax(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
 
         ### Negative
+        elif layer.attrib['type'] == 'Negative':
             tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Maximum
+        elif layer.attrib['type'] == 'Maximum':
+            # No broadcast
+            tf_layers_dict[layer_id] = tf.math.maximum(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### Minimum
+        elif layer.attrib['type'] == 'Minimum':
+            # No broadcast
+            tf_layers_dict[layer_id] = tf.math.minimum(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
         ### Result
         elif layer.attrib['type'] == 'Result':
