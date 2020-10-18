@@ -534,6 +534,30 @@ def convert(model,
             # No broadcast
             tf_layers_dict[layer_id] = tf.math.minimum(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
+        ### Acos
+        elif layer.attrib['type'] == 'Acos':
+            tf_layers_dict[layer_id] = tf.math.acos(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Acosh
+        elif layer.attrib['type'] == 'Acosh':
+            tf_layers_dict[layer_id] = tf.math.acosh(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Asin
+        elif layer.attrib['type'] == 'Asin':
+            tf_layers_dict[layer_id] = tf.math.asin(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Asinh
+        elif layer.attrib['type'] == 'Asinh':
+            tf_layers_dict[layer_id] = tf.math.asinh(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Atan
+        elif layer.attrib['type'] == 'Atan':
+            tf_layers_dict[layer_id] = tf.math.atan(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### Atanh
+        elif layer.attrib['type'] == 'Atanh':
+            tf_layers_dict[layer_id] = tf.math.atanh(tf_layers_dict[tf_edges[layer_id][0]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
