@@ -600,6 +600,10 @@ def convert(model,
             # No broadcast
             tf_layers_dict[layer_id] = tf.math.pow(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
+        ### Mish
+        elif layer.attrib['type'] == 'Mish':
+            tf_layers_dict[layer_id] = tf_layers_dict[tf_edges[layer_id][0]] * tf.math.tanh(tf.math.softplus(tf_layers_dict[tf_edges[layer_id][0]]))
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             try:
