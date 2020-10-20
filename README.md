@@ -25,7 +25,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |6|PReLU|PReLU||
 |7|MaxPool|MaxPool2D||
 |8|AvgPool|AveragePooling2D||
-|9|GroupConvolution|DepthwiseConv2D|WIP|
+|9|GroupConvolution|DepthwiseConv2D||
 |10|ConvolutionBackpropData|Conv2DTranspose||
 |11|Concat|Concat||
 |12|Multiply|Multiply||
