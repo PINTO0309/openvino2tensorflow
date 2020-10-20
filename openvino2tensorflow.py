@@ -43,6 +43,11 @@ python3 openvino2tensorflow.py \
   --output_no_quant_float32_tflite=True \
   --debug \
   --debug_layer_number=258
+
+python3 openvino2tensorflow.py \
+  --model_path=openvino/midasnet/FP32/midasnet.xml \
+  --output_saved_model=True \
+  --output_no_quant_float32_tflite=True
 '''
 
 import os
@@ -278,9 +283,9 @@ def convert(model,
 
         ### GroupConvolution
         elif layer.attrib['type'] == 'GroupConvolution':
-            # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
+            port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
             port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
-            depth_multiplier = int(port1[2])
+            depth_multiplier = 1
             kernel_size = [int(port1[3]), int(port1[4])]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
             pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
@@ -297,13 +302,38 @@ def convert(model,
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
-            tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
-                                                       strides=strides,
-                                                       padding=padding,
-                                                       depth_multiplier=depth_multiplier,
-                                                       dilation_rate=dilations,
-                                                       use_bias=False,
-                                                       depthwise_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)))(tf_layers_dict[tf_edges[layer_id][0]])
+
+            if int(port1[1]) > 1:
+                # Conv2D with groups
+                filters = int(port0[1])
+                groups = int(port1[0])
+                if len(port1) == 5:
+                    tf_layers_dict[layer_id] = Conv2D(filters=filters,
+                                                    kernel_size=kernel_size,
+                                                    strides=strides,
+                                                    padding=padding,
+                                                    dilation_rate=dilations,
+                                                    groups=groups,
+                                                    use_bias=False,
+                                                    kernel_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)))(tf_layers_dict[tf_edges[layer_id][0]])
+                else:
+                    tf_layers_dict[layer_id] = Conv2D(filters=filters,
+                                                    kernel_size=kernel_size,
+                                                    strides=strides,
+                                                    padding=padding,
+                                                    dilation_rate=dilations,
+                                                    groups=groups,
+                                                    use_bias=False,
+                                                    kernel_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(2,3,1,0)))(tf_layers_dict[tf_edges[layer_id][0]])         
+            else:
+                # DepthwiseConv2D
+                tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
+                                                          strides=strides,
+                                                          padding=padding,
+                                                          depth_multiplier=depth_multiplier,
+                                                          dilation_rate=dilations,
+                                                          use_bias=False,
+                                                          depthwise_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)))(tf_layers_dict[tf_edges[layer_id][0]])
 
         ### ConvolutionBackpropData
         elif layer.attrib['type'] == 'ConvolutionBackpropData':
@@ -668,7 +698,8 @@ def convert(model,
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
     model.summary()
 
-    # saved_model output
+
+    
     if output_saved_model:
         tf.saved_model.save(model, model_output_path)
 
@@ -719,7 +750,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_path', type=str, required=True, help='input IR model path (.xml)')
     parser.add_argument('--model_output_path', type=str, default='saved_model', help='The output folder path of the converted model file')
-    parser.add_argument('--output_saved_model', type=bool, default=True, help='saved_model output switch')
+    parser.add_argument('--output_saved_model', type=bool, default=False, help='saved_model output switch')
     parser.add_argument('--output_h5', type=bool, default=False, help='.h5 output switch')
     parser.add_argument('--output_pb', type=bool, default=False, help='.pb output switch')
     parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
