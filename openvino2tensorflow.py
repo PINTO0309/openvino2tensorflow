@@ -46,7 +46,6 @@ python3 openvino2tensorflow.py \
 
 python3 openvino2tensorflow.py \
   --model_path=openvino/midasnet/FP32/midasnet.xml \
-  --output_saved_model=True \
   --output_no_quant_float32_tflite=True
 
 python3 openvino2tensorflow.py \
@@ -73,6 +72,7 @@ from tensorflow.python.framework.convert_to_constants import convert_variables_t
 import numpy as np
 import sys
 import tensorflow_datasets as tfds
+
 
 def convert(model,
             model_output_path,
@@ -312,24 +312,34 @@ def convert(model,
                 # Conv2D with groups
                 filters = int(port0[1])
                 groups = int(port1[0])
+
+                convs = []
+                kernel = None
                 if len(port1) == 5:
-                    tf_layers_dict[layer_id] = Conv2D(filters=filters,
-                                                    kernel_size=kernel_size,
-                                                    strides=strides,
-                                                    padding=padding,
-                                                    dilation_rate=dilations,
-                                                    groups=groups,
-                                                    use_bias=False,
-                                                    kernel_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)))(tf_layers_dict[tf_edges[layer_id][0]])
+                    kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)
+                    for i in range(groups):
+                        convs.append(Conv2D(filters=filters // groups,
+                                            kernel_size=kernel_size,
+                                            strides=strides,
+                                            padding=padding,
+                                            dilation_rate=dilations,
+                                            use_bias=False,
+                                            kernel_initializer=Constant(kernel[:,:,:,:,i])))
                 else:
-                    tf_layers_dict[layer_id] = Conv2D(filters=filters,
-                                                    kernel_size=kernel_size,
-                                                    strides=strides,
-                                                    padding=padding,
-                                                    dilation_rate=dilations,
-                                                    groups=groups,
-                                                    use_bias=False,
-                                                    kernel_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(2,3,1,0)))(tf_layers_dict[tf_edges[layer_id][0]])         
+                    kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(2,3,1,0)
+                    for i in range(groups):
+                        convs.append(Conv2D(filters=filters // groups,
+                                            kernel_size=kernel_size,
+                                            strides=strides,
+                                            padding=padding,
+                                            dilation_rate=dilations,
+                                            use_bias=False,
+                                            kernel_initializer=Constant(kernel[:,:,:,i])))
+ 
+                x_splits = tf.split(tf_layers_dict[tf_edges[layer_id][0]], groups, -1)
+                x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
+                tf_layers_dict[layer_id] = tf.concat(x_outputs, -1)
+       
             else:
                 # DepthwiseConv2D
                 tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
