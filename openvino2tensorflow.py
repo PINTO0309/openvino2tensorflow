@@ -316,7 +316,8 @@ def convert(model,
                 convs = []
                 kernel = None
                 if len(port1) == 5:
-                    kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)
+                    # kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)
+                    kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,2,1,0)
                     for i in range(groups):
                         convs.append(Conv2D(filters=filters // groups,
                                             kernel_size=kernel_size,
@@ -694,12 +695,10 @@ def convert(model,
             break
 
 
-
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
     model.summary()
 
 
-    
     if output_saved_model:
         tf.saved_model.save(model, model_output_path)
 
