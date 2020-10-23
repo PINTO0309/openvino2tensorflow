@@ -50,8 +50,8 @@ python3 openvino2tensorflow.py \
 
 python3 openvino2tensorflow.py \
   --model_path openvino/tf_efficientnet_lite3_256x256/FP32/tf_efficientnet_lite3.xml \
-  --output_saved_model=True \
-  --output_pb=True
+  --output_pb=True \
+  --output_no_quant_float32_tflite=True
 '''
 
 import os
@@ -527,19 +527,19 @@ def convert(model,
             indices = int(tf_layers_dict[tf_edges[layer_id][1]])
             tf_layers_dict[layer_id] = [tf.cast(tf.gather(tf_layers_dict[tf_edges[layer_id][0]], indices, axis=axis), tf.int64)]
 
-        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum
+        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum - TODO
         elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or layer.attrib['type'] == 'ReduceSum':
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
-            axis1 = tf_layers_dict[tf_edges[layer_id][1]][0] - 1
-            axis2 = tf_layers_dict[tf_edges[layer_id][1]][1] - 1
+            # axis1 = tf_layers_dict[tf_edges[layer_id][1]][0] - 1
+            # axis2 = tf_layers_dict[tf_edges[layer_id][1]][1] - 1
             if layer.attrib['type'] == 'ReduceMean':
-                tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceMax':
-                tf_layers_dict[layer_id] = tf.math.reduce_max(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_max(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceMin':
-                tf_layers_dict[layer_id] = tf.math.reduce_min(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_min(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceSum':
-                tf_layers_dict[layer_id] = tf.math.reduce_sum(tf_layers_dict[tf_edges[layer_id][0]], axis=[axis1, axis2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_sum(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
 
         ### MatMul
         elif layer.attrib['type'] == 'MatMul':
