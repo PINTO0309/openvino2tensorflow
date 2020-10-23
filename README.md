@@ -25,7 +25,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |6|PReLU|PReLU||
 |7|MaxPool|MaxPool2D||
 |8|AvgPool|AveragePooling2D||
-|9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat|WIP|
+|9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat||
 |10|ConvolutionBackpropData|Conv2DTranspose||
 |11|Concat|Concat||
 |12|Multiply|Multiply||
@@ -41,7 +41,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |22|Pad|Pad, MirrorPad||
 |23|Clamp|ReLU6, Clip||
 |24|TopK|ArgMax, top_k||
-|25|Transpose|Transpose|WIP|
+|25|Transpose|Transpose||
 |26|Squeeze|Squeeze||
 |27|ReduceMean|reduce_mean||
 |28|ReduceMax|reduce_max||
@@ -65,7 +65,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 |46|Ceiling|Ceil||
 |47|Cos|Cos||
 |48|Cosh|Cosh||
-|49|Gather|Gather|WIP|
+|49|Gather|Gather||
 |50|Divide|divide_no_nan||
 |51|Erf|Erf||
 |52|Floor|Floor||
