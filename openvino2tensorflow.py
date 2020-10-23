@@ -50,6 +50,7 @@ python3 openvino2tensorflow.py \
 
 python3 openvino2tensorflow.py \
   --model_path openvino/tf_efficientnet_lite3_256x256/FP32/tf_efficientnet_lite3.xml \
+  --output_saved_model=True \
   --output_pb=True \
   --output_no_quant_float32_tflite=True
 '''
