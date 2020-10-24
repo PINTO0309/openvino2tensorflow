@@ -58,8 +58,8 @@ def dumpWeight(model, output_path):
 def main():
     print('*** OpenVINO IR model weight data extractor')
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model', type=str, help='input IR model path')
-    parser.add_argument('-o', '--output_path', type=str, help='weights output folder path')
+    parser.add_argument('-m', '--model', type=str, required=True, help='input IR model path')
+    parser.add_argument('-o', '--output_path', type=str, required=True, help='weights output folder path')
     args = parser.parse_args()
 
     model, ext = os.path.splitext(args.model)
