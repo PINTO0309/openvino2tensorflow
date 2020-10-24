@@ -15,6 +15,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
 
 ## 3. Supported Layers
+Currently, only 4D tensors are supported as input tensors.
 |No.|OpenVINO Layer|TF Layer|Remarks|
 |:--:|:--|:--|:--|
 |1|Parameter|Input|Input|
