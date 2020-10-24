@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 ### python3 ir_weight_extractor.py -m openvino/480x640/FP32/u2netp_480x640.xml -o weights_u2netp/
 
 import os
