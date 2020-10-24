@@ -18,7 +18,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 Currently, only 4D tensors are supported as input tensors.
 |No.|OpenVINO Layer|TF Layer|Remarks|
 |:--:|:--|:--|:--|
-|1|Parameter|Input|Input|
+|1|Parameter|Input|Input (4D tensor only)|
 |2|Const|Constant, Bias||
 |3|Convolution|Conv2D||
 |4|Add|Add||
