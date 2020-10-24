@@ -47,7 +47,8 @@ python3 openvino2tensorflow.py \
 
 python3 openvino2tensorflow.py \
   --model_path=openvino/midasnet/FP32/midasnet.xml \
-  --output_no_quant_float32_tflite=True
+  --output_weight_and_json=True \
+  --output_pb=True
 
 python3 openvino2tensorflow.py \
   --model_path openvino/tf_efficientnet_lite3_256x256/FP32/tf_efficientnet_lite3.xml \
@@ -80,6 +81,7 @@ def convert(model,
             model_output_path,
             output_saved_model,
             output_h5,
+            output_weight_and_json,
             output_pb,
             output_no_quant_float32_tflite,
             output_weight_quant_tflite,
@@ -131,8 +133,6 @@ def convert(model,
 
     tf_inputs = []
     tf_outputs = []
-
-    transpose_squeeze_skip = False
 
     # edges
     for edge in edges:
@@ -318,7 +318,6 @@ def convert(model,
                 convs = []
                 kernel = None
                 if len(port1) == 5:
-                    # kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)
                     kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,2,1,0)
                     for i in range(groups):
                         convs.append(Conv2D(filters=filters // groups,
@@ -484,44 +483,63 @@ def convert(model,
             # index_element_type = data.attrib['index_element_type']
             # mode = data.attrib['mode']
             # sort = data.attrib['sort']
-            transpose_squeeze_skip = False
-            k = int(tf_layers_dict[tf_edges[layer_id][1]])
-            if k == 1:
-                tf_layers_dict[layer_id] = tf.math.argmax(tf_layers_dict[tf_edges[layer_id][0]], axis=-1, output_type=tf.dtypes.int32)
-                transpose_squeeze_skip = True
-                temp_final_output_layer = tf_layers_dict[layer_id]
-            else:
-                tf_layers_dict[layer_id] = tf.math.top_k(tf_layers_dict[tf_edges[layer_id][0]], k=int(tf_layers_dict[tf_edges[layer_id][1]]), sorted=True)
-                transpose_squeeze_skip = False
+            tf_layers_dict[layer_id] = tf.math.top_k(tf_layers_dict[tf_edges[layer_id][0]], k=int(tf_layers_dict[tf_edges[layer_id][1]]), sorted=True)
 
-        ### Transpose -TODO
+        ### Transpose
         elif layer.attrib['type'] == 'Transpose':
-            if transpose_squeeze_skip and tf_layers_dict[tf_edges[layer_id][0]].name.split(':')[0] == 'ArgMax':
-                continue
+            temp = tf_layers_dict[tf_edges[layer_id][1]]
+            try:
+                # Other than TopK
+                input_shape_len = len(tf_layers_dict[tf_edges[layer_id][0]].shape)
+            except:
+                # TopK
+                input_shape_len = len(tf_layers_dict[tf_edges[layer_id][0]].values.shape)
+            perm = []
+            if type(temp) == np.ndarray:
+                for idx, dim in enumerate(temp):
+                    if dim == 0:
+                        perm.append(0)
+                    elif dim == 1:
+                        perm.append(input_shape_len - 1)
+                    else:
+                        perm.append(dim - 1)
             else:
-                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=tf_layers_dict[tf_edges[layer_id][1]])
+                # TODO
+                shape = tf.shape(temp)
+                for idx, dim in enumerate(shape):
+                    if dim == 0:
+                        perm.append(0)
+                    elif dim == 1:
+                        perm.append(input_shape_len - 1)
+                    else:
+                        perm.append(dim - 1)
+            try:
+                # Other than TopK
+                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=perm)
+            except:
+                # TopK
+                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]][1], perm=perm)
 
         ### Squeeze
         elif layer.attrib['type'] == 'Squeeze':
-            if transpose_squeeze_skip:
-                continue
+            axis = None
+            if len(tf_layers_dict[tf_edges[layer_id][1]]) == 1:
+                axis = int(tf_layers_dict[tf_edges[layer_id][1]])
+                if axis == 1:
+                    axis = -1
+                elif axis >= 2:
+                    axis -= 1
             else:
-                axis = None
-                if len(tf_layers_dict[tf_edges[layer_id][1]]) == 1:
-                    axis = int(tf_layers_dict[tf_edges[layer_id][1]])
-                    if axis == 1:
-                        axis = -1
-                    elif axis >= 2:
-                        axis -= 1
-                else:
-                    for idx, part_axis in enumerate(tf_layers_dict[tf_edges[layer_id][1]]):
-                        if part_axis == 1:
-                            tf_layers_dict[tf_edges[layer_id][1]][idx] = 3
-                        elif part_axis >= 2:
-                            tf_layers_dict[tf_edges[layer_id][1]][idx] -= 1
-                    axis = tf_layers_dict[tf_edges[layer_id][1]]
+                for idx, part_axis in enumerate(tf_layers_dict[tf_edges[layer_id][1]]):
+                    if part_axis == 1:
+                        tf_layers_dict[tf_edges[layer_id][1]][idx] = 3
+                    elif part_axis >= 2:
+                        tf_layers_dict[tf_edges[layer_id][1]][idx] -= 1
+                axis = tf_layers_dict[tf_edges[layer_id][1]]
+            try:
                 tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
-            transpose_squeeze_skip = False
+            except:
+                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=-1)
 
         ### Gather
         elif layer.attrib['type'] == 'Gather':
@@ -582,9 +600,26 @@ def convert(model,
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]],
                                                         transpose_a, transpose_b)
 
-        ### Reshape -TODO
+        ### Reshape
         elif layer.attrib['type'] == 'Reshape':
-            tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+            shape = []
+            before_shape_layer = tf_layers_dict[tf_edges[layer_id][1]]
+            if type(before_shape_layer) == np.ndarray:
+                # NCHW -> NHWC
+                shape = before_shape_layer.transpose(0,2,3,1)
+            else:
+                # shape = tf.shape(before_shape_layer)
+                shape_len = before_shape_layer.shape[0]
+                if shape_len == 4:
+                    # NCHW -> NHWC
+                    shape.append(before_shape_layer[0])
+                    shape.append(before_shape_layer[2])
+                    shape.append(before_shape_layer[3])
+                    shape.append(before_shape_layer[1])
+                else:
+                    # Other
+                    shape = before_shape_layer
+            tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[tf_edges[layer_id][0]], shape)
 
         ### Range - TODO
         elif layer.attrib['type'] == 'Range':
@@ -712,13 +747,8 @@ def convert(model,
 
         ### Result
         elif layer.attrib['type'] == 'Result':
-            try:
-                tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
-                tf_outputs.append(tf_layers_dict[layer_id])
-            except:
-                tf_layers_dict[layer_id] = tf.identity(temp_final_output_layer, name=layer.attrib['name'].split('/')[0])
-                tf_outputs.append(tf_layers_dict[layer_id])
-                transpose_squeeze_skip = False
+            tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
+            tf_outputs.append(tf_layers_dict[layer_id])
         else:
             print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
             sys.exit(-1)
@@ -737,7 +767,12 @@ def convert(model,
 
     # .h5 output
     if output_h5:
-        model.save('{}/model.h5'.format(model_output_path))
+        model.save('{}/model_float32.h5'.format(model_output_path))
+
+    # weight and json output
+    if output_weight_and_json:
+        open('{}/model_float32.json'.format(model_output_path), 'w').write(model.to_json())
+        model.save_weights('{}/model_float32_weights.h5'.format(model_output_path))
 
     # .pb output
     if output_pb:
@@ -784,6 +819,7 @@ def main():
     parser.add_argument('--model_output_path', type=str, default='saved_model', help='The output folder path of the converted model file')
     parser.add_argument('--output_saved_model', type=bool, default=False, help='saved_model output switch')
     parser.add_argument('--output_h5', type=bool, default=False, help='.h5 output switch')
+    parser.add_argument('--output_weight_and_json', type=bool, default=False, help='weight of h5 and json output switch')
     parser.add_argument('--output_pb', type=bool, default=False, help='.pb output switch')
     parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
@@ -798,6 +834,7 @@ def main():
         sys.exit(-1)
     output_saved_model = args.output_saved_model
     output_h5 = args.output_h5
+    output_weight_and_json = args.output_weight_and_json
     output_pb = args.output_pb
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
@@ -806,13 +843,14 @@ def main():
     debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
         not output_h5 and \
+        not output_weight_and_json and \
         not output_pb and \
         not output_no_quant_float32_tflite and \
         not output_weight_quant_tflite and \
         not output_float16_quant_tflite:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1) 
-    convert(model, model_output_path, output_saved_model, output_h5, output_pb,
+    convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
             output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
             debug, debug_layer_number)
 
