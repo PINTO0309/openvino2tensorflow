@@ -46,7 +46,7 @@ python3 openvino2tensorflow.py \
 
 python3 openvino2tensorflow.py \
   --model_path=openvino/midasnet/FP32/midasnet.xml \
-  --output_no_quant_float32_tflite=True
+  --output_weight_and_json=True
 
 python3 openvino2tensorflow.py \
   --model_path openvino/tf_efficientnet_lite3_256x256/FP32/tf_efficientnet_lite3.xml \
@@ -79,6 +79,7 @@ def convert(model,
             model_output_path,
             output_saved_model,
             output_h5,
+            output_weight_and_json,
             output_pb,
             output_no_quant_float32_tflite,
             output_weight_quant_tflite,
@@ -315,7 +316,6 @@ def convert(model,
                 convs = []
                 kernel = None
                 if len(port1) == 5:
-                    # kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,1,2,0)
                     kernel = tf_layers_dict[tf_edges[layer_id][1]].transpose(3,4,2,1,0)
                     for i in range(groups):
                         convs.append(Conv2D(filters=filters // groups,
@@ -752,7 +752,12 @@ def convert(model,
 
     # .h5 output
     if output_h5:
-        model.save('{}/model.h5'.format(model_output_path))
+        model.save('{}/model_float32.h5'.format(model_output_path))
+
+    # weight and json output
+    if output_weight_and_json:
+        open('{}/model_float32.json'.format(model_output_path), 'w').write(model.to_json())
+        model.save_weights('{}/model_float32_weights.h5'.format(model_output_path))
 
     # .pb output
     if output_pb:
@@ -799,6 +804,7 @@ def main():
     parser.add_argument('--model_output_path', type=str, default='saved_model', help='The output folder path of the converted model file')
     parser.add_argument('--output_saved_model', type=bool, default=False, help='saved_model output switch')
     parser.add_argument('--output_h5', type=bool, default=False, help='.h5 output switch')
+    parser.add_argument('--output_weight_and_json', type=bool, default=False, help='weight of h5 and json output switch')
     parser.add_argument('--output_pb', type=bool, default=False, help='.pb output switch')
     parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
@@ -813,6 +819,7 @@ def main():
         sys.exit(-1)
     output_saved_model = args.output_saved_model
     output_h5 = args.output_h5
+    output_weight_and_json = args.output_weight_and_json
     output_pb = args.output_pb
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
@@ -821,13 +828,14 @@ def main():
     debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
         not output_h5 and \
+        not output_weight_and_json and \
         not output_pb and \
         not output_no_quant_float32_tflite and \
         not output_weight_quant_tflite and \
         not output_float16_quant_tflite:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1) 
-    convert(model, model_output_path, output_saved_model, output_h5, output_pb,
+    convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
             output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
             debug, debug_layer_number)
 
