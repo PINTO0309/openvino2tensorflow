@@ -487,7 +487,12 @@ def convert(model,
         ### Transpose
         elif layer.attrib['type'] == 'Transpose':
             temp = tf_layers_dict[tf_edges[layer_id][1]]
-            input_shape_len = len(tf_layers_dict[tf_edges[layer_id][0]].shape)
+            try:
+                # Other than TopK
+                input_shape_len = len(tf_layers_dict[tf_edges[layer_id][0]].shape)
+            except:
+                # TopK
+                input_shape_len = len(tf_layers_dict[tf_edges[layer_id][0]].values.shape)
             perm = []
             if type(temp) == np.ndarray:
                 for idx, dim in enumerate(temp):
@@ -507,7 +512,12 @@ def convert(model,
                         perm.append(input_shape_len - 1)
                     else:
                         perm.append(dim - 1)
-            tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=perm)
+            try:
+                # Other than TopK
+                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=perm)
+            except:
+                # TopK
+                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]][1], perm=perm)
 
         ### Squeeze
         elif layer.attrib['type'] == 'Squeeze':
@@ -525,7 +535,10 @@ def convert(model,
                     elif part_axis >= 2:
                         tf_layers_dict[tf_edges[layer_id][1]][idx] -= 1
                 axis = tf_layers_dict[tf_edges[layer_id][1]]
-            tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
+            try:
+                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
+            except:
+                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=-1)
 
         ### Gather
         elif layer.attrib['type'] == 'Gather':
