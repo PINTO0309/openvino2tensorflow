@@ -522,7 +522,7 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
             transpose_squeeze_skip = False
 
-        ### Gather - TODO
+        ### Gather
         elif layer.attrib['type'] == 'Gather':
             axis = int(tf_layers_dict[tf_edges[layer_id][2]])
             indices = int(tf_layers_dict[tf_edges[layer_id][1]])
