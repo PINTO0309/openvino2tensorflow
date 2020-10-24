@@ -1,14 +1,16 @@
 from setuptools import setup, Extension
 from setuptools import find_packages
+from os import listdir
 
 with open("README.md") as f:
     long_description = f.read()
 
+scripts = ["scripts/"+i for i in listdir("scripts")]
 
 if __name__ == "__main__":
     setup(
         name="openvino2tensorflow",
-        scripts=["scripts/openvino2tensorflow"],
+        scripts=scripts,
         version="0.0.3",
         description="This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5 and pb. in (NCHW) format",
         long_description=long_description,
