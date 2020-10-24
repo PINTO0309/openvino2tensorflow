@@ -46,7 +46,8 @@ python3 openvino2tensorflow.py \
 
 python3 openvino2tensorflow.py \
   --model_path=openvino/midasnet/FP32/midasnet.xml \
-  --output_weight_and_json=True
+  --output_weight_and_json=True \
+  --output_pb=True
 
 python3 openvino2tensorflow.py \
   --model_path openvino/tf_efficientnet_lite3_256x256/FP32/tf_efficientnet_lite3.xml \
