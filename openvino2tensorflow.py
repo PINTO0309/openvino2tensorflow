@@ -425,7 +425,7 @@ def convert(model,
 
         ### ShapeOf
         elif layer.attrib['type'] == 'ShapeOf':
-            tf_layers_dict[layer_id] = tf.keras.backend.shape(tf_layers_dict[tf_edges[layer_id][0]])
+            tf_layers_dict[layer_id] = tf.shape(tf_layers_dict[tf_edges[layer_id][0]], out_type=tf.int64)
 
         ### Convert
         elif layer.attrib['type'] == 'Convert':
@@ -525,22 +525,48 @@ def convert(model,
         ### Gather
         elif layer.attrib['type'] == 'Gather':
             axis = int(tf_layers_dict[tf_edges[layer_id][2]])
-            indices = int(tf_layers_dict[tf_edges[layer_id][1]])
-            tf_layers_dict[layer_id] = [tf.cast(tf.gather(tf_layers_dict[tf_edges[layer_id][0]], indices, axis=axis), tf.int64)]
+            temp = tf_layers_dict[tf_edges[layer_id][1]]
+            input_shape = tf_layers_dict[tf_edges[layer_id][0]].shape[0]
+            indices = []
+            if type(temp) == np.ndarray:
+                for idx, dim in enumerate(temp):
+                    if idx == 0:
+                        indices.append(0)
+                    elif idx == input_shape - 1:
+                        indices.append(1)
+                    else:
+                        indices.append(dim + 1)
+            else:
+                # TODO
+                shape = tf.shape(temp)
+                for idx, dim in enumerate(shape):
+                    if idx == 0:
+                        indices.append(0)
+                    elif idx == input_shape - 1:
+                        indices.append(1)
+                    else:
+                        indices.append(dim + 1)
+            tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[tf_edges[layer_id][0]], indices, axis=axis)
 
-        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum - TODO
-        elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or layer.attrib['type'] == 'ReduceSum':
+        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd - TODO
+        elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd':
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
             # axis1 = tf_layers_dict[tf_edges[layer_id][1]][0] - 1
             # axis2 = tf_layers_dict[tf_edges[layer_id][1]][1] - 1
+            if type(tf_layers_dict[tf_edges[layer_id][1]]) == np.ndarray:
+                axis = tf_layers_dict[tf_edges[layer_id][1]]
+            else:
+                axis = [1, 2]
             if layer.attrib['type'] == 'ReduceMean':
-                tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[tf_edges[layer_id][0]], axis=axis, keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceMax':
-                tf_layers_dict[layer_id] = tf.math.reduce_max(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_max(tf_layers_dict[tf_edges[layer_id][0]], axis=axis, keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceMin':
-                tf_layers_dict[layer_id] = tf.math.reduce_min(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_min(tf_layers_dict[tf_edges[layer_id][0]], axis=axis, keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceSum':
-                tf_layers_dict[layer_id] = tf.math.reduce_sum(tf_layers_dict[tf_edges[layer_id][0]], axis=[1, 2], keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.reduce_sum(tf_layers_dict[tf_edges[layer_id][0]], axis=axis, keepdims=keep_dims)
+            elif layer.attrib['type'] == 'ReduceProd':
+                tf_layers_dict[layer_id] = tf.math.reduce_prod(tf_layers_dict[tf_edges[layer_id][0]], axis=axis, keepdims=keep_dims)
 
         ### MatMul
         elif layer.attrib['type'] == 'MatMul':
@@ -668,6 +694,11 @@ def convert(model,
         elif layer.attrib['type'] == 'Selu':
             tf_layers_dict[layer_id] = tf.nn.selu(tf_layers_dict[tf_edges[layer_id][0]])
 
+        ### Subtract
+        elif layer.attrib['type'] == 'Subtract':
+            # No broadcast
+            tf_layers_dict[layer_id] = tf.math.subtract(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+    
         # ### Split - TODO
         # elif layer.attrib['type'] == 'Split':
         #     num_splits = int(data.attrib['num_splits'])
