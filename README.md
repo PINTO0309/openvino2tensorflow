@@ -132,6 +132,7 @@ optional arguments:
 
 ## 5. Execution sample
 ### 5-1. Conversion of OpenVINO IR to Tensorflow models
+OutOfMemory may occur when converting to saved_model or h5 when the file size of the original model is large, please try the conversion to a pb file alone.
 ```
 $ python3 openvino2tensorflow.py \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
