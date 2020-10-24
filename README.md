@@ -130,6 +130,7 @@ optional arguments:
 ```
 
 ## 5. Execution sample
+### 5-1. Conversion of OpenVINO IR to Tensorflow models
 ```
 $ python3 openvino2tensorflow.py \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
@@ -139,6 +140,7 @@ $ python3 openvino2tensorflow.py \
   --output_float16_quant_tflite=True \
   --output_no_quant_float32_tflite=True
 ```
+### 5-2. Convert Protocol Buffer (.pb) to saved_model
 ```
 $ python3 pb_to_saved_model.py \
   --pb_file_path model_float32.pb \
