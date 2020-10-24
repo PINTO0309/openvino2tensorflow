@@ -48,35 +48,37 @@ Currently, only 4D tensors are supported as input tensors.
 |28|ReduceMax|reduce_max||
 |29|ReduceMin|reduce_min||
 |30|ReduceSum|reduce_sum||
-|31|MatMul|MatMul||
-|32|Reshape|Reshape|WIP|
-|33|Range|Range|WIP|
-|34|Exp|Exp||
-|35|Abs|Abs||
-|36|SoftMax|SoftMax||
-|37|Negative|Negative||
-|38|Maximum|Maximum|No broadcast|
-|39|Minimum|Minimum|No broadcast|
-|40|Acos|Acos||
-|41|Acosh|Acosh||
-|42|Asin|Asin||
-|43|Asinh|Asinh||
-|44|Atan|Atan||
-|45|Atanh|Atanh||
-|46|Ceiling|Ceil||
-|47|Cos|Cos||
-|48|Cosh|Cosh||
-|49|Gather|Gather||
-|50|Divide|divide_no_nan||
-|51|Erf|Erf||
-|52|Floor|Floor||
-|53|FloorMod|FloorMod||
-|54|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667|
-|55|Log|Log||
-|56|Power|Pow|No broadcast|
-|57|Mish|Mish|x\*Tanh(softplus(x))|
-|58|Selu|Selu||
-|59|Result|Identity|Output|
+|31|ReduceProd|reduce_prod||
+|32|Subtract|Subtract||
+|33|MatMul|MatMul||
+|34|Reshape|Reshape|WIP|
+|35|Range|Range|WIP|
+|36|Exp|Exp||
+|37|Abs|Abs||
+|38|SoftMax|SoftMax||
+|39|Negative|Negative||
+|40|Maximum|Maximum|No broadcast|
+|41|Minimum|Minimum|No broadcast|
+|42|Acos|Acos||
+|43|Acosh|Acosh||
+|44|Asin|Asin||
+|45|Asinh|Asinh||
+|46|Atan|Atan||
+|47|Atanh|Atanh||
+|48|Ceiling|Ceil||
+|49|Cos|Cos||
+|50|Cosh|Cosh||
+|51|Gather|Gather||
+|52|Divide|divide_no_nan||
+|53|Erf|Erf||
+|54|Floor|Floor||
+|55|FloorMod|FloorMod||
+|56|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667|
+|57|Log|Log||
+|58|Power|Pow|No broadcast|
+|59|Mish|Mish|x\*Tanh(softplus(x))|
+|60|Selu|Selu||
+|61|Result|Identity|Output|
 
 ## 4. Usage
 ```bash
