@@ -134,11 +134,11 @@ optional arguments:
 ```
 $ python3 openvino2tensorflow.py \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
-  --output_saved_model=True \
-  --output_pb=True \
-  --output_weight_quant_tflite=True \
-  --output_float16_quant_tflite=True \
-  --output_no_quant_float32_tflite=True
+  --output_saved_model True \
+  --output_pb True \
+  --output_weight_quant_tflite True \
+  --output_float16_quant_tflite True \
+  --output_no_quant_float32_tflite True
 ```
 ### 5-2. Convert Protocol Buffer (.pb) to saved_model
 ```
