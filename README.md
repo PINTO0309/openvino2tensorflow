@@ -141,7 +141,7 @@ $ python3 openvino2tensorflow.py \
   --output_no_quant_float32_tflite True
 ```
 ### 5-2. Convert Protocol Buffer (.pb) to saved_model
-This tool is useful if you want to check the internal structure of pb files, tflite files, coreml files and IR (.xml) files. **https://lutzroeder.github.io/netron/**
+This tool is useful if you want to check the internal structure of pb files, tflite files, .h5 files, coreml files and IR (.xml) files. **https://lutzroeder.github.io/netron/**
 ```
 $ python3 pb_to_saved_model.py \
   --pb_file_path model_float32.pb \
