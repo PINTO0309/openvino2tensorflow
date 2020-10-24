@@ -1,6 +1,6 @@
 # openvino2tensorflow
-This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5 and pb.  
-  
+This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5 and pb.
+
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
 
 ## 1. Environment
@@ -9,7 +9,7 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 
 ## 2. Use case
 
-- PyTorch (NCHW) -> ONNX (NCHW) -> OpenVINO (NCHW) -> 
+- PyTorch (NCHW) -> ONNX (NCHW) -> OpenVINO (NCHW) ->
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFJS (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC)
@@ -82,9 +82,15 @@ Currently, only 4D tensors are supported as input tensors.
 |60|Selu|Selu||
 |61|Result|Identity|Output|
 
-## 4. Usage
+## 4 Setup
+
 ```bash
-usage: openvino2tensorflow.py [-h] --model_path MODEL_PATH
+pip install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
+```
+
+## 5. Usage
+```bash
+usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                               [--model_output_path MODEL_OUTPUT_PATH]
                               [--output_saved_model OUTPUT_SAVED_MODEL]
                               [--output_h5 OUTPUT_H5]
@@ -122,7 +128,7 @@ optional arguments:
                         only when --debug=True.
 ```
 ```bash
-usage: pb_to_saved_model.py [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
+usage: pb_to_saved_model [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
                             --outputs OUTPUTS
                             [--model_output_path MODEL_OUTPUT_PATH]
 
@@ -138,11 +144,11 @@ optional arguments:
                         The output folder path of the converted model file
 ```
 
-## 5. Execution sample
-### 5-1. Conversion of OpenVINO IR to Tensorflow models
+## 6. Execution sample
+### 6-1. Conversion of OpenVINO IR to Tensorflow models
 OutOfMemory may occur when converting to saved_model or h5 when the file size of the original model is large, please try the conversion to a pb file alone.
 ```
-$ python3 openvino2tensorflow.py \
+$ openvino2tensorflow \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
   --output_saved_model True \
   --output_pb True \
@@ -150,21 +156,21 @@ $ python3 openvino2tensorflow.py \
   --output_float16_quant_tflite True \
   --output_no_quant_float32_tflite True
 ```
-### 5-2. Convert Protocol Buffer (.pb) to saved_model
+### 6-2. Convert Protocol Buffer (.pb) to saved_model
 This tool is useful if you want to check the internal structure of pb files, tflite files, .h5 files, coreml files and IR (.xml) files. **https://lutzroeder.github.io/netron/**
 ```
-$ python3 pb_to_saved_model.py \
+$ pb_to_saved_model \
   --pb_file_path model_float32.pb \
   --inputs inputs:0 \
   --outputs Identity:0
 ```
-### 5-3. Converts saved_model to OpenVINO IR
+### 6-3. Converts saved_model to OpenVINO IR
 ```
 $ python3 ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/mo_tf.py \
   --saved_model_dir saved_model \
   --output_dir openvino/reverse
 ```
-### 5-4. Checking the structure of saved_model
+### 6-4. Checking the structure of saved_model
 ```
 $ saved_model_cli show \
   --dir saved_model \
@@ -172,11 +178,11 @@ $ saved_model_cli show \
   --signature_def serving_default
 ```
 
-## 6. Output sample
+## 7. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)
 
 
-## 7. Model Structure
+## 8. Model Structure
 **[https://digital-standard.com/threedpose/models/Resnet34_3inputs_448x448_20200609.onnx](https://github.com/digital-standard/ThreeDPoseUnityBarracuda#download-and-put-files)**
 |ONNX|OpenVINO|TFLite|
 |:--:|:--:|:--:|
