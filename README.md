@@ -53,7 +53,7 @@ Currently, only 4D tensors are supported as input tensors.
 |31|ReduceProd|reduce_prod||
 |32|Subtract|Subtract||
 |33|MatMul|MatMul||
-|34|Reshape|Reshape|WIP|
+|34|Reshape|Reshape||
 |35|Range|Range|WIP|
 |36|Exp|Exp||
 |37|Abs|Abs||
