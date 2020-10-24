@@ -156,6 +156,13 @@ $ python3 ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/mo_tf.py \
   --saved_model_dir saved_model \
   --output_dir openvino/reverse
 ```
+### 5-4. Checking the structure of saved_model
+```
+$ saved_model_cli show \
+  --dir saved_model \
+  --tag_set serve \
+  --signature_def serving_default
+```
 
 ## 6. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)
