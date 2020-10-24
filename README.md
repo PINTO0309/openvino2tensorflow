@@ -112,6 +112,22 @@ optional arguments:
                         The last layer number to output when debugging. Used
                         only when --debug=True.
 ```
+```bash
+usage: pb_to_saved_model.py [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
+                            --outputs OUTPUTS
+                            [--model_output_path MODEL_OUTPUT_PATH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --pb_file_path PB_FILE_PATH
+                        Input .pb file path (.pb)
+  --inputs INPUTS       (e.g.1) input:0,input:1,input:2 / (e.g.2)
+                        images:0,input:0,param:0
+  --outputs OUTPUTS     (e.g.1) output:0,output:1,output:2 / (e.g.2)
+                        Identity:0,Identity:1,output:0
+  --model_output_path MODEL_OUTPUT_PATH
+                        The output folder path of the converted model file
+```
 
 ## 5. Execution sample
 ```
@@ -122,6 +138,12 @@ $ python3 openvino2tensorflow.py \
   --output_weight_quant_tflite=True \
   --output_float16_quant_tflite=True \
   --output_no_quant_float32_tflite=True
+```
+```
+$ python3 pb_to_saved_model.py \
+  --pb_file_path model_float32.pb \
+  --inputs inputs:0 \
+  --outputs Identity:0
 ```
 
 ## 6. Output sample
