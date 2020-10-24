@@ -131,8 +131,6 @@ def convert(model,
     tf_inputs = []
     tf_outputs = []
 
-    transpose_squeeze_skip = False
-
     # edges
     for edge in edges:
         to_layer = int(edge.attrib['to-layer'])
@@ -483,44 +481,50 @@ def convert(model,
             # index_element_type = data.attrib['index_element_type']
             # mode = data.attrib['mode']
             # sort = data.attrib['sort']
-            transpose_squeeze_skip = False
-            k = int(tf_layers_dict[tf_edges[layer_id][1]])
-            if k == 1:
-                tf_layers_dict[layer_id] = tf.math.argmax(tf_layers_dict[tf_edges[layer_id][0]], axis=-1, output_type=tf.dtypes.int32)
-                transpose_squeeze_skip = True
-                temp_final_output_layer = tf_layers_dict[layer_id]
-            else:
-                tf_layers_dict[layer_id] = tf.math.top_k(tf_layers_dict[tf_edges[layer_id][0]], k=int(tf_layers_dict[tf_edges[layer_id][1]]), sorted=True)
-                transpose_squeeze_skip = False
+            tf_layers_dict[layer_id] = tf.math.top_k(tf_layers_dict[tf_edges[layer_id][0]], k=int(tf_layers_dict[tf_edges[layer_id][1]]), sorted=True)
 
-        ### Transpose -TODO
+        ### Transpose
         elif layer.attrib['type'] == 'Transpose':
-            if transpose_squeeze_skip and tf_layers_dict[tf_edges[layer_id][0]].name.split(':')[0] == 'ArgMax':
-                continue
+            temp = tf_layers_dict[tf_edges[layer_id][1]]
+            input_shape_len = len(tf_layers_dict[tf_edges[layer_id][0]].shape)
+            perm = []
+            if type(temp) == np.ndarray:
+                for idx, dim in enumerate(temp):
+                    if dim == 0:
+                        perm.append(0)
+                    elif dim == 1:
+                        perm.append(input_shape_len - 1)
+                    else:
+                        perm.append(dim - 1)
             else:
-                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=tf_layers_dict[tf_edges[layer_id][1]])
+                # TODO
+                shape = tf.shape(temp)
+                for idx, dim in enumerate(shape):
+                    if dim == 0:
+                        perm.append(0)
+                    elif dim == 1:
+                        perm.append(input_shape_len - 1)
+                    else:
+                        perm.append(dim - 1)
+            tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[tf_edges[layer_id][0]], perm=perm)
 
         ### Squeeze
         elif layer.attrib['type'] == 'Squeeze':
-            if transpose_squeeze_skip:
-                continue
+            axis = None
+            if len(tf_layers_dict[tf_edges[layer_id][1]]) == 1:
+                axis = int(tf_layers_dict[tf_edges[layer_id][1]])
+                if axis == 1:
+                    axis = -1
+                elif axis >= 2:
+                    axis -= 1
             else:
-                axis = None
-                if len(tf_layers_dict[tf_edges[layer_id][1]]) == 1:
-                    axis = int(tf_layers_dict[tf_edges[layer_id][1]])
-                    if axis == 1:
-                        axis = -1
-                    elif axis >= 2:
-                        axis -= 1
-                else:
-                    for idx, part_axis in enumerate(tf_layers_dict[tf_edges[layer_id][1]]):
-                        if part_axis == 1:
-                            tf_layers_dict[tf_edges[layer_id][1]][idx] = 3
-                        elif part_axis >= 2:
-                            tf_layers_dict[tf_edges[layer_id][1]][idx] -= 1
-                    axis = tf_layers_dict[tf_edges[layer_id][1]]
-                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
-            transpose_squeeze_skip = False
+                for idx, part_axis in enumerate(tf_layers_dict[tf_edges[layer_id][1]]):
+                    if part_axis == 1:
+                        tf_layers_dict[tf_edges[layer_id][1]][idx] = 3
+                    elif part_axis >= 2:
+                        tf_layers_dict[tf_edges[layer_id][1]][idx] -= 1
+                axis = tf_layers_dict[tf_edges[layer_id][1]]
+            tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
 
         ### Gather
         elif layer.attrib['type'] == 'Gather':
@@ -581,9 +585,26 @@ def convert(model,
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]],
                                                         transpose_a, transpose_b)
 
-        ### Reshape -TODO
+        ### Reshape
         elif layer.attrib['type'] == 'Reshape':
-            tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+            shape = []
+            before_shape_layer = tf_layers_dict[tf_edges[layer_id][1]]
+            if type(before_shape_layer) == np.ndarray:
+                # NCHW -> NHWC
+                shape = before_shape_layer.transpose(0,2,3,1)
+            else:
+                # shape = tf.shape(before_shape_layer)
+                shape_len = before_shape_layer.shape[0]
+                if shape_len == 4:
+                    # NCHW -> NHWC
+                    shape.append(before_shape_layer[0])
+                    shape.append(before_shape_layer[2])
+                    shape.append(before_shape_layer[3])
+                    shape.append(before_shape_layer[1])
+                else:
+                    # Other
+                    shape = before_shape_layer
+            tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[tf_edges[layer_id][0]], shape)
 
         ### Range - TODO
         elif layer.attrib['type'] == 'Range':
@@ -711,13 +732,8 @@ def convert(model,
 
         ### Result
         elif layer.attrib['type'] == 'Result':
-            try:
-                tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
-                tf_outputs.append(tf_layers_dict[layer_id])
-            except:
-                tf_layers_dict[layer_id] = tf.identity(temp_final_output_layer, name=layer.attrib['name'].split('/')[0])
-                tf_outputs.append(tf_layers_dict[layer_id])
-                transpose_squeeze_skip = False
+            tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
+            tf_outputs.append(tf_layers_dict[layer_id])
         else:
             print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
             sys.exit(-1)
