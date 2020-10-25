@@ -36,51 +36,53 @@ Currently, only 4D tensors are supported as input tensors.
 |14|Tanh|Tanh||
 |15|Elu|Elu||
 |16|Sigmoid|Sigmoid||
-|17|Swish|Swish||
-|18|Interpolate|ResizeNearestNeighbor, ResizeBilinear||
-|19|ShapeOf|Shape||
-|20|Convert|Cast||
-|21|StridedSlice|Strided_Slice|WIP|
-|22|Pad|Pad, MirrorPad||
-|23|Clamp|ReLU6, Clip||
-|24|TopK|ArgMax, top_k||
-|25|Transpose|Transpose||
-|26|Squeeze|Squeeze||
-|27|ReduceMean|reduce_mean||
-|28|ReduceMax|reduce_max||
-|29|ReduceMin|reduce_min||
-|30|ReduceSum|reduce_sum||
-|31|ReduceProd|reduce_prod||
-|32|Subtract|Subtract||
-|33|MatMul|MatMul||
-|34|Reshape|Reshape||
-|35|Range|Range|WIP|
-|36|Exp|Exp||
-|37|Abs|Abs||
-|38|SoftMax|SoftMax||
-|39|Negative|Negative||
-|40|Maximum|Maximum|No broadcast|
-|41|Minimum|Minimum|No broadcast|
-|42|Acos|Acos||
-|43|Acosh|Acosh||
-|44|Asin|Asin||
-|45|Asinh|Asinh||
-|46|Atan|Atan||
-|47|Atanh|Atanh||
-|48|Ceiling|Ceil||
-|49|Cos|Cos||
-|50|Cosh|Cosh||
-|51|Gather|Gather||
-|52|Divide|divide_no_nan||
-|53|Erf|Erf||
-|54|Floor|Floor||
-|55|FloorMod|FloorMod||
-|56|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667|
-|57|Log|Log||
-|58|Power|Pow|No broadcast|
-|59|Mish|Mish|x\*Tanh(softplus(x))|
-|60|Selu|Selu||
-|61|Result|Identity|Output|
+|17|HardSigmoid|hard_sigmoid||
+|18|SoftPlus|SoftPlus||
+|19|Swish|Swish||
+|20|Interpolate|ResizeNearestNeighbor, ResizeBilinear||
+|21|ShapeOf|Shape||
+|22|Convert|Cast||
+|23|StridedSlice|Strided_Slice|WIP|
+|24|Pad|Pad, MirrorPad||
+|25|Clamp|ReLU6, Clip||
+|26|TopK|ArgMax, top_k||
+|27|Transpose|Transpose||
+|28|Squeeze|Squeeze||
+|29|ReduceMean|reduce_mean||
+|30|ReduceMax|reduce_max||
+|31|ReduceMin|reduce_min||
+|32|ReduceSum|reduce_sum||
+|33|ReduceProd|reduce_prod||
+|34|Subtract|Subtract||
+|35|MatMul|MatMul||
+|36|Reshape|Reshape||
+|37|Range|Range|WIP|
+|38|Exp|Exp||
+|39|Abs|Abs||
+|40|SoftMax|SoftMax||
+|41|Negative|Negative||
+|42|Maximum|Maximum|No broadcast|
+|43|Minimum|Minimum|No broadcast|
+|44|Acos|Acos||
+|45|Acosh|Acosh||
+|46|Asin|Asin||
+|47|Asinh|Asinh||
+|48|Atan|Atan||
+|49|Atanh|Atanh||
+|50|Ceiling|Ceil||
+|51|Cos|Cos||
+|52|Cosh|Cosh||
+|53|Gather|Gather||
+|54|Divide|divide_no_nan||
+|55|Erf|Erf||
+|56|Floor|Floor||
+|57|FloorMod|FloorMod||
+|58|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667|
+|59|Log|Log||
+|60|Power|Pow|No broadcast|
+|61|Mish|Mish|x\*Tanh(softplus(x))|
+|62|Selu|Selu||
+|63|Result|Identity|Output|
 
 ## 4 Setup
 
