@@ -1,0 +1,3 @@
+build/
+dist/
+openvino2tensorflow.egg-info/
