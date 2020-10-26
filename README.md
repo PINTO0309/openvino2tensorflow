@@ -1,6 +1,8 @@
 # openvino2tensorflow
 This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5 and pb.
 
+Work in progress now.
+
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
 
 ## 1. Environment
