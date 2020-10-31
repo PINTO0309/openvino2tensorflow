@@ -87,7 +87,10 @@ Currently, only 4D tensors are supported as input tensors.
 |61|Power|Pow|No broadcast|
 |62|Mish|Mish|x\*Tanh(softplus(x))|
 |63|Selu|Selu||
-|64|Result|Identity|Output|
+|64|Equal|equal|No broadcast|
+|65|NotEqual|not_equal|No broadcast|
+|66|Select|Select|No broadcast|
+|67|Result|Identity|Output|
 
 ## 4. Setup
 
