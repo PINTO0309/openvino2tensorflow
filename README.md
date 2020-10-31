@@ -137,9 +137,10 @@ optional arguments:
                         only when --debug=True.
 ```
 ```bash
-usage: pb_to_saved_model [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
-                            --outputs OUTPUTS
-                            [--model_output_path MODEL_OUTPUT_PATH]
+usage: pb_to_saved_model [-h] --pb_file_path PB_FILE_PATH
+                         --inputs INPUTS
+                         --outputs OUTPUTS
+                         [--model_output_path MODEL_OUTPUT_PATH]
 
 optional arguments:
   -h, --help            show this help message and exit
