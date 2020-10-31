@@ -762,11 +762,6 @@ def convert(model,
 
         ### Unsqueeze - TODO
         elif layer.attrib['type'] == 'Unsqueeze':
-            # print(tf_layers_dict[tf_edges[layer_id][0]].shape)
-            # print(len(tf_layers_dict[tf_edges[layer_id][0]].shape))
-            # print(tf_layers_dict[tf_edges[layer_id][1]].shape)
-            # print(tf_layers_dict[tf_edges[layer_id][1]])
-
             input_shape = np.asarray(tf_layers_dict[tf_edges[layer_id][0]].shape)
             indices = tf_layers_dict[tf_edges[layer_id][1]]
 
