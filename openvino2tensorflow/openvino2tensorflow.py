@@ -400,6 +400,8 @@ def convert(model,
             axis = -1
             if 'axis' in data.attrib:
                 axis = int(data.attrib['axis'])
+            if axis == 1 and len(np.asarray(tf_layers_dict[tf_edges[layer_id][0]].shape)) == 4:
+                axis = -1
             tf_layers_dict[layer_id] = Concatenate(axis=axis)([tf_layers_dict[from_layer_id] for from_layer_id in tf_edges[layer_id]])
 
         ### Multiply
@@ -713,7 +715,7 @@ def convert(model,
 
         ### Divide
         elif layer.attrib['type'] == 'Divide':
-            tf_layers_dict[layer_id] = tf.math.divide_no_nan(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+            tf_layers_dict[layer_id] = tf.math.divide(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
         ### Erf
         elif layer.attrib['type'] == 'Erf':
