@@ -810,6 +810,22 @@ def convert(model,
         elif layer.attrib['type'] == 'NotEqual':
             tf_layers_dict[layer_id] = tf.math.not_equal(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
+        ### Greater
+        elif layer.attrib['type'] == 'Greater':
+            tf_layers_dict[layer_id] = tf.math.greater(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### GreaterEqual
+        elif layer.attrib['type'] == 'GreaterEqual':
+            tf_layers_dict[layer_id] = tf.math.greater_equal(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### Less
+        elif layer.attrib['type'] == 'Less':
+            tf_layers_dict[layer_id] = tf.math.less(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### LessEqual
+        elif layer.attrib['type'] == 'LessEqual':
+            tf_layers_dict[layer_id] = tf.math.less_equal(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
         ### Select
         elif layer.attrib['type'] == 'Select':
             tf_layers_dict[layer_id] = tf.raw_ops.Select(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], tf_layers_dict[tf_edges[layer_id][2]])
