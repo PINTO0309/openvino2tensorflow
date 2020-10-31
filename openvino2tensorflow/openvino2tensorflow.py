@@ -380,7 +380,8 @@ def convert(model,
         elif layer.attrib['type'] == 'ConvolutionBackpropData':
             # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
             port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
-            filters = int(port1[0])
+            port2 = [int(sdim.text) for sdim in layer.find('output')[0]]
+            filters = int(port2[1])
             kernel_size = [int(port1[2]), int(port1[3])]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
             pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
