@@ -78,7 +78,7 @@ Currently, only 4D tensors are supported as input tensors.
 |52|Cos|Cos||
 |53|Cosh|Cosh||
 |54|Gather|Gather||
-|55|Divide|Divide||
+|55|Divide|Divide, FloorDiv||
 |56|Erf|Erf||
 |57|Floor|Floor||
 |58|FloorMod|FloorMod||
