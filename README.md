@@ -88,7 +88,7 @@ Currently, only 4D tensors are supported as input tensors.
 |63|Selu|Selu||
 |64|Result|Identity|Output|
 
-## 4 Setup
+## 4. Setup
 
 ```bash
 pip install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
