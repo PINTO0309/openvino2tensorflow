@@ -8,6 +8,7 @@ Work in progress now.
 ## 1. Environment
 - TensorFlow v2.3.1
 - OpenVINO 2021.1.110
+- Python 3.6+
 
 ## 2. Use case
 
