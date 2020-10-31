@@ -40,7 +40,7 @@ Currently, only 4D tensors are supported as input tensors.
 |16|Sigmoid|Sigmoid||
 |17|HardSigmoid|hard_sigmoid||
 |18|SoftPlus|SoftPlus||
-|19|Swish|Swish||
+|19|Swish|Swish|You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
 |20|Interpolate|ResizeNearestNeighbor, ResizeBilinear||
 |21|ShapeOf|Shape||
 |22|Convert|Cast||
@@ -80,7 +80,7 @@ Currently, only 4D tensors are supported as input tensors.
 |56|Erf|Erf||
 |57|Floor|Floor||
 |58|FloorMod|FloorMod||
-|59|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667|
+|59|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667, You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
 |60|Log|Log||
 |61|Power|Pow|No broadcast|
 |62|Mish|Mish|x\*Tanh(softplus(x))|
@@ -95,7 +95,7 @@ pip install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
 
 ## 5. Usage
 ```bash
-usage: openvino2tensorflow [-h] --model_path MODEL_PATH
+usage: openvino2tensorflow.py [-h] --model_path MODEL_PATH
                               [--model_output_path MODEL_OUTPUT_PATH]
                               [--output_saved_model OUTPUT_SAVED_MODEL]
                               [--output_h5 OUTPUT_H5]
@@ -104,6 +104,7 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                               [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
                               [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
                               [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
+                              [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
                               [--debug]
                               [--debug_layer_number DEBUG_LAYER_NUMBER]
 
@@ -127,6 +128,8 @@ optional arguments:
                         weight quant tflite output switch
   --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
                         float16 quant tflite output switch
+  --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
+                        Replace swish and hard-swish with each other.
   --debug               debug mode switch
   --debug_layer_number DEBUG_LAYER_NUMBER
                         The last layer number to output when debugging. Used
