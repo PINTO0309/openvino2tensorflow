@@ -115,6 +115,16 @@ def convert(model,
                         'f32' : tf.float32,
                         'bf16': tf.bfloat16}
 
+    # integer type table
+    int_type_tf = [tf.uint8,
+                   tf.uint16,
+                   tf.uint32,
+                   tf.uint64,
+                   tf.int8,
+                   tf.int16,
+                   tf.int32,
+                   tf.int64]
+
     # pad type conversion table
     pad_type_ov_tf = { 'constant' : 'CONSTANT',
                        'reflect'  : 'REFLECT',
@@ -715,7 +725,12 @@ def convert(model,
 
         ### Divide
         elif layer.attrib['type'] == 'Divide':
-            tf_layers_dict[layer_id] = tf.math.divide(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+            if (tf_layers_dict[tf_edges[layer_id][0]].dtype in int_type_tf) and (tf_layers_dict[tf_edges[layer_id][1]].dtype in int_type_tf):
+                # floordiv
+                tf_layers_dict[layer_id] = tf.math.floordiv(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+            else:
+                # divide
+                tf_layers_dict[layer_id] = tf.math.divide(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
 
         ### Erf
         elif layer.attrib['type'] == 'Erf':
