@@ -391,7 +391,10 @@ def convert(model,
 
         ### Concat
         elif layer.attrib['type'] == 'Concat':
-            tf_layers_dict[layer_id] = Concatenate()([tf_layers_dict[from_layer_id] for from_layer_id in tf_edges[layer_id]])
+            axis = -1
+            if 'axis' in data.attrib:
+                axis = int(data.attrib['axis'])
+            tf_layers_dict[layer_id] = Concatenate(axis=axis)([tf_layers_dict[from_layer_id] for from_layer_id in tf_edges[layer_id]])
 
         ### Multiply
         elif layer.attrib['type'] == 'Multiply':
@@ -556,13 +559,15 @@ def convert(model,
             input_shape = tf_layers_dict[tf_edges[layer_id][0]].shape[0]
             indices = []
             if type(temp) == np.ndarray:
+                # for idx, dim in enumerate(temp):
+                #     if idx == 0:
+                #         indices.append(0)
+                #     elif idx == input_shape - 1:
+                #         indices.append(1)
+                #     else:
+                #         indices.append(dim + 1)
                 for idx, dim in enumerate(temp):
-                    if idx == 0:
-                        indices.append(0)
-                    elif idx == input_shape - 1:
-                        indices.append(1)
-                    else:
-                        indices.append(dim + 1)
+                    indices.append(dim)
             else:
                 # TODO
                 shape = tf.shape(temp)
@@ -573,6 +578,8 @@ def convert(model,
                         indices.append(1)
                     else:
                         indices.append(dim + 1)
+            
+            print('indices, axis:', indices, axis)
             tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[tf_edges[layer_id][0]], indices, axis=axis)
 
         ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd - TODO
@@ -752,6 +759,24 @@ def convert(model,
         #     elif axis >= 2:
         #         axis -= 1
         #     tf_layers_dict[layer_id] = tf.split(tf_layers_dict[tf_edges[layer_id][0]], num_splits, axis=axis)
+
+        ### Unsqueeze - TODO
+        elif layer.attrib['type'] == 'Unsqueeze':
+            # print(tf_layers_dict[tf_edges[layer_id][0]].shape)
+            # print(len(tf_layers_dict[tf_edges[layer_id][0]].shape))
+            # print(tf_layers_dict[tf_edges[layer_id][1]].shape)
+            # print(tf_layers_dict[tf_edges[layer_id][1]])
+
+            input_shape = np.asarray(tf_layers_dict[tf_edges[layer_id][0]].shape)
+            indices = tf_layers_dict[tf_edges[layer_id][1]]
+
+            if len(input_shape) == 1 and indices == [0]:
+                tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]])
+            elif len(input_shape) > 1 and len(indices) > 1:
+                print('The multi-dimensional indices specification in Unsqueeze is not yet implemented.')
+                sys.exit(-1)
+            else:
+                tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[tf_edges[layer_id][0]], indices[0])
 
         ### Result
         elif layer.attrib['type'] == 'Result':
