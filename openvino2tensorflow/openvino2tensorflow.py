@@ -86,6 +86,7 @@ def convert(model,
             output_no_quant_float32_tflite,
             output_weight_quant_tflite,
             output_float16_quant_tflite,
+            replace_swish_and_hardswish,
             debug,
             debug_layer_number):
 
@@ -251,7 +252,12 @@ def convert(model,
 
         ### Swish
         elif layer.attrib['type'] == 'Swish':
-            tf_layers_dict[layer_id] = swish(tf_layers_dict[tf_edges[layer_id][0]])
+            if replace_swish_and_hardswish:
+                # Hard-Swish
+                tf_layers_dict[layer_id] = tf_layers_dict[tf_edges[layer_id][0]] * tf.nn.relu6(tf_layers_dict[tf_edges[layer_id][0]] + 3) * 0.16666667
+            else:
+                # Swish
+                tf_layers_dict[layer_id] = swish(tf_layers_dict[tf_edges[layer_id][0]])
 
         ### SoftPlus
         elif layer.attrib['type'] == 'SoftPlus':
@@ -578,8 +584,6 @@ def convert(model,
                         indices.append(1)
                     else:
                         indices.append(dim + 1)
-            
-            print('indices, axis:', indices, axis)
             tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[tf_edges[layer_id][0]], indices, axis=axis)
 
         ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd - TODO
@@ -725,8 +729,12 @@ def convert(model,
 
         ### HSwish
         elif layer.attrib['type'] == 'HSwish':
-            # Hard-Swish
-            tf_layers_dict[layer_id] = tf_layers_dict[tf_edges[layer_id][0]] * tf.nn.relu6(tf_layers_dict[tf_edges[layer_id][0]] + 3) * 0.16666667
+            if replace_swish_and_hardswish:
+                # Swish
+                tf_layers_dict[layer_id] = swish(tf_layers_dict[tf_edges[layer_id][0]])
+            else:
+                # Hard-Swish
+                tf_layers_dict[layer_id] = tf_layers_dict[tf_edges[layer_id][0]] * tf.nn.relu6(tf_layers_dict[tf_edges[layer_id][0]] + 3) * 0.16666667
 
         ### Log
         elif layer.attrib['type'] == 'Log':
@@ -852,6 +860,7 @@ def main():
     parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', type=bool, default=False, help='float16 quant tflite output switch')
+    parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other.')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
     parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True.')
     args = parser.parse_args()
@@ -867,6 +876,7 @@ def main():
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
     output_float16_quant_tflite = args.output_float16_quant_tflite
+    replace_swish_and_hardswish = args.replace_swish_and_hardswish
     debug = args.debug
     debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
@@ -880,6 +890,7 @@ def main():
         sys.exit(-1) 
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
             output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
+            replace_swish_and_hardswish,
             debug, debug_layer_number)
 
 if __name__ == "__main__":
