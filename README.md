@@ -50,41 +50,42 @@ Currently, only 4D tensors are supported as input tensors.
 |26|TopK|ArgMax, top_k||
 |27|Transpose|Transpose||
 |28|Squeeze|Squeeze||
-|29|ReduceMean|reduce_mean||
-|30|ReduceMax|reduce_max||
-|31|ReduceMin|reduce_min||
-|32|ReduceSum|reduce_sum||
-|33|ReduceProd|reduce_prod||
-|34|Subtract|Subtract||
-|35|MatMul|MatMul||
-|36|Reshape|Reshape||
-|37|Range|Range|WIP|
-|38|Exp|Exp||
-|39|Abs|Abs||
-|40|SoftMax|SoftMax||
-|41|Negative|Negative||
-|42|Maximum|Maximum|No broadcast|
-|43|Minimum|Minimum|No broadcast|
-|44|Acos|Acos||
-|45|Acosh|Acosh||
-|46|Asin|Asin||
-|47|Asinh|Asinh||
-|48|Atan|Atan||
-|49|Atanh|Atanh||
-|50|Ceiling|Ceil||
-|51|Cos|Cos||
-|52|Cosh|Cosh||
-|53|Gather|Gather||
-|54|Divide|divide_no_nan||
-|55|Erf|Erf||
-|56|Floor|Floor||
-|57|FloorMod|FloorMod||
-|58|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667|
-|59|Log|Log||
-|60|Power|Pow|No broadcast|
-|61|Mish|Mish|x\*Tanh(softplus(x))|
-|62|Selu|Selu||
-|63|Result|Identity|Output|
+|29|Unsqueeze|Identity, expand_dims|WIP|
+|30|ReduceMean|reduce_mean||
+|31|ReduceMax|reduce_max||
+|32|ReduceMin|reduce_min||
+|33|ReduceSum|reduce_sum||
+|34|ReduceProd|reduce_prod||
+|35|Subtract|Subtract||
+|36|MatMul|MatMul||
+|37|Reshape|Reshape||
+|38|Range|Range|WIP|
+|39|Exp|Exp||
+|40|Abs|Abs||
+|41|SoftMax|SoftMax||
+|42|Negative|Negative||
+|43|Maximum|Maximum|No broadcast|
+|44|Minimum|Minimum|No broadcast|
+|45|Acos|Acos||
+|46|Acosh|Acosh||
+|47|Asin|Asin||
+|48|Asinh|Asinh||
+|49|Atan|Atan||
+|50|Atanh|Atanh||
+|51|Ceiling|Ceil||
+|52|Cos|Cos||
+|53|Cosh|Cosh||
+|54|Gather|Gather||
+|55|Divide|divide_no_nan||
+|56|Erf|Erf||
+|57|Floor|Floor||
+|58|FloorMod|FloorMod||
+|59|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667|
+|60|Log|Log||
+|61|Power|Pow|No broadcast|
+|62|Mish|Mish|x\*Tanh(softplus(x))|
+|63|Selu|Selu||
+|64|Result|Identity|Output|
 
 ## 4 Setup
 
