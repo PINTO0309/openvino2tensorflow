@@ -634,13 +634,16 @@ def convert(model,
         ### Reshape
         elif layer.attrib['type'] == 'Reshape':
             shape = []
+            shape_length = len(np.asarray(tf_layers_dict[tf_edges[layer_id][0]].shape))
             before_shape_layer = tf_layers_dict[tf_edges[layer_id][1]]
-            if type(before_shape_layer) == np.ndarray:
+            if type(before_shape_layer) == np.ndarray and shape_length == 4:
                 # NCHW -> NHWC
                 shape = before_shape_layer.transpose(0,2,3,1)
+            elif type(before_shape_layer) == np.ndarray and shape_length != 4:
+                shape = before_shape_layer
             else:
                 # shape = tf.shape(before_shape_layer)
-                shape_len = before_shape_layer.shape[0]
+                shape_len = len(before_shape_layer.shape)
                 if shape_len == 4:
                     # NCHW -> NHWC
                     shape.append(before_shape_layer[0])
