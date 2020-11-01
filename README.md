@@ -4,7 +4,9 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 Work in progress now.
 
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
-
+  
+[![Downloads](https://static.pepy.tech/personalized-badge/openvino2tensorflow?period=total&units=none&left_color=red&right_color=grey&left_text=Downloads／Installed)](https://pepy.tech/project/openvino2tensorflow)
+  
 ## 1. Environment
 - TensorFlow v2.3.1
 - OpenVINO 2021.1.110
@@ -94,7 +96,11 @@ Currently, only 4D tensors are supported as input tensors.
 |68|Less|less||
 |69|LessEqual|less_equal||
 |70|Select|Select|No broadcast|
-|71|Result|Identity|Output|
+|71|LogicalAnd|logical_and||
+|72|LogicalNot|logical_not||
+|73|LogicalOr|logical_or||
+|74|LogicalXor|logical_xor||
+|75|Result|Identity|Output|
 
 ## 4. Setup
 

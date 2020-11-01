@@ -830,6 +830,22 @@ def convert(model,
         elif layer.attrib['type'] == 'Select':
             tf_layers_dict[layer_id] = tf.raw_ops.Select(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]], tf_layers_dict[tf_edges[layer_id][2]])
 
+        ### LogicalAnd
+        elif layer.attrib['type'] == 'LogicalAnd':
+            tf_layers_dict[layer_id] = tf.math.logical_and(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### LogicalNot
+        elif layer.attrib['type'] == 'LogicalNot':
+            tf_layers_dict[layer_id] = tf.math.logical_not(tf_layers_dict[tf_edges[layer_id][0]])
+
+        ### LogicalOr
+        elif layer.attrib['type'] == 'LogicalOr':
+            tf_layers_dict[layer_id] = tf.math.logical_or(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
+        ### LogicalXor
+        elif layer.attrib['type'] == 'LogicalXor':
+            tf_layers_dict[layer_id] = tf.math.logical_xor(tf_layers_dict[tf_edges[layer_id][0]], tf_layers_dict[tf_edges[layer_id][1]])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[tf_edges[layer_id][0]], name=layer.attrib['name'].split('/')[0])
