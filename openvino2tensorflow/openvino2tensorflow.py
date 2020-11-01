@@ -76,7 +76,6 @@ import numpy as np
 import sys
 import tensorflow_datasets as tfds
 
-
 def convert(model,
             model_output_path,
             output_saved_model,
@@ -863,8 +862,15 @@ def convert(model,
     model.summary()
 
 
+    # saved_model output
     if output_saved_model:
-        tf.saved_model.save(model, model_output_path)
+        try:
+            tf.saved_model.save(model, model_output_path)
+        except Exception as e:
+            print(e)
+            print('Switch to the output of an optimized protocol buffer file (.pb).')
+            output_pb = True
+            output_h5 = False
 
     # .h5 output
     if output_h5:
