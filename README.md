@@ -104,7 +104,7 @@ Currently, only 4D tensors are supported as input tensors.
 
 ## 4. Setup
 
-To install using the Python Package Index (PyPI), use the following command.
+To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
 
 ```bash
 pip install openvino2tensorflow --upgrade
