@@ -5,7 +5,7 @@ Work in progress now.
 
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
   
-[![Downloads](https://pepy.tech/badge/openvino2tensorflow)](https://pepy.tech/project/openvino2tensorflow)
+[![Downloads](https://static.pepy.tech/personalized-badge/openvino2tensorflow?period=total&units=none&left_color=red&right_color=grey&left_text=Downloads／Installed)](https://pepy.tech/project/openvino2tensorflow)
   
 ## 1. Environment
 - TensorFlow v2.3.1
