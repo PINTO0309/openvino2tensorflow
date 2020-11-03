@@ -199,7 +199,6 @@ def convert(model,
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
-            print('@@@@@@@@@@@@@@@@@', layer_name, tf_layers_dict[tf_edges[layer_id][0]])
             tf_layers_dict[layer_id] = Conv2D(filters=filters,
                                               kernel_size=kernel_size,
                                               strides=strides,
@@ -207,7 +206,6 @@ def convert(model,
                                               dilation_rate=dilations,
                                               use_bias=False,
                                               kernel_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(2,3,1,0)))(tf_layers_dict[tf_edges[layer_id][0]])
-            print('****************', tf_layers_dict[layer_id])
 
         ### Add
         elif layer.attrib['type'] == 'Add':
