@@ -199,6 +199,7 @@ def convert(model,
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
+            print('@@@@@@@@@@@@@@@@@', layer_name, tf_layers_dict[tf_edges[layer_id][0]])
             tf_layers_dict[layer_id] = Conv2D(filters=filters,
                                               kernel_size=kernel_size,
                                               strides=strides,
@@ -206,6 +207,7 @@ def convert(model,
                                               dilation_rate=dilations,
                                               use_bias=False,
                                               kernel_initializer=Constant(tf_layers_dict[tf_edges[layer_id][1]].transpose(2,3,1,0)))(tf_layers_dict[tf_edges[layer_id][0]])
+            print('****************', tf_layers_dict[layer_id])
 
         ### Add
         elif layer.attrib['type'] == 'Add':
@@ -274,6 +276,7 @@ def convert(model,
 
         ### MaxPool
         elif layer.attrib['type'] == 'MaxPool':
+            outport_size = sum([int(sdim.text) for sdim in layer.find('output')[0]])
             kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
             pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
@@ -289,7 +292,12 @@ def convert(model,
                     padding = 'VALID'
             else:
                 padding = 'SAME'
+
             tf_layers_dict[layer_id] = tf.nn.max_pool(tf_layers_dict[tf_edges[layer_id][0]], ksize=kernel_size, strides=strides, padding=padding)
+            new_layer_outport_size = sum([sdim for sdim in tf_layers_dict[layer_id].shape])
+            if outport_size != new_layer_outport_size:
+                # Caffe -> TF
+                tf_layers_dict[layer_id] = tf.nn.max_pool(tf_layers_dict[tf_edges[layer_id][0]], ksize=kernel_size, strides=strides, padding='SAME')
 
         ### AvgPool
         elif layer.attrib['type'] == 'AvgPool':
