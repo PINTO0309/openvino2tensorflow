@@ -5,7 +5,7 @@ Work in progress now.
 
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
   
-![PyPI - Downloads](https://img.shields.io/pypi/dm/openvino2tensorflow?color=pink&label=Downloads%EF%BC%8FInstalled) ![GitHub](https://img.shields.io/github/license/PINTO0309/openvino2tensorflow?color=pink) ![PyPI](https://img.shields.io/pypi/v/openvino2tensorflow?color=pink)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/openvino2tensorflow?color=2BAF2B&label=Downloads%EF%BC%8FInstalled) ![GitHub](https://img.shields.io/github/license/PINTO0309/openvino2tensorflow?color=2BAF2B) ![PyPI](https://img.shields.io/pypi/v/openvino2tensorflow?color=2BAF2B)
   
 ## 1. Environment
 - TensorFlow v2.3.1
