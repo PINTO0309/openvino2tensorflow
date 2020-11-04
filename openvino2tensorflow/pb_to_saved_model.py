@@ -35,8 +35,8 @@ def main():
     args = parser.parse_args()
 
     pb_file_path = args.pb_file_path
-    inputs  = args.inputs.split()
-    outputs = args.outputs.split()
+    inputs  = args.inputs.split(',')
+    outputs = args.outputs.split(',')
     model_output_path = args.model_output_path
 
     shutil.rmtree(model_output_path, ignore_errors=True)
