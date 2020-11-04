@@ -680,6 +680,8 @@ def convert(model,
         ### SoftMax
         elif layer.attrib['type'] == 'SoftMax':
             axis = int(data.attrib['axis'])
+            if axis == 1:
+                axis = -1
             tf_layers_dict[layer_id] = softmax(tf_layers_dict[tf_edges[layer_id][0]], axis=axis)
 
         ### Negative
