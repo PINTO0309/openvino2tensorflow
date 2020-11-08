@@ -236,7 +236,7 @@ def convert(model,
     del added_key_list
 
     layer_id_port_dict = get_num_of_outputs_per_layer_id(tf_edges)
-    print(layer_id_port_dict)
+    # print(layer_id_port_dict)
 
     # for i in tf_edges.items():
     #     print(i)
@@ -731,9 +731,9 @@ def convert(model,
 
         ### Reshape
         elif layer.attrib['type'] == 'Reshape':
-            shape = []
             shape_length = len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape))
             before_shape_layer = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            shape = []
             if type(before_shape_layer) == np.ndarray and shape_length == 4:
                 # NCHW -> NHWC
                 shape = before_shape_layer.transpose(0,2,3,1)
@@ -926,7 +926,9 @@ def convert(model,
 
         ### Select
         elif layer.attrib['type'] == 'Select':
-            tf_layers_dict[layer_id] = tf.raw_ops.Select(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
+            tf_layers_dict[layer_id] = tf.raw_ops.SelectV2(condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                                           t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                                           e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
 
         ### LogicalAnd
         elif layer.attrib['type'] == 'LogicalAnd':
@@ -943,6 +945,17 @@ def convert(model,
         ### LogicalXor
         elif layer.attrib['type'] == 'LogicalXor':
             tf_layers_dict[layer_id] = tf.math.logical_xor(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+
+        ### Broadcast - TODO
+        elif layer.attrib['type'] == 'Broadcast':
+            mode = data.attrib['mode']
+            if mode == 'numpy':
+                tf_layers_dict[layer_id] = tf.broadcast_to(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+            elif mode == 'bidirectional':
+                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]))
+            else:
+                print('The {} mode of broadcast is not yet implemented.'.format(mode))
+                sys.exit(-1)
 
         ### Result
         elif layer.attrib['type'] == 'Result':
