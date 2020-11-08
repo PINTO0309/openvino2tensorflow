@@ -736,20 +736,26 @@ def convert(model,
             shape = []
             if type(before_shape_layer) == np.ndarray and shape_length == 4:
                 # NCHW -> NHWC
-                shape = before_shape_layer.transpose(0,2,3,1)
+                if len(before_shape_layer) == 4:
+                    before_shape_layer = before_shape_layer.transpose(0,2,3,1)
+                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
+                else:
+                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
             elif type(before_shape_layer) == np.ndarray and shape_length != 4:
-                shape = before_shape_layer
+                shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
             else:
                 shape_len = len(before_shape_layer.shape)
                 if shape_len == 4:
                     # NCHW -> NHWC
-                    shape.append(before_shape_layer[0])
-                    shape.append(before_shape_layer[2])
-                    shape.append(before_shape_layer[3])
-                    shape.append(before_shape_layer[1])
+                    shape_tmp = []
+                    shape_tmp.append(before_shape_layer[0])
+                    shape_tmp.append(before_shape_layer[2])
+                    shape_tmp.append(before_shape_layer[3])
+                    shape_tmp.append(before_shape_layer[1])
+                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
                 else:
                     # Other
-                    shape = before_shape_layer
+                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
             tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], shape)
 
         ### Range - TODO
