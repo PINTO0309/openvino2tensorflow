@@ -143,9 +143,19 @@ def convert(model,
 
     tf_inputs = []
     tf_outputs = []
+    layer_id_port_dict = {}
+
+    def get_num_of_outputs_per_layer_id(tf_edges):
+        output_count_by_layer_id_tmp = {}
+        for key in tf_edges.keys():
+            key_tmp = key.split(':')[0]
+            output_count_by_layer_id_tmp.setdefault(key_tmp, {'count' : 0, 'layer_id:port' : []})
+            output_count_by_layer_id_tmp[key_tmp]['count'] += 1
+            output_count_by_layer_id_tmp[key_tmp]['layer_id:port'].append(key)
+        return output_count_by_layer_id_tmp
 
     def get_bere_layer_type(before_layer):
-        t = type(tf_layers_dict[before_layer.split(':')[0]])
+        t = type(tf_layers_dict[before_layer])
         if t == np.ndarray:
             # Const
             return 'const'
@@ -171,27 +181,66 @@ def convert(model,
             return layer_list
         else:
             # Other
-            before_layer_type = get_bere_layer_type(tf_edges[layer_id][edge_index])
+            if layer_id in tf_edges:
+                before_layer_type = get_bere_layer_type(tf_edges[layer_id][edge_index])
+            else:
+                for key in tf_edges.keys():
+                    if layer_id in key:
+                        before_layer_type = get_bere_layer_type(tf_edges[key][edge_index])
+                        layer_id = key
+                        break
             if before_layer_type == 'Split':
                 return tf_edges[layer_id][edge_index]
             elif before_layer_type == 'other':
                 return tf_edges[layer_id][edge_index]            
             else:
                 return tf_edges[layer_id][edge_index].split(':')[0]
+
     # edges
+    added_key_list = []
     for edge in edges:
         to_layer = edge.attrib['to-layer']
         from_layer = edge.attrib['from-layer']
+        from_layer_port = edge.attrib['from-port']
+
+        for layer in layers:
+            if layer.attrib['id'] == to_layer:
+                output_layer_ports = layer.find('output')
+                if layer.attrib['type'] != 'Result' and len(output_layer_ports) >= 2:
+                    for port in output_layer_ports:
+                        tf_edges.setdefault('{}:{}'.format(to_layer, port.attrib['id']), []).append(from_layer)
+                    added_key_list.append(to_layer)
+                else:
+                    tf_edges.setdefault(to_layer, [])
 
         for layer in layers:
             if layer.attrib['id'] == from_layer:
                 output_layer_ports = layer.find('output')
                 if len(output_layer_ports) >= 2:
-                    for port in output_layer_ports:
-                        tf_edges.setdefault(to_layer, []).append('{}:{}'.format(from_layer, port.attrib['id']))
+                    tf_edges.setdefault(to_layer, []).append('{}:{}'.format(from_layer, from_layer_port))
+                    if to_layer not in added_key_list:
+                        added_key_list.append(to_layer)
                 else:
-                    tf_edges.setdefault(to_layer, []).append(from_layer)
+                    if to_layer not in added_key_list:
+                        tf_edges.setdefault(to_layer, []).append(from_layer)
+                        added_key_list.append(to_layer)
+                    else:
+                        flg = 'not_found'
+                        for key in tf_edges.keys():
+                            if to_layer in key and from_layer in tf_edges[key]:
+                                flg = 'found'
+                                break
+                        if flg == 'not_found':
+                            tf_edges.setdefault(to_layer, []).append(from_layer)
                 break
+    del added_key_list
+
+    layer_id_port_dict = get_num_of_outputs_per_layer_id(tf_edges)
+    print(layer_id_port_dict)
+
+    # for i in tf_edges.items():
+    #     print(i)
+    # sys.exit(0)
 
     # layers
     for idx, layer in enumerate(layers):
@@ -561,18 +610,14 @@ def convert(model,
             # index_element_type = data.attrib['index_element_type']
             # mode = data.attrib['mode']
             # sort = data.attrib['sort']
-            tf_layers_dict[layer_id] = tf.math.top_k(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]), sorted=True)
+            layer_id_values  = layer_id_port_dict[layer_id]['layer_id:port'][0]
+            layer_id_indices = layer_id_port_dict[layer_id]['layer_id:port'][1]
+            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = tf.math.top_k(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]), sorted=True)
 
         ### Transpose
         elif layer.attrib['type'] == 'Transpose':
-            try:
-                # Other than TopK
-                input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
-                temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            except:
-                # TopK
-                input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0).split(':')[0]].values.shape)
-                temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+            input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
+            temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
             perm = []
             if type(temp) == np.ndarray:
                 for idx, dim in enumerate(temp):
@@ -592,12 +637,7 @@ def convert(model,
                         perm.append(input_shape_len - 1)
                     else:
                         perm.append(dim - 1)
-            try:
-                # Other than TopK
-                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], perm=perm)
-            except:
-                # TopK
-                tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0).split(':')[0]][1], perm=perm)
+            tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], perm=perm)
 
         ### Squeeze
         elif layer.attrib['type'] == 'Squeeze':
