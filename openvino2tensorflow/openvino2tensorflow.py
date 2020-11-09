@@ -692,12 +692,14 @@ def convert(model,
         elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd':
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
             axis = None
-            if len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
+            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
                 axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
                 if axis == 1:
                     axis = -1
                 elif axis >= 2:
                     axis -= 1
+            elif type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape) == 1:
+                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
             else:
                 for idx, part_axis in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]):
                     if part_axis == 1:
@@ -755,7 +757,9 @@ def convert(model,
                     shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
                 else:
                     # Other
-                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
+                    for i in range(before_shape_layer.shape[0]):
+                        shape.append(before_shape_layer[i])
+
             tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], shape)
 
         ### Range - TODO
