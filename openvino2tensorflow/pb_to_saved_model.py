@@ -30,7 +30,7 @@ def main():
     parser.add_argument('--pb_file_path', type=str, required=True, help='Input .pb file path (.pb)')
     parser.add_argument('--inputs', type=str, required=True, help='(e.g.1) input:0,input:1,input:2 / (e.g.2) images:0,input:0,param:0')
     parser.add_argument('--outputs', type=str, required=True, help='(e.g.1) output:0,output:1,output:2 / (e.g.2) Identity:0,Identity:1,output:0')
-    parser.add_argument('--model_output_path', type=str, default='saved_model', help='The output folder path of the converted model file')
+    parser.add_argument('--model_output_path', type=str, default='saved_model_from_pb', help='The output folder path of the converted model file')
 
     args = parser.parse_args()
 
