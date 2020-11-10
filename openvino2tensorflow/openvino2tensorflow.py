@@ -731,7 +731,7 @@ def convert(model,
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                                         transpose_a, transpose_b)
 
-        ### Reshape
+        ### Reshape - TODO
         elif layer.attrib['type'] == 'Reshape':
             shape_length = len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape))
             before_shape_layer = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
@@ -743,6 +743,9 @@ def convert(model,
                     shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
                 else:
                     shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
+            elif type(before_shape_layer) == np.ndarray and len(before_shape_layer) == 4:
+                shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
+                shape[0], shape[1], shape[2], shape[3] = shape[0], shape[2], shape[3], shape[1]
             elif type(before_shape_layer) == np.ndarray and shape_length != 4:
                 shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
             else:
@@ -887,16 +890,6 @@ def convert(model,
             # No broadcast
             tf_layers_dict[layer_id] = tf.math.subtract(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
     
-        # ### Split - TODO
-        # elif layer.attrib['type'] == 'Split':
-        #     num_splits = int(data.attrib['num_splits'])
-        #     axis = int(tf_layers_dict[tf_edges[layer_id][1]])
-        #     if axis == 1:
-        #         axis = 3
-        #     elif axis >= 2:
-        #         axis -= 1
-        #     tf_layers_dict[layer_id] = tf.split(tf_layers_dict[tf_edges[layer_id][0]], num_splits, axis=axis)
-
         ### Unsqueeze - TODO
         elif layer.attrib['type'] == 'Unsqueeze':
             input_shape = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
@@ -966,6 +959,39 @@ def convert(model,
             else:
                 print('The {} mode of broadcast is not yet implemented.'.format(mode))
                 sys.exit(-1)
+
+        ### Split
+        elif layer.attrib['type'] == 'Split':
+            num_splits = int(data.attrib['num_splits'])
+            axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+            if axis == 1:
+                axis = 3
+            elif axis >= 2:
+                axis -= 1
+
+            outputs = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], num_or_size_splits=num_splits, axis=axis)
+
+            for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
+                tf_layers_dict[layer_id_port] = output
+
+        ### VariadicSplit
+        elif layer.attrib['type'] == 'VariadicSplit':
+            axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+            if axis == 1:
+                axis = -1
+            elif axis >= 2:
+                axis -= 1
+            num_or_size_splits = None
+            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]) == np.ndarray:
+                num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+            else:
+                # num_or_size_splits = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)].shape[idx] for idx, val in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])]
+                num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+
+            outputs = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], num_or_size_splits=num_or_size_splits, axis=axis)
+
+            for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
+                tf_layers_dict[layer_id_port] = output
 
         ### Result
         elif layer.attrib['type'] == 'Result':

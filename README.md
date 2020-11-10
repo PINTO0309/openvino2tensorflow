@@ -101,7 +101,9 @@ Currently, only 4D tensors are supported as input tensors.
 |73|LogicalOr|logical_or||
 |74|LogicalXor|logical_xor||
 |75|Broadcast|broadcast_to, ones, Multiply|numpy / bidirectional mode, WIP|
-|76|Result|Identity|Output|
+|76|Split|Split||
+|77|VariadicSplit|Split||
+|78|Result|Identity|Output|
 
 ## 4. Setup
 
