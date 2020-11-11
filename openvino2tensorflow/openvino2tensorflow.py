@@ -838,6 +838,14 @@ def convert(model,
         elif layer.attrib['type'] == 'Cosh':
             tf_layers_dict[layer_id] = tf.math.cosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
+        ### Sin
+        elif layer.attrib['type'] == 'Sin':
+            tf_layers_dict[layer_id] = tf.math.sin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+        ### Sinh
+        elif layer.attrib['type'] == 'Sinh':
+            tf_layers_dict[layer_id] = tf.math.sinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
         ### Divide
         elif layer.attrib['type'] == 'Divide':
             if (tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype in int_type_tf) and (tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].dtype in int_type_tf):

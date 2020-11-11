@@ -79,31 +79,33 @@ Currently, only 4D tensors are supported as input tensors.
 |51|Ceiling|Ceil||
 |52|Cos|Cos||
 |53|Cosh|Cosh||
-|54|Gather|Gather||
-|55|Divide|Divide, FloorDiv||
-|56|Erf|Erf||
-|57|Floor|Floor||
-|58|FloorMod|FloorMod||
-|59|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667, You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
-|60|Log|Log||
-|61|Power|Pow|No broadcast|
-|62|Mish|Mish|x\*Tanh(softplus(x))|
-|63|Selu|Selu||
-|64|Equal|equal||
-|65|NotEqual|not_equal||
-|66|Greater|greater||
-|67|GreaterEqual|greater_equal||
-|68|Less|less||
-|69|LessEqual|less_equal||
-|70|Select|Select|No broadcast|
-|71|LogicalAnd|logical_and||
-|72|LogicalNot|logical_not||
-|73|LogicalOr|logical_or||
-|74|LogicalXor|logical_xor||
-|75|Broadcast|broadcast_to, ones, Multiply|numpy / bidirectional mode, WIP|
-|76|Split|Split||
-|77|VariadicSplit|Split||
-|78|Result|Identity|Output|
+|54|Sin|Sin||
+|55|Sinh|Sinh||
+|56|Gather|Gather||
+|57|Divide|Divide, FloorDiv||
+|58|Erf|Erf||
+|59|Floor|Floor||
+|60|FloorMod|FloorMod||
+|61|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667, You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
+|62|Log|Log||
+|63|Power|Pow|No broadcast|
+|64|Mish|Mish|x\*Tanh(softplus(x))|
+|65|Selu|Selu||
+|66|Equal|equal||
+|67|NotEqual|not_equal||
+|68|Greater|greater||
+|69|GreaterEqual|greater_equal||
+|70|Less|less||
+|71|LessEqual|less_equal||
+|72|Select|Select|No broadcast|
+|73|LogicalAnd|logical_and||
+|74|LogicalNot|logical_not||
+|75|LogicalOr|logical_or||
+|76|LogicalXor|logical_xor||
+|77|Broadcast|broadcast_to, ones, Multiply|numpy / bidirectional mode, WIP|
+|78|Split|Split||
+|79|VariadicSplit|Split||
+|80|Result|Identity|Output|
 
 ## 4. Setup
 
