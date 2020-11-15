@@ -67,10 +67,9 @@ from openvino.inference_engine import IECore
 
 import tensorflow as tf
 from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Add, ReLU, PReLU, MaxPool2D, AveragePooling2D, Reshape, Concatenate, Conv2DTranspose, Layer
+from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, PReLU, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose
 from tensorflow.keras.initializers import Constant
-from tensorflow.keras.backend import shape, clip
-from tensorflow.keras.activations import tanh, elu, sigmoid, swish, softmax, hard_sigmoid, softplus
+from tensorflow.keras.activations import elu, hard_sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 import numpy as np
 import sys
@@ -309,11 +308,15 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
             else:
                 # Add
-                tf_layers_dict[layer_id] = Add()([tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)])
+                if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
+                    tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                    tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+                else:
+                    tf_layers_dict[layer_id] = tf.math.add_n([tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)])
 
         ### ReLU
         elif layer.attrib['type'] == 'ReLU':
-            tf_layers_dict[layer_id] = ReLU()(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            tf_layers_dict[layer_id] = tf.nn.relu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### PReLU
         elif layer.attrib['type'] == 'PReLU':
@@ -328,7 +331,7 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
             else:
                 # Other
-                tf_layers_dict[layer_id] = clip(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], min_value=cmin, max_value=cmax)
+                tf_layers_dict[layer_id] = tf.clip_by_value(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], clip_value_min=cmin, clip_value_max=cmax)
 
         ### Tan
         elif layer.attrib['type'] == 'Tan':
@@ -336,7 +339,7 @@ def convert(model,
 
         ### Tanh
         elif layer.attrib['type'] == 'Tanh':
-            tf_layers_dict[layer_id] = tanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            tf_layers_dict[layer_id] = tf.math.tanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### Elu
         elif layer.attrib['type'] == 'Elu':
@@ -349,7 +352,7 @@ def convert(model,
 
         ### Sigmoid
         elif layer.attrib['type'] == 'Sigmoid':
-            tf_layers_dict[layer_id] = sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            tf_layers_dict[layer_id] = tf.math.sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### Swish
         elif layer.attrib['type'] == 'Swish':
@@ -358,11 +361,11 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
             else:
                 # Swish
-                tf_layers_dict[layer_id] = swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### SoftPlus
         elif layer.attrib['type'] == 'SoftPlus':
-            tf_layers_dict[layer_id] = softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            tf_layers_dict[layer_id] = tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### MaxPool
         elif layer.attrib['type'] == 'MaxPool':
@@ -510,7 +513,7 @@ def convert(model,
                 axis = int(data.attrib['axis'])
             if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                 axis = -1
-            tf_layers_dict[layer_id] = Concatenate(axis=axis)([tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)])
+            tf_layers_dict[layer_id] = tf.concat([tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)], axis=axis)
 
         ### Multiply
         elif layer.attrib['type'] == 'Multiply':
@@ -786,7 +789,7 @@ def convert(model,
             axis = int(data.attrib['axis'])
             if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                 axis = -1
-            tf_layers_dict[layer_id] = softmax(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis)
+            tf_layers_dict[layer_id] = tf.nn.softmax(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis)
 
         ### Negative
         elif layer.attrib['type'] == 'Negative':
@@ -871,7 +874,7 @@ def convert(model,
         elif layer.attrib['type'] == 'HSwish':
             if replace_swish_and_hardswish:
                 # Swish
-                tf_layers_dict[layer_id] = swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
             else:
                 # Hard-Swish
                 tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
