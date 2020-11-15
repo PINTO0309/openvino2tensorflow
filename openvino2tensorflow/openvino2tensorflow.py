@@ -622,24 +622,42 @@ def convert(model,
             input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
             temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
             perm = []
-            if type(temp) == np.ndarray:
+            if input_shape_len == 4:
+                if type(temp) == np.ndarray:
+                    for idx, dim in enumerate(temp):
+                        if dim == 0:
+                            perm.append(0)
+                        elif dim == 1:
+                            perm.append(input_shape_len - 1)
+                        else:
+                            perm.append(dim - 1)
+                else:
+                    # TODO
+                    shape = tf.shape(temp)
+                    for idx, dim in enumerate(shape):
+                        if dim == 0:
+                            perm.append(0)
+                        elif dim == 1:
+                            perm.append(input_shape_len - 1)
+                        else:
+                            perm.append(dim - 1)
+            elif input_shape_len == 5:
+                perm_tmp = ''
                 for idx, dim in enumerate(temp):
-                    if dim == 0:
-                        perm.append(0)
-                    elif dim == 1:
-                        perm.append(input_shape_len - 1)
-                    else:
-                        perm.append(dim - 1)
+                    perm_tmp += str(dim)
+                if perm_tmp == '02134':
+                    perm.append(0)
+                    perm.append(1)
+                    perm.append(2)
+                    perm.append(4)
+                    perm.append(3)
+                else:
+                    # TODO
+                    for idx, dim in enumerate(temp):
+                        perm.append(dim)                    
             else:
-                # TODO
-                shape = tf.shape(temp)
-                for idx, dim in enumerate(shape):
-                    if dim == 0:
-                        perm.append(0)
-                    elif dim == 1:
-                        perm.append(input_shape_len - 1)
-                    else:
-                        perm.append(dim - 1)
+                for idx, dim in enumerate(temp):
+                    perm.append(dim)
             tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], perm=perm)
 
         ### Squeeze
@@ -736,37 +754,132 @@ def convert(model,
 
         ### Reshape - TODO
         elif layer.attrib['type'] == 'Reshape':
-            shape_length = len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape))
-            before_shape_layer = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            shape = []
-            if type(before_shape_layer) == np.ndarray and shape_length == 4:
-                # NCHW -> NHWC
-                if len(before_shape_layer) == 4:
-                    before_shape_layer = before_shape_layer.transpose(0,2,3,1)
-                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
-                else:
-                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
-            elif type(before_shape_layer) == np.ndarray and len(before_shape_layer) == 4:
-                shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
-                shape[0], shape[1], shape[2], shape[3] = shape[0], shape[2], shape[3], shape[1]
-            elif type(before_shape_layer) == np.ndarray and shape_length != 4:
-                shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(before_shape_layer)]
-            else:
-                shape_len = len(before_shape_layer.shape)
-                if shape_len == 4:
-                    # NCHW -> NHWC
-                    shape_tmp = []
-                    shape_tmp.append(before_shape_layer[0])
-                    shape_tmp.append(before_shape_layer[2])
-                    shape_tmp.append(before_shape_layer[3])
-                    shape_tmp.append(before_shape_layer[1])
-                    shape = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
-                else:
-                    # Other
-                    for i in range(before_shape_layer.shape[0]):
-                        shape.append(before_shape_layer[i])
+            op1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            op2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            op_type1 = type(op1)
+            op_type2 = type(op2)
+            op_len1 = len(np.asarray(op1.shape))
+            op_len2 = len(np.asarray(op2.shape))
 
-            tf_layers_dict[layer_id] = tf.reshape(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], shape)
+            shape = []
+            if op_type1 != np.ndarray and op_type2 != np.ndarray:
+                # op and op
+                # print('@@@@@@@@@@@@@@@@@ op / const - route0', op_len1, op_len2, op1, op2)
+                if op_len2 > 1:
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+
+                elif op_len2 == 1 and op2.shape[0] == 4:
+                    # TODO
+                    # shape_tmp = []
+                    # shape_tmp.append(op2[0])
+                    # shape_tmp.append(op2[1])
+                    # shape_tmp.append(op2[2])
+                    # shape_tmp.append(op2[3])
+                    shape = op2
+
+                elif op_len2 == 1 and op2.shape[0] == 5:
+                    # TODO
+                    # shape_tmp = []
+                    # shape_tmp.append(op2[0])
+                    # shape_tmp.append(op2[1])
+                    # shape_tmp.append(op2[2])
+                    # shape_tmp.append(op2[3])
+                    # shape_tmp.append(op2[4])
+                    shape = op2
+
+                elif op_len2 == 1 and op2.shape[0] == 6:
+                    # YoloV4
+                    # shape_tmp = []
+                    # shape_tmp.append(op2[0])
+                    # shape_tmp.append(op2[1])
+                    # shape_tmp.append(op2[2])
+                    # shape_tmp.append(op2[3])
+                    # shape_tmp.append(op2[4])
+                    # shape_tmp.append(op2[5])
+                    shape = op2
+
+            elif op_type1 != np.ndarray and op_type2 == np.ndarray:
+                # op and const
+                if op_len2 == 4:
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route1', op_len2)
+                    op2 = op2.transpose(0,2,3,1)
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                elif op_len2 > 4:
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route2', op_len2)
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                elif op_len2 == 1 and op2.shape[0] == 2:
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                elif op_len2 == 1 and op2.shape[0] == 3:
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                elif op_len2 == 1 and op2.shape[0] == 4:
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route3', op_len2, shape)
+                    shape_tmp = []
+                    shape_tmp.append(op2[0])
+                    shape_tmp.append(op2[2])
+                    shape_tmp.append(op2[3])
+                    shape_tmp.append(op2[1])
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                elif op_len2 == 1 and op2.shape[0] == 5:
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route4', op_len2, shape)
+                    shape_tmp = []
+                    shape_tmp.append(op2[0])
+                    shape_tmp.append(op2[3])
+                    shape_tmp.append(op2[4])
+                    shape_tmp.append(op2[1])
+                    shape_tmp.append(op2[2])
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                elif op_len2 == 1 and op2.shape[0] == 6:
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route5', op_len2)
+                    # YoloV4
+                    shape_tmp = []
+                    shape_tmp.append(op2[0])
+                    shape_tmp.append(op2[2])
+                    shape_tmp.append(op2[3])
+                    shape_tmp.append(op2[4])
+                    shape_tmp.append(op2[5])
+                    shape_tmp.append(op2[1])
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                else:
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route6', op1, op2, op_len2, np.asarray(op2.shape))
+                    for i in range(op2.shape[0]):
+                        shape.append(op2[i])
+
+            elif op_type1 == np.ndarray and op_type2 != np.ndarray:
+                # const and op
+                if op_len1 == 4:
+                    op1 = op1.transpose(0,2,3,1)
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                elif op_len1 > 4:
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                # elif op_len1 == 1 and op1.shape[0] == 5:
+                #     shape_tmp = []
+                #     shape_tmp.append(op2[0])
+                #     shape_tmp.append(op2[3])
+                #     shape_tmp.append(op2[4])
+                #     shape_tmp.append(op2[1])
+                #     shape_tmp.append(op2[2])
+                # elif op_len2 == 1 and op2.shape[0] == 6:
+                #     # YoloV4
+                #     shape_tmp = []
+                #     shape_tmp.append(op2[0])
+                #     shape_tmp.append(op2[2])
+                #     shape_tmp.append(op2[3])
+                #     shape_tmp.append(op2[4])
+                #     shape_tmp.append(op2[5])
+                #     shape_tmp.append(op2[1])
+                else:
+                    for i in range(op2.shape[0]):
+                        shape.append(op2[i])           
+            else:
+                # const and const
+                if op_len1 == 4:
+                    op1 = op1.transpose(0,2,3,1)
+                if op_len2 == 4:
+                    op2 = op2.transpose(0,2,3,1)
+                shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+
+            # print('@@@@@@@@@@@@@@@@@ op / const', op1, op2, shape)
+            tf_layers_dict[layer_id] = tf.reshape(op1, shape)
 
         ### Range - TODO
         elif layer.attrib['type'] == 'Range':
