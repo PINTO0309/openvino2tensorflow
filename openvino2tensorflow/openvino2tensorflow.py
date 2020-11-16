@@ -302,10 +302,16 @@ def convert(model,
         elif layer.attrib['type'] == 'Add':
             # 'Fused_Add_' == BiasAdd
             if len(tf_edges[layer_id]) == 2 and type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray:
-                # Biasadd
-                edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
-                edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
-                tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                try:
+                    # Biasadd
+                    edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
+                    edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
+                    tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                except:
+                    # Add
+                    edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
+                    edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
+                    tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
             else:
                 # Add
                 if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
@@ -654,7 +660,9 @@ def convert(model,
                 else:
                     # TODO
                     for idx, dim in enumerate(temp):
-                        perm.append(dim)                    
+                        perm.append(dim)
+                    # tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    # continue
             else:
                 for idx, dim in enumerate(temp):
                     perm.append(dim)
