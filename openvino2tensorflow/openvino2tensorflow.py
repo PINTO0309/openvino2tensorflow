@@ -776,13 +776,16 @@ def convert(model,
                 if op_len2 > 1:
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
 
+                elif op_len2 == 1 and op2.shape[0] == 2:
+                    # TODO
+                    shape = op2
+
+                elif op_len2 == 1 and op2.shape[0] == 3:
+                    # TODO
+                    shape = op2
+
                 elif op_len2 == 1 and op2.shape[0] == 4:
                     # TODO
-                    # shape_tmp = []
-                    # shape_tmp.append(op2[0])
-                    # shape_tmp.append(op2[1])
-                    # shape_tmp.append(op2[2])
-                    # shape_tmp.append(op2[3])
                     shape = op2
 
                 elif op_len2 == 1 and op2.shape[0] == 5:
