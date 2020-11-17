@@ -975,12 +975,31 @@ def convert(model,
 
         ### Divide
         elif layer.attrib['type'] == 'Divide':
-            if (tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype in int_type_tf) and (tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].dtype in int_type_tf):
+            x_np_type = None
+            y_np_type = None
+
+            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            if type(x) == np.ndarray and x.dtype == np.int:
+                x_np_type = tf.int32
+            elif type(x) == np.ndarray:
+                x_np_type = tf.float32
+            else:
+                x_np_type = x.dtype
+
+            y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            if type(y) == np.ndarray and y.dtype == np.int:
+                y_np_type = tf.int32
+            elif type(y) == np.ndarray:
+                y_np_type = tf.float32
+            else:
+                y_np_type = y.dtype
+
+            if (x_np_type in int_type_tf) and (y_np_type in int_type_tf):
                 # floordiv
-                tf_layers_dict[layer_id] = tf.math.floordiv(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                tf_layers_dict[layer_id] = tf.math.floordiv(x, y)
             else:
                 # divide
-                tf_layers_dict[layer_id] = tf.math.divide(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                tf_layers_dict[layer_id] = tf.math.divide(x, y)
 
         ### Erf
         elif layer.attrib['type'] == 'Erf':
