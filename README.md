@@ -32,7 +32,7 @@ Work in progress now.
 |3|Convolution|Conv2D||
 |4|Add|Add||
 |5|ReLU|ReLU||
-|6|PReLU|PReLU||
+|6|PReLU|PReLU|Maximum(alpha*x, x)|
 |7|MaxPool|MaxPool2D||
 |8|AvgPool|AveragePooling2D||
 |9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat||

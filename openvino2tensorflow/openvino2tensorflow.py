@@ -67,7 +67,7 @@ from openvino.inference_engine import IECore
 
 import tensorflow as tf
 from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, PReLU, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose
+from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.activations import elu, hard_sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
@@ -326,7 +326,11 @@ def convert(model,
 
         ### PReLU
         elif layer.attrib['type'] == 'PReLU':
-            tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            alpha_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape)
+            if alpha_len == 4:
+                tf_layers_dict[layer_id] = tf.maximum(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            else:
+                tf_layers_dict[layer_id] = tf.maximum(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### Clamp
         elif layer.attrib['type'] == 'Clamp':
@@ -833,11 +837,19 @@ def convert(model,
                 elif op_len2 == 1 and op2.shape[0] == 5:
                     # print('@@@@@@@@@@@@@@@@@ op / const - route4', op_len2, shape)
                     shape_tmp = []
-                    shape_tmp.append(op2[0])
-                    shape_tmp.append(op2[3])
-                    shape_tmp.append(op2[4])
-                    shape_tmp.append(op2[1])
-                    shape_tmp.append(op2[2])
+                    if op2[1] == op2[2]:
+                        shape_tmp.append(op2[0])
+                        shape_tmp.append(op2[1])
+                        shape_tmp.append(op2[2])
+                        shape_tmp.append(op2[3])
+                        shape_tmp.append(op2[4])
+                    else:
+                        shape_tmp.append(op2[0])
+                        shape_tmp.append(op2[3])
+                        shape_tmp.append(op2[4])
+                        shape_tmp.append(op2[1])
+                        shape_tmp.append(op2[2])
+
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
                 elif op_len2 == 1 and op2.shape[0] == 6:
                     # print('@@@@@@@@@@@@@@@@@ op / const - route5', op_len2)
