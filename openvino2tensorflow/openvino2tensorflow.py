@@ -591,11 +591,11 @@ def convert(model,
 
             if type(begin_mask) == np.ndarray and len(begin_mask) == 4:
                 begin_mask[0], begin_mask[1], begin_mask[2], begin_mask[3] = begin_mask[0], begin_mask[2], begin_mask[3], begin_mask[1]
-                begin_mask = 0
+            begin_mask = 0
 
             if type(end_mask) == np.ndarray and len(end_mask) == 4:
                 end_mask[0], end_mask[1], end_mask[2], end_mask[3] = end_mask[0], end_mask[2], end_mask[3], end_mask[1]
-                end_mask = -1
+            end_mask = -1
 
             if type(ellipsis_mask) == np.ndarray and len(ellipsis_mask) == 4:
                 ellipsis_mask[0], ellipsis_mask[1], ellipsis_mask[2], ellipsis_mask[3] = ellipsis_mask[0], ellipsis_mask[2], ellipsis_mask[3], ellipsis_mask[1]
@@ -616,16 +616,10 @@ def convert(model,
 
             if len(begin) == 4:
                 begin[0], begin[1], begin[2], begin[3] = begin[0], begin[2], begin[3], begin[1]
-            else:
-                begin = np.asarray([val - 1 if val >= len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape) else val for val in begin])
             if len(end) == 4:
                 end[0], end[1], end[2], end[3] = end[0], end[2], end[3], end[1]
-            else:
-                end = np.asarray([val - 1 if val >= len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape) else val for val in end])
             if len(strides) == 4:
                 strides[0], strides[1], strides[2], strides[3] = strides[0], strides[2], strides[3], strides[1]
-            else:
-                strides = np.asarray([val - 1 if val >= len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape) else val for val in strides])
 
             tf_layers_dict[layer_id] = tf.strided_slice(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                                         begin=begin,
