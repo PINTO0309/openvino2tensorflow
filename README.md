@@ -181,6 +181,22 @@ optional arguments:
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
+```bash
+usage: pb_to_tflite.py [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
+                       --outputs OUTPUTS
+                       [--model_output_path MODEL_OUTPUT_PATH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --pb_file_path PB_FILE_PATH
+                        Input .pb file path (.pb)
+  --inputs INPUTS       (e.g.1) input,input_1,input_2 / (e.g.2)
+                        images,input,param
+  --outputs OUTPUTS     (e.g.1) output,output_1,output_2 / (e.g.2)
+                        Identity,Identity_1,output
+  --model_output_path MODEL_OUTPUT_PATH
+                        The output folder path of the converted model file
+```
 
 ## 6. Execution sample
 ### 6-1. Conversion of OpenVINO IR to Tensorflow models
