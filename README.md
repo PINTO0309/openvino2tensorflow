@@ -243,13 +243,20 @@ $ pb_to_saved_model \
   --inputs inputs:0 \
   --outputs Identity:0
 ```
-### 6-3. Converts saved_model to OpenVINO IR
+### 6-3. Convert Protocol Buffer (.pb) to tflite
+```
+$ pb_to_saved_model \
+  --pb_file_path model_float32.pb \
+  --inputs inputs \
+  --outputs Identity,Identity_1,Identity_2
+```
+### 6-4. Converts saved_model to OpenVINO IR
 ```
 $ python3 ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/mo_tf.py \
   --saved_model_dir saved_model \
   --output_dir openvino/reverse
 ```
-### 6-4. Checking the structure of saved_model
+### 6-5. Checking the structure of saved_model
 ```
 $ saved_model_cli show \
   --dir saved_model \

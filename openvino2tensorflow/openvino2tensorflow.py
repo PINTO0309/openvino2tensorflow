@@ -591,23 +591,30 @@ def convert(model,
 
             if type(begin_mask) == np.ndarray and len(begin_mask) == 4:
                 begin_mask[0], begin_mask[1], begin_mask[2], begin_mask[3] = begin_mask[0], begin_mask[2], begin_mask[3], begin_mask[1]
-            begin_mask = 0
+            if np.sum(begin_mask) == len(begin_mask):
+                begin_mask = -1
+            else:
+                begin_mask = np.argmin(begin_mask)
 
             if type(end_mask) == np.ndarray and len(end_mask) == 4:
                 end_mask[0], end_mask[1], end_mask[2], end_mask[3] = end_mask[0], end_mask[2], end_mask[3], end_mask[1]
-            end_mask = -1
+            if np.sum(end_mask) == len(end_mask):
+                end_mask = -1
+            else:
+                end_mask = np.argmin(end_mask)
 
             if type(ellipsis_mask) == np.ndarray and len(ellipsis_mask) == 4:
                 ellipsis_mask[0], ellipsis_mask[1], ellipsis_mask[2], ellipsis_mask[3] = ellipsis_mask[0], ellipsis_mask[2], ellipsis_mask[3], ellipsis_mask[1]
-                ellipsis_mask = np.argmin(ellipsis_mask)
+            ellipsis_mask = np.argmin(ellipsis_mask)
 
             if type(new_axis_mask) == np.ndarray and len(new_axis_mask) == 4:
                 new_axis_mask[0], new_axis_mask[1], new_axis_mask[2], new_axis_mask[3] = new_axis_mask[0], new_axis_mask[2], new_axis_mask[3], new_axis_mask[1]
-                new_axis_mask = np.argmin(new_axis_mask)
+            new_axis_mask = np.argmin(new_axis_mask)
+            
 
             if type(shrink_axis_mask) == np.ndarray and len(shrink_axis_mask) == 4:
                 shrink_axis_mask[0], shrink_axis_mask[1], shrink_axis_mask[2], shrink_axis_mask[3] = shrink_axis_mask[0], shrink_axis_mask[2], shrink_axis_mask[3], shrink_axis_mask[1]
-                shrink_axis_mask = np.argmin(shrink_axis_mask)
+            shrink_axis_mask = np.argmin(shrink_axis_mask)
 
             # begin, end, strides
             begin   = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]])
@@ -616,8 +623,15 @@ def convert(model,
 
             if len(begin) == 4:
                 begin[0], begin[1], begin[2], begin[3] = begin[0], begin[2], begin[3], begin[1]
+
             if len(end) == 4:
                 end[0], end[1], end[2], end[3] = end[0], end[2], end[3], end[1]
+
+            for idx, (b, e) in enumerate(zip(begin, end)):
+                if b == 0 and b == e:
+                    begin[idx] = 0
+                    end[idx] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx]
+
             if len(strides) == 4:
                 strides[0], strides[1], strides[2], strides[3] = strides[0], strides[2], strides[3], strides[1]
 
