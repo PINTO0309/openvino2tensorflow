@@ -49,7 +49,7 @@ Work in progress now.
 |20|Interpolate|ResizeNearestNeighbor, ResizeBilinear||
 |21|ShapeOf|Shape||
 |22|Convert|Cast||
-|23|StridedSlice|Strided_Slice|WIP|
+|23|StridedSlice|Strided_Slice||
 |24|Pad|Pad, MirrorPad||
 |25|Clamp|ReLU6, Clip||
 |26|TopK|ArgMax, top_k||
