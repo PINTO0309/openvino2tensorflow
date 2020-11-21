@@ -1195,6 +1195,34 @@ def convert(model,
             for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                 tf_layers_dict[layer_id_port] = output
 
+        # ### NonMaxSuppression - TODO
+        # elif layer.attrib['type'] == 'NonMaxSuppression':
+        #     box_encoding = 'corner' # or center
+        #     sort_result_descending = True
+        #     output_type = 'i64'
+
+        #     if not data is None and 'box_encoding' in data.attrib:
+        #         box_encoding = data.attrib['box_encoding']
+        #     if not data is None and 'sort_result_descending' in data.attrib:
+        #         sort_result_descending = data.attrib['sort_result_descending']
+        #     if not data is None and 'output_type' in data.attrib:
+        #         output_type = data.attrib['output_type']
+
+        #     boxes = None
+        #     if box_encoding == 'center':
+        #         boxes = []
+        #         input_boxes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] # [1, 1000, 4]
+        #         for idx, x_center, y_center, width, height in enumerate(input_boxes[0]):
+        #             x1 = x_center - (width // 2)
+        #             y1 = y_center - (height // 2)
+        #             x2 = x_center + (width // 2)
+        #             y2 = y_center + (height // 2)
+        #             boxes.append([x1, y1, x2, y2])
+        #         boxes = np.asanyarray(boxes)[np.newaxis, :, :]
+        #     else:
+        #         boxes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], name=layer.attrib['name'].split('/')[0])
@@ -1245,6 +1273,7 @@ def convert(model,
     # No Quantization - Input/Output=float32
     if output_no_quant_float32_tflite:
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
+        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
         tflite_model = converter.convert()
         with open('{}/model_float32.tflite'.format(model_output_path), 'wb') as w:
             w.write(tflite_model)
@@ -1254,6 +1283,7 @@ def convert(model,
     if output_weight_quant_tflite:
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
+        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
         tflite_model = converter.convert()
         with open('{}/model_weight_quant.tflite'.format(model_output_path), 'wb') as w:
             w.write(tflite_model)
@@ -1264,6 +1294,7 @@ def convert(model,
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
         converter.target_spec.supported_types = [tf.float16]
+        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
         tflite_quant_model = converter.convert()
         with open('{}/model_float16_quant.tflite'.format(model_output_path), 'wb') as w:
             w.write(tflite_quant_model)

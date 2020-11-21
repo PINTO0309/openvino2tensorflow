@@ -4,6 +4,7 @@
 import tensorflow.compat.v1 as tf
 import shutil
 import argparse
+import os
 
 def get_graph_def_from_file(graph_filepath):
     tf.reset_default_graph()
@@ -40,6 +41,7 @@ def main():
     model_output_path = args.model_output_path
 
     shutil.rmtree(model_output_path, ignore_errors=True)
+    os.makedirs(model_output_path, exist_ok=True)
     convert_graph_def_to_saved_model(model_output_path, pb_file_path, inputs, outputs)
 
 if __name__ == "__main__":
