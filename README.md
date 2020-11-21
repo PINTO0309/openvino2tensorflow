@@ -212,6 +212,16 @@ optional arguments:
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
+```bash
+usage: ir_weight_extractor.py [-h] -m MODEL -o OUTPUT_PATH
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -m MODEL, --model MODEL
+                        input IR model path
+  -o OUTPUT_PATH, --output_path OUTPUT_PATH
+                        weights output folder path
+```
 
 ## 6. Execution sample
 ### 6-1. Conversion of OpenVINO IR to Tensorflow models
