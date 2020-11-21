@@ -808,9 +808,15 @@ def convert(model,
             if not data is None and 'b' in data.attrib:
                 transpose_b = True if int(data.attrib['b']) == 1 else False
             if not data is None and 'transpose_a' in data.attrib:
-                transpose_a = True if int(data.attrib['transpose_a']) == 1 else False
+                try:
+                    transpose_a = True if int(data.attrib['transpose_a']) == 1 else False
+                except:
+                    transpose_a = True if data.attrib['transpose_a'] == 'True' else False
             if not data is None and 'transpose_b' in data.attrib:
-                transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
+                try:
+                    transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
+                except:
+                    transpose_b = True if data.attrib['transpose_b'] == 'True' else False
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                                         transpose_a, transpose_b)
 
