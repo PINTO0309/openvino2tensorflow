@@ -245,7 +245,7 @@ $ pb_to_saved_model \
 ```
 ### 6-3. Convert Protocol Buffer (.pb) to tflite
 ```
-$ pb_to_saved_model \
+$ pb_to_tflite \
   --pb_file_path model_float32.pb \
   --inputs inputs \
   --outputs Identity,Identity_1,Identity_2
