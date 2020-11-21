@@ -128,13 +128,13 @@ Work in progress now.
 To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
 
 ```bash
-pip install openvino2tensorflow --upgrade
+$ pip3 install openvino2tensorflow --upgrade
 ```
 
 To install with the latest source code of the main branch, use the following command.
 
 ```bash
-pip install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
+$ pip3 install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
 ```
 
 ## 5. Usage
