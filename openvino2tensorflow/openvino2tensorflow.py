@@ -661,6 +661,15 @@ def convert(model,
             pad_bottom = pad_top
             pad_left   = 0 if (pads_end[3] == 0 and pads_begin[3] == 0) else  (pads_end[3] - pads_begin[3] + 1)
             pad_right  = pad_left
+
+            if pads_end[2] > 1 and pads_begin[2] > 1:
+                pad_top = pad_top * pads_begin[2]
+                pad_bottom = pad_bottom * pads_begin[2]
+            
+            if pads_end[3] > 1 and pads_begin[3] > 1:
+                pad_left = pad_left * pads_begin[3]
+                pad_right = pad_right * pads_begin[3]
+
             paddings = [[pad_b_top, pad_b_bottom], [pad_top, pad_bottom], [pad_left, pad_right], [pad_c_top, pad_c_bottom]]
             pad_value  = [0.0]
             if 'pad_value' in data.attrib:
@@ -1214,6 +1223,43 @@ def convert(model,
 
             for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                 tf_layers_dict[layer_id_port] = output
+
+        ### MVN
+        elif layer.attrib['type'] == 'MVN':
+            eps = float(data.attrib['eps'])
+            across_channels = data.attrib['across_channels']
+            # normalize_variance = data.attrib['normalize_variance']
+
+            if across_channels == '0':
+                across_channels = False
+            elif across_channels == '1':
+                across_channels = True
+            elif across_channels == 'False':
+                across_channels = False
+            elif across_channels == 'True':
+                across_channels = True
+
+            # if normalize_variance == '0':
+            #     normalize_variance = False
+            # elif normalize_variance == '1':
+            #     normalize_variance = True
+            # elif normalize_variance == 'False':
+            #     normalize_variance = False
+            # elif normalize_variance == 'True':
+            #     normalize_variance = True
+
+            mean = None
+            var = None
+            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            if across_channels:
+                mean = tf.math.reduce_mean(x, axis=[-1], keepdims=True)
+                var = tf.math.reduce_variance(x, axis=[-1], keepdims=True)
+            else:
+                mean = tf.math.reduce_mean(x, keepdims=True)
+                var = tf.math.reduce_variance(x, keepdims=True)
+            mvn = (x - mean) / tf.math.sqrt(var + eps)
+
+            tf_layers_dict[layer_id] = mvn
 
         # ### NonMaxSuppression - TODO
         # elif layer.attrib['type'] == 'NonMaxSuppression':

@@ -121,7 +121,8 @@ Work in progress now.
 |77|Broadcast|broadcast_to, ones, Multiply|numpy / bidirectional mode, WIP|
 |78|Split|Split||
 |79|VariadicSplit|Split||
-|80|Result|Identity|Output|
+|80|MVN|reduce_mean, sqrt, reduce_variance|(x-reduce_mean(x))/sqrt(reduce_variance(x)+eps)|
+|81|Result|Identity|Output|
 
 ## 4. Setup
 
