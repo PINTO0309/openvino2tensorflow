@@ -684,7 +684,10 @@ def convert(model,
             # sort = data.attrib['sort']
             layer_id_values  = layer_id_port_dict[layer_id]['layer_id:port'][0]
             layer_id_indices = layer_id_port_dict[layer_id]['layer_id:port'][1]
-            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = tf.math.top_k(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]), sorted=True)
+            try:
+                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = tf.math.top_k(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]), sorted=True)
+            except:
+                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = tf.math.top_k(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]), sorted=True)
 
         ### Transpose
         elif layer.attrib['type'] == 'Transpose':

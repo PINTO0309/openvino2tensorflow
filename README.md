@@ -278,3 +278,25 @@ $ saved_model_cli show \
 
 ## 9. My article
 **[[English] Converting PyTorch, ONNX, Caffe, and OpenVINO (NCHW) models to Tensorflow / TensorflowLite (NHWC) in a snap](https://qiita.com/PINTO/items/ed06e03eb5c007c2e102)**
+
+## 10. Conversion Confirmed Models
+1. u-2-net
+2. mobilenet-v2-pytorch
+3. midasnet
+4. footprints
+5. efficientnet-b0-pytorch
+6. efficientdet-d0
+7. dense_depth
+8. deeplabv3
+9. colorization-v2-norebal
+10. age-gender-recognition-retail-0013
+11. resnet
+12. arcface
+13. emotion-ferplus
+14. mosaic
+15. retinanet
+16. shufflenet-v2
+17. squeezenet
+18. version-RFB-320
+19. yolov4
+20. yolov4x-mish
