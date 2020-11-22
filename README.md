@@ -302,3 +302,4 @@ $ saved_model_cli show \
 20. yolov4x-mish
 21. ThreeDPoseUnityBarracuda - Resnet34_3inputs_448x448
 22. efficientnet-lite4
+23. nanodet
