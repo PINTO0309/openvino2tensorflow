@@ -300,3 +300,4 @@ $ saved_model_cli show \
 18. version-RFB-320
 19. yolov4
 20. yolov4x-mish
+21. ThreeDPoseUnityBarracuda - Resnet34_3inputs_448x448
