@@ -651,29 +651,36 @@ def convert(model,
             pads_begin = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] # [0,0,1,1]
             pads_end   = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)] # [0,0,1,1]
 
-            pad_b_top    = 0 if (pads_end[0] == 0 and pads_begin[0] == 0) else  (pads_end[0] - pads_begin[0] + 1)
-            pad_b_bottom = pad_b_top
+            if (pads_end[0] == 0 and pads_begin[0] == 0):
+               pad_b_bottom = pad_b_top = 0
+            else:
+               pad_b_top = pads_begin[0]
+               pad_b_bottom = pads_end[0]
 
-            pad_c_top    = 0 if (pads_end[1] == 0 and pads_begin[1] == 0) else  (pads_end[1] - pads_begin[1] + 1)
-            pad_c_bottom = pad_c_top
+            if (pads_end[1] == 0 and pads_begin[1] == 0):
+               pad_c_bottom = pad_c_top = 0
+            else:
+               pad_c_top = pads_begin[1]
+               pad_c_bottom = pads_end[1]
 
-            pad_top    = 0 if (pads_end[2] == 0 and pads_begin[2] == 0) else  (pads_end[2] - pads_begin[2] + 1)
-            pad_bottom = pad_top
-            pad_left   = 0 if (pads_end[3] == 0 and pads_begin[3] == 0) else  (pads_end[3] - pads_begin[3] + 1)
-            pad_right  = pad_left
+            if (pads_end[2] == 0 and pads_begin[2] == 0):
+               pad_bottom = pad_top = 0
+            else:
+               pad_top = pads_begin[2]
+               pad_bottom = pads_end[2]
 
-            if pads_end[2] > 1 and pads_begin[2] > 1:
-                pad_top = pad_top * pads_begin[2]
-                pad_bottom = pad_bottom * pads_begin[2]
-            
-            if pads_end[3] > 1 and pads_begin[3] > 1:
-                pad_left = pad_left * pads_begin[3]
-                pad_right = pad_right * pads_begin[3]
+            if (pads_end[3] == 0 and pads_begin[3] == 0):
+               pad_right = pad_left = 0
+            else:
+               pad_left = pads_begin[3]
+               pad_right = pads_end[3]
 
             paddings = [[pad_b_top, pad_b_bottom], [pad_top, pad_bottom], [pad_left, pad_right], [pad_c_top, pad_c_bottom]]
-            pad_value  = [0.0]
+
+            pad_value  = np.float32(0.0)
             if 'pad_value' in data.attrib:
-                pad_value = [float(data.attrib['pad_value'])]
+                pad_value = np.float32(data.attrib['pad_value'])
+
             tf_layers_dict[layer_id] = tf.pad(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], paddings, mode=pad_mode, constant_values=pad_value)
 
         ### TopK
@@ -1408,7 +1415,8 @@ def main():
         not output_weight_quant_tflite and \
         not output_float16_quant_tflite:
         print('Set at least one of the output switches (output_*) to true.')
-        sys.exit(-1) 
+        sys.exit(-1)
+    os.makedirs(model_output_path, exist_ok=True)
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
             output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
             replace_swish_and_hardswish,
