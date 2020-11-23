@@ -150,6 +150,7 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
                            [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
                            [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
+                           [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
                            [--debug]
                            [--debug_layer_number DEBUG_LAYER_NUMBER]
 
