@@ -67,7 +67,7 @@ from openvino.inference_engine import IECore
 
 import tensorflow as tf
 from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose
+from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.activations import elu, hard_sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
@@ -85,6 +85,7 @@ def convert(model,
             output_weight_quant_tflite,
             output_float16_quant_tflite,
             replace_swish_and_hardswish,
+            replace_prelu_and_minmax,
             debug,
             debug_layer_number):
 
@@ -328,10 +329,15 @@ def convert(model,
         elif layer.attrib['type'] == 'PReLU':
             alpha_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape)
             if alpha_len == 4:
-                tf_layers_dict[layer_id] = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if replace_prelu_and_minmax:
+                    tf_layers_dict[layer_id] = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                else:
+                    tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
             else:
-                tf_layers_dict[layer_id] = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
+                if replace_prelu_and_minmax:
+                    tf_layers_dict[layer_id] = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                else:
+                    tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
         ### Clamp
         elif layer.attrib['type'] == 'Clamp':
             cmin = float(data.attrib['min'])
@@ -901,6 +907,10 @@ def convert(model,
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
                 elif op_len2 == 1 and op2.shape[0] == 3:
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    if op_len1 > len(op2):
+                        if shape[2] == -1:
+                            shape[0], shape[1], shape[2] = shape[0], shape[2], shape[1]
+
                 elif op_len2 == 1 and op2.shape[0] == 4:
                     # print('@@@@@@@@@@@@@@@@@ op / const - route3', op_len2, shape)
                     shape_tmp = []
@@ -1389,6 +1399,7 @@ def main():
     parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', type=bool, default=False, help='float16 quant tflite output switch')
     parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other.')
+    parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other.')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
     parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True.')
     args = parser.parse_args()
@@ -1405,6 +1416,7 @@ def main():
     output_weight_quant_tflite = args.output_weight_quant_tflite
     output_float16_quant_tflite = args.output_float16_quant_tflite
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
+    replace_prelu_and_minmax = args.replace_prelu_and_minmax
     debug = args.debug
     debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
@@ -1419,7 +1431,7 @@ def main():
     os.makedirs(model_output_path, exist_ok=True)
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
             output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
-            replace_swish_and_hardswish,
+            replace_swish_and_hardswish, replace_prelu_and_minmax,
             debug, debug_layer_number)
 
 if __name__ == "__main__":
