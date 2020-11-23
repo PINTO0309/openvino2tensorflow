@@ -175,6 +175,8 @@ optional arguments:
                         float16 quant tflite output switch
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
                         Replace swish and hard-swish with each other.
+  --replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX
+                        Replace prelu and minimum/maximum with each other.
   --debug               debug mode switch
   --debug_layer_number DEBUG_LAYER_NUMBER
                         The last layer number to output when debugging. Used
