@@ -327,17 +327,26 @@ def convert(model,
 
         ### PReLU
         elif layer.attrib['type'] == 'PReLU':
+            input_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
             alpha_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape)
+
+            shared_axes = []
+            if alpha_len == 1:
+                shared_axes = [val + 1 for val in range(input_len - 1)]
+            else:
+                shared_axes = None
+
             if alpha_len == 4:
                 if replace_prelu_and_minmax:
                     tf_layers_dict[layer_id] = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 else:
-                    tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)), shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
             else:
                 if replace_prelu_and_minmax:
                     tf_layers_dict[layer_id] = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 else:
-                    tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]), shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+    
         ### Clamp
         elif layer.attrib['type'] == 'Clamp':
             cmin = float(data.attrib['min'])
