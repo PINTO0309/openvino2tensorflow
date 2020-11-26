@@ -67,7 +67,7 @@ from openvino.inference_engine import IECore
 
 import tensorflow as tf
 from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU
+from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.activations import elu, hard_sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
@@ -569,14 +569,45 @@ def convert(model,
             out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
             out_height = int(out_port0[2])
             out_width  = int(out_port0[3])
-            if mode == 'linear':
-                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear', antialias=antialias)
-            elif mode == 'nearest':
-                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest', antialias=antialias)
-            else:
-                print('The Interpolate - {} is not yet implemented.'.format(mode))
-                sys.exit(-1)
 
+            input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
+            input_shape_height = input_shape[1]
+            input_shape_width  = input_shape[2]
+            upsampling_factor_height = out_height // input_shape_height
+            upsampling_factor_width  = out_width // input_shape_width
+
+            def upsampling2d_bilinear(x, upsampling_factor_height, upsampling_factor_width):
+                h = x.shape[2] * upsampling_factor_width
+                w = x.shape[1] * upsampling_factor_height
+                return tf.compat.v1.image.resize_bilinear(x, (h, w))
+
+            def upsampling2d_nearest(x, upsampling_factor_height, upsampling_factor_width):
+                h = x.shape[2] * upsampling_factor_width
+                w = x.shape[1] * upsampling_factor_height
+                return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
+
+            if (upsampling_factor_height * input_shape_height) == out_height and (upsampling_factor_width * input_shape_width) == out_width and upsampling_factor_height >= 1.0 and upsampling_factor_width >= 1.0:
+                # Upsampling
+                if mode == 'linear':
+                    tf_layers_dict[layer_id] = Lambda(upsampling2d_bilinear,
+                                                        arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                   'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                elif mode == 'nearest':
+                    tf_layers_dict[layer_id] = Lambda(upsampling2d_nearest,
+                                                        arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                   'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                else:
+                    print('The Interpolate - {} is not yet implemented.'.format(mode))
+                    sys.exit(-1)
+            else:
+                # Others
+                if mode == 'linear':
+                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear', antialias=antialias)
+                elif mode == 'nearest':
+                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest', antialias=antialias)
+                else:
+                    print('The Interpolate - {} is not yet implemented.'.format(mode))
+                    sys.exit(-1)
 
         ### ShapeOf
         elif layer.attrib['type'] == 'ShapeOf':
