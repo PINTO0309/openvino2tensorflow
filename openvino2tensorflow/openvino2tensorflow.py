@@ -1260,7 +1260,12 @@ def convert(model,
             elif axis >= 2:
                 axis -= 1
 
-            outputs = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], num_or_size_splits=num_splits, axis=axis)
+            def split_tensor(x, axis, num_split):
+                return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
+
+            outputs = Lambda(split_tensor,
+                            arguments={'axis': axis,
+                                        'num_split': num_splits})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                 tf_layers_dict[layer_id_port] = output
@@ -1276,10 +1281,17 @@ def convert(model,
             if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]) == np.ndarray:
                 num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
             else:
-                # num_or_size_splits = [tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)].shape[idx] for idx, val in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])]
                 num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
 
-            outputs = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], num_or_size_splits=num_or_size_splits, axis=axis)
+            def split_tensor(x, axis, num_split):
+                return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
+
+            if len(num_or_size_splits) > 1 and np.average(num_or_size_splits) == num_or_size_splits[0]:
+                outputs = Lambda(split_tensor,
+                                arguments={'axis': axis,
+                                           'num_split': len(num_or_size_splits)})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            else:
+                outputs = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], num_or_size_splits=num_or_size_splits, axis=axis)
 
             for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                 tf_layers_dict[layer_id_port] = output
