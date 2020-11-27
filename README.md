@@ -35,6 +35,12 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
 
+- Keras (NHWC) -> OpenVINO (NCHW・Optimized) ->
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFJS (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
 
 ## 3. Supported Layers
 - Currently, only 4D tensors are supported as input tensors.
@@ -306,3 +312,4 @@ $ saved_model_cli show \
 21. ThreeDPoseUnityBarracuda - Resnet34_3inputs_448x448
 22. efficientnet-lite4
 23. nanodet
+24. yolov4-tiny
