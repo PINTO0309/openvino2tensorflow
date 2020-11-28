@@ -841,20 +841,27 @@ def convert(model,
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
             axis = None
             if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
-                axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].astype(np.int32)
                 if axis == 1:
                     axis = -1
                 elif axis >= 2:
                     axis -= 1
             elif type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape) == 1:
-                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
+                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].dtype != tf.int32:
+                    axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
+                else:
+                    axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
             else:
                 for idx, part_axis in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]):
                     if part_axis == 1:
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] = -1
                     elif part_axis >= 2:
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
-                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].dtype != tf.int32:
+                    axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
+                else:
+                    axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
             if layer.attrib['type'] == 'ReduceMean':
                 tf_layers_dict[layer_id] = tf.math.reduce_mean(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis, keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceMax':
