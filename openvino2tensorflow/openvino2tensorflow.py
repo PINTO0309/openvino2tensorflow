@@ -90,13 +90,14 @@ def convert(model,
             debug_layer_number):
 
     # for unpacking binary buffer
-    format_config = { 'FP32': ['f', 4], 
-                      'FP16': ['e', 2],
-                      'I64' : ['q', 8],
-                      'I32' : ['i', 4],
-                      'I16' : ['h', 2],
-                      'I8'  : ['b', 1],
-                      'U8'  : ['B', 1]}
+    format_config = { 'FP32' : ['f', 4], 
+                      'FP16' : ['e', 2],
+                      'I64'  : ['q', 8],
+                      'I32'  : ['i', 4],
+                      'I16'  : ['h', 2],
+                      'I8'   : ['b', 1],
+                      'U8'   : ['B', 1],
+                      'BOOL' : ['?', 1]}
 
     # vino:    u8,    u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
     # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
