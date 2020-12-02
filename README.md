@@ -313,3 +313,4 @@ $ saved_model_cli show \
 22. efficientnet-lite4
 23. nanodet
 24. yolov4-tiny
+25. yolov5s
