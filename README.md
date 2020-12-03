@@ -288,6 +288,10 @@ $ saved_model_cli show \
 ## 9. My article
 - **[[English] Converting PyTorch, ONNX, Caffe, and OpenVINO (NCHW) models to Tensorflow / TensorflowLite (NHWC) in a snap](https://qiita.com/PINTO/items/ed06e03eb5c007c2e102)**
 
+- **[PyTorch, ONNX, Caffe, OpenVINO (NCHW) のモデルをTensorflow / TensorflowLite (NHWC) へお手軽に変換する](https://qiita.com/PINTO/items/7a0bcaacc77bb5d6abb1)**
+
+- **[tf.image.resizeを含むFull Integer Quantization (.tflite)モデルのEdgeTPUモデルへの変換後の推論時に発生する "main.ERROR - Only float32 and uint8 are supported currently, got -xxx.Node number n (op name) failed to invoke" エラーの回避方法](https://qiita.com/PINTO/items/6ff62da1d02089442c8c)**
+
 ## 10. Conversion Confirmed Models
 1. u-2-net
 2. mobilenet-v2-pytorch
