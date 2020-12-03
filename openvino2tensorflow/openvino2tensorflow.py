@@ -66,14 +66,12 @@ import xml.etree.ElementTree as et
 from openvino.inference_engine import IECore
 
 import tensorflow as tf
+import tensorflow_datasets as tfds
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.activations import elu, hard_sigmoid
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
-import numpy as np
-import sys
-import tensorflow_datasets as tfds
 
 def convert(model,
             model_output_path,
@@ -578,13 +576,13 @@ def convert(model,
             upsampling_factor_width  = out_width // input_shape_width
 
             def upsampling2d_bilinear(x, upsampling_factor_height, upsampling_factor_width):
-                w = x.shape[2] * upsampling_factor_width
                 h = x.shape[1] * upsampling_factor_height
+                w = x.shape[2] * upsampling_factor_width
                 return tf.compat.v1.image.resize_bilinear(x, (h, w))
 
             def upsampling2d_nearest(x, upsampling_factor_height, upsampling_factor_width):
-                w = x.shape[2] * upsampling_factor_width
                 h = x.shape[1] * upsampling_factor_height
+                w = x.shape[2] * upsampling_factor_width
                 return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
 
             if (upsampling_factor_height * input_shape_height) == out_height and (upsampling_factor_width * input_shape_width) == out_width and upsampling_factor_height >= 1.0 and upsampling_factor_width >= 1.0:
