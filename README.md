@@ -146,19 +146,19 @@ $ pip3 install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
 
 ## 5. Usage
 ```bash
-usage: openvino2tensorflow [-h] --model_path MODEL_PATH
-                           [--model_output_path MODEL_OUTPUT_PATH]
-                           [--output_saved_model OUTPUT_SAVED_MODEL]
-                           [--output_h5 OUTPUT_H5]
-                           [--output_weight_and_json OUTPUT_WEIGHT_AND_JSON]
-                           [--output_pb OUTPUT_PB]
-                           [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
-                           [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
-                           [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
-                           [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
-                           [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
-                           [--debug]
-                           [--debug_layer_number DEBUG_LAYER_NUMBER]
+usage: openvino2tensorflow.py [-h] --model_path MODEL_PATH
+                              [--model_output_path MODEL_OUTPUT_PATH]
+                              [--output_saved_model OUTPUT_SAVED_MODEL]
+                              [--output_h5 OUTPUT_H5]
+                              [--output_weight_and_json OUTPUT_WEIGHT_AND_JSON]
+                              [--output_pb OUTPUT_PB]
+                              [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
+                              [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
+                              [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
+                              [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
+                              [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
+                              [--yolact] [--debug]
+                              [--debug_layer_number DEBUG_LAYER_NUMBER]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -181,13 +181,14 @@ optional arguments:
   --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
                         float16 quant tflite output switch
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
-                        Replace swish and hard-swish with each other.
+                        Replace swish and hard-swish with each other
   --replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX
-                        Replace prelu and minimum/maximum with each other.
+                        Replace prelu and minimum/maximum with each other
+  --yolact              Specify when converting the Yolact model
   --debug               debug mode switch
   --debug_layer_number DEBUG_LAYER_NUMBER
                         The last layer number to output when debugging. Used
-                        only when --debug=True.
+                        only when --debug=True
 ```
 ```bash
 usage: pb_to_saved_model [-h] --pb_file_path PB_FILE_PATH

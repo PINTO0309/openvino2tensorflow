@@ -84,6 +84,7 @@ def convert(model,
             output_float16_quant_tflite,
             replace_swish_and_hardswish,
             replace_prelu_and_minmax,
+            yolact,
             debug,
             debug_layer_number):
 
@@ -600,13 +601,29 @@ def convert(model,
                     sys.exit(-1)
             else:
                 # Others
-                if mode == 'linear':
-                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear', antialias=antialias)
-                elif mode == 'nearest':
-                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest', antialias=antialias)
+                if yolact:
+                    if mode == 'linear':
+                        x = Lambda(upsampling2d_bilinear,
+                                    arguments={'upsampling_factor_height': 2,
+                                               'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                    elif mode == 'nearest':
+                        x = Lambda(upsampling2d_nearest,
+                                   arguments={'upsampling_factor_height': 2,
+                                              'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                    else:
+                        print('The Interpolate - {} is not yet implemented.'.format(mode))
+                        sys.exit(-1) 
                 else:
-                    print('The Interpolate - {} is not yet implemented.'.format(mode))
-                    sys.exit(-1)
+                    if mode == 'linear':
+                        tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear', antialias=antialias)
+                    elif mode == 'nearest':
+                        tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest', antialias=antialias)
+                    else:
+                        print('The Interpolate - {} is not yet implemented.'.format(mode))
+                        sys.exit(-1)
+
 
         ### ShapeOf
         elif layer.attrib['type'] == 'ShapeOf':
@@ -1456,10 +1473,11 @@ def main():
     parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', type=bool, default=False, help='float16 quant tflite output switch')
-    parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other.')
-    parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other.')
+    parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other')
+    parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
+    parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
-    parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True.')
+    parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
     model_output_path = args.model_output_path.rstrip('/')
@@ -1475,6 +1493,7 @@ def main():
     output_float16_quant_tflite = args.output_float16_quant_tflite
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
+    yolact = args.yolact
     debug = args.debug
     debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
@@ -1490,7 +1509,7 @@ def main():
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
             output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
             replace_swish_and_hardswish, replace_prelu_and_minmax,
-            debug, debug_layer_number)
+            yolact, debug, debug_layer_number)
 
 if __name__ == "__main__":
     main()
