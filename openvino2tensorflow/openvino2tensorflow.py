@@ -617,9 +617,9 @@ def convert(model,
                         sys.exit(-1) 
                 else:
                     if mode == 'linear':
-                        tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear', antialias=antialias)
+                        tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
                     elif mode == 'nearest':
-                        tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest', antialias=antialias)
+                        tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
                     else:
                         print('The Interpolate - {} is not yet implemented.'.format(mode))
                         sys.exit(-1)
