@@ -1314,7 +1314,49 @@ def convert(model,
                                 arguments={'axis': axis,
                                            'num_split': len(num_or_size_splits)})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
             else:
-                outputs = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], num_or_size_splits=num_or_size_splits, axis=axis)
+                if len(num_or_size_splits) > 1:
+                    input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
+                    outputs = []
+
+                    start_idx = 0
+                    end_idx   = 0
+                    split_start_list_all = []
+
+                    for split_len in num_or_size_splits:
+                        split_start_list_part = []
+                        end_idx = start_idx + split_len - 1
+                        for i in range(input_shape_len):
+                            if axis == -1 and i == (input_shape_len - 1):
+                                split_start_list_part.append(start_idx)
+                            elif axis == -1 and i != (input_shape_len - 1):
+                                split_start_list_part.append(0)
+                            elif axis != -1 and i == axis:
+                                split_start_list_part.append(start_idx)
+                            else:
+                                split_start_list_part.append(0)
+                        split_start_list_all.append(split_start_list_part)
+                        start_idx = end_idx + 1
+
+                    split_size_list_all = []
+
+                    for split_len in num_or_size_splits:
+                        split_size_list_part = []
+                        for i in range(input_shape_len):
+                            if axis == -1 and i == (input_shape_len - 1):
+                                split_size_list_part.append(split_len)
+                            elif axis == -1 and i != (input_shape_len - 1):
+                                split_size_list_part.append(-1)
+                            elif axis != -1 and i == axis:
+                                split_size_list_part.append(split_len)
+                            else:
+                                split_size_list_part.append(-1)
+                        split_size_list_all.append(split_size_list_part)
+
+                    for split_starts, split_sizes in zip(split_start_list_all, split_size_list_all):
+                        outputs.append(tf.slice(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], split_starts, split_sizes))
+
+                else:
+                    outputs = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], num_or_size_splits=num_or_size_splits, axis=axis)
 
             for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                 tf_layers_dict[layer_id_port] = output
