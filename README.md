@@ -319,3 +319,4 @@ $ saved_model_cli show \
 23. nanodet
 24. yolov4-tiny
 25. yolov5s
+26. yolact
