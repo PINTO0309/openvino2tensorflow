@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 '''
-tensorflow==2.3.1
+tensorflow==2.3.1+
 
 python3 openvino2tensorflow.py \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
@@ -56,22 +56,40 @@ python3 openvino2tensorflow.py \
   --output_pb=True \
   --output_no_quant_float32_tflite=True
 '''
-
 import os
 import sys
 import argparse
 import struct
 import numpy as np
+from pathlib import Path
 import xml.etree.ElementTree as et
 from openvino.inference_engine import IECore
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 
-import tensorflow as tf
-import tensorflow_datasets as tfds
-from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda
-from tensorflow.keras.initializers import Constant
-from tensorflow.keras.activations import elu, hard_sigmoid
-from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+class Color:
+    BLACK          = '\033[30m'
+    RED            = '\033[31m'
+    GREEN          = '\033[32m'
+    YELLOW         = '\033[33m'
+    BLUE           = '\033[34m'
+    MAGENTA        = '\033[35m'
+    CYAN           = '\033[36m'
+    WHITE          = '\033[37m'
+    COLOR_DEFAULT  = '\033[39m'
+    BOLD           = '\033[1m'
+    UNDERLINE      = '\033[4m'
+    INVISIBLE      = '\033[08m'
+    REVERCE        = '\033[07m'
+    BG_BLACK       = '\033[40m'
+    BG_RED         = '\033[41m'
+    BG_GREEN       = '\033[42m'
+    BG_YELLOW      = '\033[43m'
+    BG_BLUE        = '\033[44m'
+    BG_MAGENTA     = '\033[45m'
+    BG_CYAN        = '\033[46m'
+    BG_WHITE       = '\033[47m'
+    BG_DEFAULT     = '\033[49m'
+    RESET          = '\033[0m'
 
 def convert(model,
             model_output_path,
@@ -82,11 +100,37 @@ def convert(model,
             output_no_quant_float32_tflite,
             output_weight_quant_tflite,
             output_float16_quant_tflite,
+            output_integer_quant_tflite,
+            output_full_integer_quant_tflite,
+            output_integer_quant_type,
+            string_formulas_for_normalization,
+            calib_ds_type,
+            ds_name_for_tfds_for_calibration,
+            split_name_for_tfds_for_calibration,
+            download_dest_folder_path_for_the_calib_tfds,
+            tfds_download_flg,
+            output_tfjs,
+            output_tftrt,
+            output_coreml,
+            output_edgetpu,
             replace_swish_and_hardswish,
             replace_prelu_and_minmax,
             yolact,
             debug,
             debug_layer_number):
+
+    print(f'{Color.REVERCE}TensorFlow/Keras model building process starts{Color.RESET}', '=' * 38)
+
+    import subprocess
+    import tensorflow as tf
+    import tensorflow_datasets as tfds
+    from tensorflow.keras import Model, Input
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda
+    from tensorflow.keras.initializers import Constant
+    from tensorflow.keras.activations import elu, hard_sigmoid
+    from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+    if output_coreml:
+        import coremltools as ct
 
     # for unpacking binary buffer
     format_config = { 'FP32' : ['f', 4], 
@@ -597,7 +641,7 @@ def convert(model,
                                                         arguments={'upsampling_factor_height': upsampling_factor_height,
                                                                    'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 else:
-                    print('The Interpolate - {} is not yet implemented.'.format(mode))
+                    print(f'The Interpolate - {mode} is not yet implemented.')
                     sys.exit(-1)
             else:
                 # Others
@@ -613,7 +657,7 @@ def convert(model,
                                               'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                         tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
                     else:
-                        print('The Interpolate - {} is not yet implemented.'.format(mode))
+                        print(f'The Interpolate - {mode} is not yet implemented.')
                         sys.exit(-1) 
                 else:
                     if mode == 'linear':
@@ -621,7 +665,7 @@ def convert(model,
                     elif mode == 'nearest':
                         tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
                     else:
-                        print('The Interpolate - {} is not yet implemented.'.format(mode))
+                        print(f'The Interpolate - {mode} is not yet implemented.')
                         sys.exit(-1)
 
 
@@ -1271,7 +1315,7 @@ def convert(model,
             elif mode == 'bidirectional':
                 tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]))
             else:
-                print('The {} mode of broadcast is not yet implemented.'.format(mode))
+                print(f'The {mode} mode of broadcast is not yet implemented.')
                 sys.exit(-1)
 
         ### Split
@@ -1442,67 +1486,279 @@ def convert(model,
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
     model.summary()
 
+    print(f'{Color.GREEN}TensorFlow/Keras model building process complete!{Color.RESET}')
 
     # saved_model output
     if output_saved_model:
         try:
+            print(f'{Color.REVERCE}saved_model output started{Color.RESET}', '=' * 58)
             tf.saved_model.save(model, model_output_path)
+            # tf.keras.models.save_model(model, model_output_path, include_optimizer=False, save_format='tf', save_traces=False)
+            # model.save(model_output_path, include_optimizer=False, save_format='tf', save_traces=False)
+            print(f'{Color.GREEN}saved_model output complete!{Color.RESET}')
         except Exception as e:
-            print(e)
-            print('Switch to the output of an optimized protocol buffer file (.pb).')
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+            print(f'{Color.GREEN}Switch to the output of an optimized protocol buffer file (.pb).{Color.RESET}')
             output_pb = True
             output_h5 = False
 
     # .h5 output
     if output_h5:
-        model.save('{}/model_float32.h5'.format(model_output_path))
+        try:
+            print(f'{Color.REVERCE}.h5 output started{Color.RESET}', '=' * 66)
+            model.save(f'{model_output_path}/model_float32.h5', include_optimizer=False, save_format='h5')
+            print(f'{Color.GREEN}.h5 output complete!{Color.RESET} - {model_output_path}/model_float32.h5')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
 
     # weight and json output
     if output_weight_and_json:
-        open('{}/model_float32.json'.format(model_output_path), 'w').write(model.to_json())
-        model.save_weights('{}/model_float32_weights.h5'.format(model_output_path))
+        try:
+            print(f'{Color.REVERCE}weight and json output started{Color.RESET}', '=' * 54)
+            open(f'{model_output_path}/model_float32.json', 'w').write(model.to_json())
+            model.save_weights(f'{model_output_path}/model_float32_weights.h5')
+            print(f'{Color.GREEN}weight and json output complete!{Color.RESET} - {model_output_path}/model_float32_weights.h5')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
 
     # .pb output
     if output_pb:
-        full_model = tf.function(lambda inputs: model(inputs))
-        full_model = full_model.get_concrete_function(inputs=[tf.TensorSpec(model_input.shape, model_input.dtype) for model_input in model.inputs])
-        frozen_func = convert_variables_to_constants_v2(full_model, lower_control_flow=False)
-        frozen_func.graph.as_graph_def()
-        tf.io.write_graph(graph_or_graph_def=frozen_func.graph,
-                            logdir=".",
-                            name='{}/model_float32.pb'.format(model_output_path),
-                            as_text=False)
+        try:
+            print(f'{Color.REVERCE}.pb output started{Color.RESET}', '=' * 66)
+            full_model = tf.function(lambda inputs: model(inputs))
+            full_model = full_model.get_concrete_function(inputs=[tf.TensorSpec(model_input.shape, model_input.dtype) for model_input in model.inputs])
+            frozen_func = convert_variables_to_constants_v2(full_model, lower_control_flow=False)
+            frozen_func.graph.as_graph_def()
+            tf.io.write_graph(graph_or_graph_def=frozen_func.graph,
+                                logdir=".",
+                                name=f'{model_output_path}/model_float32.pb',
+                                as_text=False)
+            print(f'{Color.GREEN}.pb output complete!{Color.RESET} - {model_output_path}/model_float32.pb')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
 
     # No Quantization - Input/Output=float32
     if output_no_quant_float32_tflite:
-        converter = tf.lite.TFLiteConverter.from_keras_model(model)
-        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
-        tflite_model = converter.convert()
-        with open('{}/model_float32.tflite'.format(model_output_path), 'wb') as w:
-            w.write(tflite_model)
-        print("tflite convert complete! - {}/model_float32.tflite".format(model_output_path))
+        try:
+            print(f'{Color.REVERCE}tflite Float32 convertion started{Color.RESET}', '=' * 51)
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+            tflite_model = converter.convert()
+            with open(f'{model_output_path}/model_float32.tflite', 'wb') as w:
+                w.write(tflite_model)
+            print(f'{Color.GREEN}tflite Float32 convertion complete!{Color.RESET} - {model_output_path}/model_float32.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
 
     # Weight Quantization - Input/Output=float32
     if output_weight_quant_tflite:
-        converter = tf.lite.TFLiteConverter.from_keras_model(model)
-        converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
-        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
-        tflite_model = converter.convert()
-        with open('{}/model_weight_quant.tflite'.format(model_output_path), 'wb') as w:
-            w.write(tflite_model)
-        print('Weight Quantization complete! - {}/model_weight_quant.tflite'.format(model_output_path))
+        try:
+            print(f'{Color.REVERCE}Weight Quantization started{Color.RESET}', '=' * 57)
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+            tflite_model = converter.convert()
+            with open(f'{model_output_path}/model_weight_quant.tflite', 'wb') as w:
+                w.write(tflite_model)
+            print(f'{Color.GREEN}Weight Quantization complete!{Color.RESET} - {model_output_path}/model_weight_quant.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
 
     # Float16 Quantization - Input/Output=float32
     if output_float16_quant_tflite:
-        converter = tf.lite.TFLiteConverter.from_keras_model(model)
-        converter.optimizations = [tf.lite.Optimize.DEFAULT]
-        converter.target_spec.supported_types = [tf.float16]
-        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
-        tflite_quant_model = converter.convert()
-        with open('{}/model_float16_quant.tflite'.format(model_output_path), 'wb') as w:
-            w.write(tflite_quant_model)
-        print('Float16 Quantization complete! - {}/model_float16_quant.tflite'.format(model_output_path))
+        try:
+            print(f'{Color.REVERCE}Float16 Quantization started{Color.RESET}', '=' * 56)
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            converter.target_spec.supported_types = [tf.float16]
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+            tflite_quant_model = converter.convert()
+            with open(f'{model_output_path}/model_float16_quant.tflite', 'wb') as w:
+                w.write(tflite_quant_model)
+            print(f'{Color.GREEN}Float16 Quantization complete!{Color.RESET} - {model_output_path}/model_float16_quant.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
 
+    # Downloading datasets for calibration
+    raw_test_data = None
+    input_shapes = None
+    if output_integer_quant_tflite or output_full_integer_quant_tflite:
+        if calib_ds_type == 'tfds':
+            print(f'{Color.REVERCE}TFDS download started{Color.RESET}', '=' * 63)
+            raw_test_data = tfds.load(name=ds_name_for_tfds_for_calibration,
+                                    with_info=False,
+                                    split=split_name_for_tfds_for_calibration,
+                                    data_dir=download_dest_folder_path_for_the_calib_tfds,
+                                    download=tfds_download_flg)
+            print(f'{Color.GREEN}TFDS download complete!{Color.RESET}')
+        elif calib_ds_type == 'numpy':
+            pass
+        else:
+            pass
+        input_shapes = [model_input.shape for model_input in model.inputs]
+
+    def representative_dataset_gen():
+        for data in raw_test_data.take(10):
+            image = data['image'].numpy()
+            images = []
+            for shape in input_shapes:
+                data = tf.image.resize(image, (shape[1], shape[2]))
+                tmp_image = eval(string_formulas_for_normalization) # Default: 
+                tmp_image = tmp_image[np.newaxis,:,:,:]
+                images.append(tmp_image)
+            yield images
+
+    # Integer Quantization
+    if output_integer_quant_tflite:
+        try:
+            print(f'{Color.REVERCE}Integer Quantization started{Color.RESET}', '=' * 56)
+            converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
+            converter.representative_dataset = representative_dataset_gen
+            tflite_model = converter.convert()
+            with open(f'{model_output_path}/model_integer_quant.tflite', 'wb') as w:
+                w.write(tflite_model)
+            print(f'{Color.GREEN}Integer Quantization complete!{Color.RESET} - {model_output_path}/model_integer_quant.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+
+    # Full Integer Quantization
+    if output_full_integer_quant_tflite:
+        try:
+            print(f'{Color.REVERCE}Full Integer Quantization started{Color.RESET}', '=' * 51)
+            converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
+            inf_type = None
+            if output_integer_quant_type == 'int8':
+                inf_type = tf.int8
+            elif output_integer_quant_type == 'uint8':
+                inf_type = tf.uint8
+            else:
+                inf_type = tf.int8
+            converter.inference_input_type = inf_type
+            converter.inference_output_type = inf_type
+            converter.representative_dataset = representative_dataset_gen
+            tflite_model = converter.convert()
+            with open(f'{model_output_path}/model_full_integer_quant.tflite', 'wb') as w:
+                w.write(tflite_model)
+            print(f'{Color.GREEN}Full Integer Quantization complete!{Color.RESET} - {model_output_path}/model_full_integer_quant.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+
+    # TensorFlow.js convert
+    if output_tfjs:
+        import subprocess
+        try:
+            print(f'{Color.REVERCE}TensorFlow.js Float32 convertion started{Color.RESET}', '=' * 44)
+            result = subprocess.check_output(['tensorflowjs_converter',
+                                            '--input_format', 'tf_saved_model',
+                                            '--output_format', 'tfjs_graph_model',
+                                            '--signature_name', 'serving_default',
+                                            '--saved_model_tags', 'serve',
+                                            model_output_path, f'{model_output_path}/tfjs_model_float32'],
+                                            stderr=subprocess.PIPE).decode('utf-8')
+            print(result)
+            print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float32')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr)
+            import traceback
+            traceback.print_exc()
+        try:
+            print(f'{Color.REVERCE}TensorFlow.js Float16 convertion started{Color.RESET}', '=' * 44)
+            result = subprocess.check_output(['tensorflowjs_converter',
+                                            '--quantize_float16',
+                                            '--input_format', 'tf_saved_model',
+                                            '--output_format', 'tfjs_graph_model',
+                                            '--signature_name', 'serving_default',
+                                            '--saved_model_tags', 'serve',
+                                            model_output_path, f'{model_output_path}/tfjs_model_float16'],
+                                            stderr=subprocess.PIPE).decode('utf-8')
+            print(result)
+            print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float16')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr)
+            import traceback
+            traceback.print_exc()
+
+    # TF-TRT (TensorRT) convert
+    if output_tftrt:
+        try:
+            def input_fn():
+                input_shapes = []
+                for tf_input in tf_inputs:
+                    input_shapes.append(np.zeros(tf_input.shape).astype(np.float32))
+                yield input_shapes
+
+            print(f'{Color.REVERCE}TF-TRT (TensorRT) Float32 convertion started{Color.RESET}', '=' * 40)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP32', maximum_cached_engines=10000)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_path, conversion_params=params)
+            converter.convert()
+            converter.build(input_fn=input_fn)
+            converter.save(f'{model_output_path}/tensorrt_saved_model_float32')
+            print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_path}/tensorrt_saved_model_float32')
+            print(f'{Color.REVERCE}TF-TRT (TensorRT) Float16 convertion started{Color.RESET}', '=' * 40)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=10000)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_path, conversion_params=params)
+            converter.convert()
+            converter.build(input_fn=input_fn)
+            converter.save(f'{model_output_path}/tensorrt_saved_model_float16')
+            print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_path}/tensorrt_saved_model_float16')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+            print(f'{Color.RED}The binary versions of TensorFlow and TensorRT may not be compatible. Please check the version compatibility of each package.{Color.RESET}')
+
+    # CoreML convert
+    if output_coreml:
+        try:
+            print(f'{Color.REVERCE}CoreML convertion started{Color.RESET}', '=' * 59)
+            mlmodel = ct.convert(model_output_path, source='tensorflow')
+            mlmodel.save(f'{model_output_path}/model_coreml_float32.mlmodel')
+            print(f'{Color.GREEN}CoreML convertion complete!{Color.RESET} - {model_output_path}/model_coreml_float32.mlmodel')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+
+    # EdgeTPU convert
+    if output_edgetpu:
+        try:
+            print(f'{Color.REVERCE}EdgeTPU convertion started{Color.RESET}', '=' * 58)
+            result = subprocess.check_output(['edgetpu_compiler',
+                                              '-o', model_output_path,
+                                              '-s',
+                                              f'{model_output_path}/model_full_integer_quant.tflite'],
+                                              stderr=subprocess.PIPE).decode('utf-8')
+            print(result)
+            print(f'{Color.GREEN}EdgeTPU convert complete!{Color.RESET} - {model_output_path}/model_full_integer_quant_edgetpu.tflite')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr)
+            import traceback
+            traceback.print_exc()
+            print("-" * 80)
+            print('Please install edgetpu_compiler according to the following website.')
+            print('https://coral.ai/docs/edgetpu/compiler/#system-requirements')
 
 def main():
     parser = argparse.ArgumentParser()
@@ -1515,6 +1771,20 @@ def main():
     parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', type=bool, default=False, help='float16 quant tflite output switch')
+    parser.add_argument('--output_integer_quant_tflite', type=bool, default=False, help='integer quant tflite output switch')
+    parser.add_argument('--output_full_integer_quant_tflite', type=bool, default=False, help='full integer quant tflite output switch')
+    parser.add_argument('--output_integer_quant_type', type=str, default='int8', help='Input and output types when doing Integer Quantization (\'int8 (default)\' or \'uint8\')')
+    parser.add_argument('--string_formulas_for_normalization', type=str, default='(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]', help='String formulas for normalization. It is evaluated by Python\'s eval() function. Default: \'(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]\'')
+    parser.add_argument('--calib_ds_type', type=str, default='tfds', help='Types of data sets for calibration. tfds or numpy(Future Implementation)')
+    parser.add_argument('--ds_name_for_tfds_for_calibration', type=str, default='coco/2017', help='Dataset name for TensorFlow Datasets for calibration. https://www.tensorflow.org/datasets/catalog/overview')
+    parser.add_argument('--split_name_for_tfds_for_calibration', type=str, default='validation', help='Split name for TensorFlow Datasets for calibration. https://www.tensorflow.org/datasets/catalog/overview')
+    tfds_dl_default_path = f'{str(Path.home())}/TFDS'
+    parser.add_argument('--download_dest_folder_path_for_the_calib_tfds', type=str, default=tfds_dl_default_path, help='Download destination folder path for the calibration dataset. Default: $HOME/TFDS')
+    parser.add_argument('--tfds_download_flg', type=bool, default=True, help='True to automatically download datasets from TensorFlow Datasets. True or False')
+    parser.add_argument('--output_tfjs', type=bool, default=False, help='tfjs model output switch')
+    parser.add_argument('--output_tftrt', type=bool, default=False, help='tftrt model output switch')
+    parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
+    parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
     parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
@@ -1533,6 +1803,19 @@ def main():
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
     output_float16_quant_tflite = args.output_float16_quant_tflite
+    output_integer_quant_tflite = args.output_integer_quant_tflite
+    output_full_integer_quant_tflite = args.output_full_integer_quant_tflite
+    output_integer_quant_type = args.output_integer_quant_type.lower()
+    string_formulas_for_normalization = args.string_formulas_for_normalization.lower()
+    calib_ds_type = args.calib_ds_type.lower()
+    ds_name_for_tfds_for_calibration = args.ds_name_for_tfds_for_calibration
+    split_name_for_tfds_for_calibration = args.split_name_for_tfds_for_calibration
+    download_dest_folder_path_for_the_calib_tfds = args.download_dest_folder_path_for_the_calib_tfds
+    tfds_download_flg = args.tfds_download_flg
+    output_tfjs = args.output_tfjs
+    output_tftrt = args.output_tftrt
+    output_coreml = args.output_coreml
+    output_edgetpu = args.output_edgetpu
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
     yolact = args.yolact
@@ -1544,14 +1827,66 @@ def main():
         not output_pb and \
         not output_no_quant_float32_tflite and \
         not output_weight_quant_tflite and \
-        not output_float16_quant_tflite:
+        not output_integer_quant_tflite and \
+        not output_full_integer_quant_tflite and \
+        not output_tfjs and \
+        not output_tftrt and \
+        not output_coreml and \
+        not output_edgetpu:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
+
+    from pkg_resources import working_set
+    package_list = []
+    for dist in working_set:
+        package_list.append(dist.project_name)
+
+    if output_tfjs:
+        if not 'tensorflowjs' in package_list:
+            print('\'tensorflowjs\' is not installed. Please run the following command to install \'tensorflowjs\'.')
+            print('pip3 install --upgrade tensorflowjs')
+            sys.exit(-1)
+    if output_tftrt:
+        if not 'tensorrt' in package_list:
+            print('\'tensorrt\' is not installed. Please check the following website and install \'tensorrt\'.')
+            print('https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html')
+            sys.exit(-1)
+    if output_coreml:
+        if not 'coremltools' in package_list:
+            print('\'coremltoos\' is not installed. Please run the following command to install \'coremltoos\'.')
+            print('pip3 install --upgrade coremltools')
+            sys.exit(-1)
+
+    if output_integer_quant_type == 'int8' or output_integer_quant_type == 'uint8':
+        pass
+    else:
+        print('Only \'int8\' or \'uint8\' can be specified for output_integer_quant_type.')
+        sys.exit(-1)
+
+    if calib_ds_type == 'tfds':
+        pass
+    elif calib_ds_type == 'numpy':
+        print('The Numpy mode of the data set for calibration will be implemented in the future.')
+        sys.exit(-1)
+    else:
+        print('Only \'tfds\' or \'numpy\' can be specified for calib_ds_type.')
+        sys.exit(-1)
+
+    if output_edgetpu:
+        output_full_integer_quant_tflite = True
+
+    del package_list
     os.makedirs(model_output_path, exist_ok=True)
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
             output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
+            output_integer_quant_tflite, output_full_integer_quant_tflite, output_integer_quant_type,
+            string_formulas_for_normalization,
+            calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
+            download_dest_folder_path_for_the_calib_tfds, tfds_download_flg,
+            output_tfjs, output_tftrt, output_coreml, output_edgetpu,
             replace_swish_and_hardswish, replace_prelu_and_minmax,
             yolact, debug, debug_layer_number)
+    print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
     main()

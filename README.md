@@ -155,6 +155,19 @@ usage: openvino2tensorflow.py [-h] --model_path MODEL_PATH
                               [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
                               [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
                               [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
+                              [--output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE]
+                              [--output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE]
+                              [--output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE]
+                              [--string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION]
+                              [--calib_ds_type CALIB_DS_TYPE]
+                              [--ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION]
+                              [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
+                              [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
+                              [--tfds_download_flg TFDS_DOWNLOAD_FLG]
+                              [--output_tfjs OUTPUT_TFJS]
+                              [--output_tftrt OUTPUT_TFTRT]
+                              [--output_coreml OUTPUT_COREML]
+                              [--output_edgetpu OUTPUT_EDGETPU]
                               [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
                               [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
                               [--yolact] [--debug]
@@ -180,6 +193,39 @@ optional arguments:
                         weight quant tflite output switch
   --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
                         float16 quant tflite output switch
+  --output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE
+                        integer quant tflite output switch
+  --output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE
+                        full integer quant tflite output switch
+  --output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE
+                        Input and output types when doing Integer Quantization
+                        ('int8 (default)' or 'uint8')
+  --string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION
+                        String formulas for normalization. It is evaluated by
+                        Pythons eval() function. Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
+  --calib_ds_type CALIB_DS_TYPE
+                        Types of data sets for calibration. tfds or
+                        numpy(Future Implementation)
+  --ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION
+                        Dataset name for TensorFlow Datasets for calibration.
+                        https://www.tensorflow.org/datasets/catalog/overview
+  --split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION
+                        Split name for TensorFlow Datasets for calibration.
+                        https://www.tensorflow.org/datasets/catalog/overview
+  --download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS
+                        Download destination folder path for the calibration
+                        dataset. Default: $HOME/TFDS
+  --tfds_download_flg TFDS_DOWNLOAD_FLG
+                        True to automatically download datasets from
+                        TensorFlow Datasets. True or False
+  --output_tfjs OUTPUT_TFJS
+                        tfjs model output switch
+  --output_tftrt OUTPUT_TFTRT
+                        tftrt model output switch
+  --output_coreml OUTPUT_COREML
+                        coreml model output switch
+  --output_edgetpu OUTPUT_EDGETPU
+                        edgetpu model output switch
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
                         Replace swish and hard-swish with each other
   --replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX
