@@ -1,5 +1,5 @@
 # openvino2tensorflow
-This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5 and pb.
+This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5, TensorFlow.js, TF-TRT(TensorRT), CoreML, EdgeTPU and pb.
 
 Work in progress now.
 
