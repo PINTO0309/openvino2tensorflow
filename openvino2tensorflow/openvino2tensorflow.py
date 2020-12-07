@@ -1680,7 +1680,7 @@ def convert(model,
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float32')
         except subprocess.CalledProcessError as e:
-            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr)
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
             import traceback
             traceback.print_exc()
         try:
@@ -1696,7 +1696,7 @@ def convert(model,
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float16')
         except subprocess.CalledProcessError as e:
-            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr)
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
             import traceback
             traceback.print_exc()
 
@@ -1753,7 +1753,7 @@ def convert(model,
             print(result)
             print(f'{Color.GREEN}EdgeTPU convert complete!{Color.RESET} - {model_output_path}/model_full_integer_quant_edgetpu.tflite')
         except subprocess.CalledProcessError as e:
-            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr)
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
             import traceback
             traceback.print_exc()
             print("-" * 80)
