@@ -1836,6 +1836,9 @@ def main():
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
 
+    if output_edgetpu:
+        output_full_integer_quant_tflite = True
+
     from pkg_resources import working_set
     package_list = []
     for dist in working_set:
@@ -1856,6 +1859,11 @@ def main():
             print('\'coremltoos\' is not installed. Please run the following command to install \'coremltoos\'.')
             print('pip3 install --upgrade coremltools')
             sys.exit(-1)
+    if output_integer_quant_tflite or output_full_integer_quant_tflite:
+        if not 'tensorflow-datasets' in package_list:
+            print('\'tensorflow-datasets\' is not installed. Please run the following command to install \'tensorflow-datasets\'.')
+            print('pip3 install --upgrade tensorflow-datasets')
+            sys.exit(-1)
 
     if output_integer_quant_type == 'int8' or output_integer_quant_type == 'uint8':
         pass
@@ -1871,9 +1879,6 @@ def main():
     else:
         print('Only \'tfds\' or \'numpy\' can be specified for calib_ds_type.')
         sys.exit(-1)
-
-    if output_edgetpu:
-        output_full_integer_quant_tflite = True
 
     del package_list
     os.makedirs(model_output_path, exist_ok=True)
