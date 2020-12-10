@@ -169,6 +169,7 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--output_coreml OUTPUT_COREML]
                            [--output_edgetpu OUTPUT_EDGETPU]
                            [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
+                           [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
                            [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
                            [--yolact] [--debug]
                            [--debug_layer_number DEBUG_LAYER_NUMBER]
@@ -228,6 +229,8 @@ optional arguments:
                         edgetpu model output switch
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
                         Replace swish and hard-swish with each other
+  --optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU
+                        Optimizing hardswish for edgetpu
   --replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX
                         Replace prelu and minimum/maximum with each other
   --yolact              Specify when converting the Yolact model

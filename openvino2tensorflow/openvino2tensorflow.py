@@ -114,6 +114,7 @@ def convert(model,
             output_coreml,
             output_edgetpu,
             replace_swish_and_hardswish,
+            optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
             yolact,
             debug,
@@ -427,7 +428,10 @@ def convert(model,
         elif layer.attrib['type'] == 'Swish':
             if replace_swish_and_hardswish:
                 # Hard-Swish
-                tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                if not optimizing_hardswish_for_edgetpu:
+                    tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                else:
+                    tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
             else:
                 # Swish
                 tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
@@ -1224,7 +1228,10 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
             else:
                 # Hard-Swish
-                tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                if not optimizing_hardswish_for_edgetpu:
+                    tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                else:
+                    tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
 
         ### Log
         elif layer.attrib['type'] == 'Log':
@@ -1786,6 +1793,7 @@ def main():
     parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
     parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
     parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other')
+    parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
@@ -1817,6 +1825,7 @@ def main():
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
+    optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
     yolact = args.yolact
     debug = args.debug
@@ -1889,7 +1898,7 @@ def main():
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg,
             output_tfjs, output_tftrt, output_coreml, output_edgetpu,
-            replace_swish_and_hardswish, replace_prelu_and_minmax,
+            replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
