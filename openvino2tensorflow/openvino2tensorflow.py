@@ -922,7 +922,7 @@ def convert(model,
                     elif part_axis >= 2:
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
                 if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != tf.int32:
-                    axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
+                    axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf.int32)
                 else:
                     axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
 
