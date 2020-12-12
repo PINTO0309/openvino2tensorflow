@@ -911,7 +911,7 @@ def convert(model,
                 elif axis >= 2:
                     axis -= 1
             elif type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape) == 1:
-                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].dtype != tf.int32:
+                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != tf.int32:
                     axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
                 else:
                     axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
@@ -921,7 +921,7 @@ def convert(model,
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] = -1
                     elif part_axis >= 2:
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
-                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].dtype != tf.int32:
+                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != tf.int32:
                     axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
                 else:
                     axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
