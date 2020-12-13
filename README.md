@@ -257,9 +257,9 @@ optional arguments:
                         The output folder path of the converted model file
 ```
 ```bash
-usage: pb_to_tflite.py [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
-                       --outputs OUTPUTS
-                       [--model_output_path MODEL_OUTPUT_PATH]
+usage: pb_to_tflite [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
+                    --outputs OUTPUTS
+                    [--model_output_path MODEL_OUTPUT_PATH]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -273,7 +273,7 @@ optional arguments:
                         The output folder path of the converted model file
 ```
 ```bash
-usage: ir_weight_extractor.py [-h] -m MODEL -o OUTPUT_PATH
+usage: ir_weight_extractor [-h] -m MODEL -o OUTPUT_PATH
 
 optional arguments:
   -h, --help            show this help message and exit
