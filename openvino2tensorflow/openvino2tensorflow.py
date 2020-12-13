@@ -322,8 +322,12 @@ def convert(model,
             filters = int(port1[0])
             kernel_size = [int(port1[2]), int(port1[3])]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+            pads_begin = 0
+            pads_end = 0
+            if not data is None and 'pads_begin' in data.attrib:
+                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+            if not data is None and 'pads_end' in data.attrib:
+                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
                 if 'auto_pad' in data.attrib:
@@ -445,8 +449,12 @@ def convert(model,
             outport_size = sum([int(sdim.text) for sdim in layer.find('output')[0]])
             kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+            pads_begin = 0
+            pads_end = 0
+            if not data is None and 'pads_begin' in data.attrib:
+                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+            if not data is None and 'pads_end' in data.attrib:
+                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
                 if 'auto_pad' in data.attrib:
@@ -470,8 +478,12 @@ def convert(model,
             kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
             # exclude_pad = data.attrib['exclude-pad']
-            pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+            pads_begin = 0
+            pads_end = 0
+            if not data is None and 'pads_begin' in data.attrib:
+                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+            if not data is None and 'pads_end' in data.attrib:
+                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
                 if 'auto_pad' in data.attrib:
@@ -492,8 +504,12 @@ def convert(model,
             depth_multiplier = 1
             kernel_size = [int(port1[3]), int(port1[4])]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+            pads_begin = 0
+            pads_end = 0
+            if not data is None and 'pads_begin' in data.attrib:
+                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+            if not data is None and 'pads_end' in data.attrib:
+                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
                 if 'auto_pad' in data.attrib:
@@ -557,8 +573,12 @@ def convert(model,
             filters = int(port2[1])
             kernel_size = [int(port1[2]), int(port1[3])]
             strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+            pads_begin = 0
+            pads_end = 0
+            if not data is None and 'pads_begin' in data.attrib:
+                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+            if not data is None and 'pads_end' in data.attrib:
+                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
             padding = ''
             if (pads_begin + pads_end) == 0:
                 if 'auto_pad' in data.attrib:
