@@ -1644,7 +1644,7 @@ def convert(model,
             images = []
             for shape in input_shapes:
                 data = tf.image.resize(image, (shape[1], shape[2]))
-                tmp_image = eval(string_formulas_for_normalization) # Default: 
+                tmp_image = eval(string_formulas_for_normalization) # Default: (data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]
                 tmp_image = tmp_image[np.newaxis,:,:,:]
                 images.append(tmp_image)
             yield images
