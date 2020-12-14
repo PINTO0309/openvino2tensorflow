@@ -273,6 +273,21 @@ optional arguments:
                         The output folder path of the converted model file
 ```
 ```bash
+usage: saved_model_to_pb [-h] --saved_model_dir_path SAVED_MODEL_DIR_PATH
+                         [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
+                         [--signature_name SIGNATURE_NAME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --saved_model_dir_path SAVED_MODEL_DIR_PATH
+                        Input saved_model dir path
+  --model_output_dir_path MODEL_OUTPUT_DIR_PATH
+                        The output folder path of the converted model file
+                        (.pb)
+  --signature_name SIGNATURE_NAME
+                        Signature name to be extracted from saved_model
+```
+```bash
 usage: ir_weight_extractor [-h] -m MODEL -o OUTPUT_PATH
 
 optional arguments:
