@@ -203,7 +203,8 @@ optional arguments:
                         ('int8 (default)' or 'uint8')
   --string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION
                         String formulas for normalization. It is evaluated by
-                        Pythons eval() function. Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
+                        Pythons eval() function.
+                        Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
   --calib_ds_type CALIB_DS_TYPE
                         Types of data sets for calibration. tfds or
                         numpy(Future Implementation)
