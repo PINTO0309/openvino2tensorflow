@@ -247,6 +247,75 @@ optional arguments:
                         only when --debug=True
 ```
 ```bash
+usage: saved_model_to_tflite [-h] --saved_model_dir_path
+                             SAVED_MODEL_DIR_PATH
+                             [--signature_def SIGNATURE_DEF]
+                             [--input_shapes INPUT_SHAPES]
+                             [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
+                             [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
+                             [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
+                             [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
+                             [--output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE]
+                             [--output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE]
+                             [--output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE]
+                             [--string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION]
+                             [--calib_ds_type CALIB_DS_TYPE]
+                             [--ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION]
+                             [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
+                             [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
+                             [--tfds_download_flg TFDS_DOWNLOAD_FLG]
+                             [--output_edgetpu OUTPUT_EDGETPU]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --saved_model_dir_path SAVED_MODEL_DIR_PATH
+                        Input saved_model dir path
+  --signature_def SIGNATURE_DEF
+                        Specifies the signature name to load from saved_model
+  --input_shapes INPUT_SHAPES
+                        Overwrites an undefined input dimension (None or -1).
+                        Specify the input shape in [n,h,w,c] format. For
+                        non-4D tensors, specify [a,b,c,d,e], [a,b], etc. A
+                        comma-separated list if there are multiple inputs.
+                        (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
+  --model_output_dir_path MODEL_OUTPUT_DIR_PATH
+                        The output folder path of the converted model file
+  --output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE
+                        float32 tflite output switch
+  --output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE
+                        weight quant tflite output switch
+  --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
+                        float16 quant tflite output switch
+  --output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE
+                        integer quant tflite output switch
+  --output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE
+                        full integer quant tflite output switch
+  --output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE
+                        Input and output types when doing Integer Quantization
+                        ('int8 (default)' or 'uint8')
+  --string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION
+                        String formulas for normalization. It is evaluated by
+                        Pythons eval() function.
+                        Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
+  --calib_ds_type CALIB_DS_TYPE
+                        Types of data sets for calibration. tfds or
+                        numpy(Future Implementation)
+  --ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION
+                        Dataset name for TensorFlow Datasets for calibration.
+                        https://www.tensorflow.org/datasets/catalog/overview
+  --split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION
+                        Split name for TensorFlow Datasets for calibration.
+                        https://www.tensorflow.org/datasets/catalog/overview
+  --download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS
+                        Download destination folder path for the calibration
+                        dataset. Default: $HOME/TFDS
+  --tfds_download_flg TFDS_DOWNLOAD_FLG
+                        True to automatically download datasets from
+                        TensorFlow Datasets. True or False
+  --output_edgetpu OUTPUT_EDGETPU
+                        edgetpu model output switch
+```
+```bash
 usage: pb_to_saved_model [-h] --pb_file_path PB_FILE_PATH
                          --inputs INPUTS
                          --outputs OUTPUTS
