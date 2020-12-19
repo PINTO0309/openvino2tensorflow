@@ -470,3 +470,4 @@ $ saved_model_cli show \
 24. yolov4-tiny
 25. yolov5s
 26. yolact
+27. MiDaS v2
