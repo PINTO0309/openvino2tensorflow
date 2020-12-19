@@ -42,11 +42,13 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
 
-- pb -> **`pb_to_saved_model`** -> saved_model
-
 - saved_model -> **`saved_model_to_pb`** -> pb
 
+- saved_model -> **`saved_model_to_tflite`** -> tflite
+
 - pb -> **`pb_to_tflite`** -> tflite
+
+- pb -> **`pb_to_saved_model`** -> saved_model
 
 ## 3. Supported Layers
 - Currently, only 4D tensors are supported as input tensors.
