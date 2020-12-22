@@ -284,8 +284,7 @@ optional arguments:
                         Specify the input shape in [n,h,w,c] format. For
                         non-4D tensors, specify [a,b,c,d,e], [a,b], etc. A
                         comma-separated list if there are multiple inputs.
-                        (e.g.) --input_shapes
-                        [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
+                        (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
                         The output folder path of the converted model file
   --output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE
