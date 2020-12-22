@@ -49,6 +49,9 @@ def convert(saved_model_dir_path,
             split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds,
             tfds_download_flg,
+            output_tfjs,
+            output_tftrt,
+            output_coreml,
             output_edgetpu):
 
     print(f'{Color.REVERCE}Start conversion process from saved_model to tflite{Color.RESET}', '=' * 38)
@@ -213,6 +216,83 @@ def convert(saved_model_dir_path,
             print('Please install edgetpu_compiler according to the following website.')
             print('https://coral.ai/docs/edgetpu/compiler/#system-requirements')
 
+    # TensorFlow.js convert
+    if output_tfjs:
+        import subprocess
+        try:
+            print(f'{Color.REVERCE}TensorFlow.js Float32 convertion started{Color.RESET}', '=' * 44)
+            result = subprocess.check_output(['tensorflowjs_converter',
+                                            '--input_format', 'tf_saved_model',
+                                            '--output_format', 'tfjs_graph_model',
+                                            '--signature_name', 'serving_default',
+                                            '--saved_model_tags', 'serve',
+                                            model_output_dir_path, f'{model_output_dir_path}/tfjs_model_float32'],
+                                            stderr=subprocess.PIPE).decode('utf-8')
+            print(result)
+            print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_dir_path}/tfjs_model_float32')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
+            import traceback
+            traceback.print_exc()
+        try:
+            print(f'{Color.REVERCE}TensorFlow.js Float16 convertion started{Color.RESET}', '=' * 44)
+            result = subprocess.check_output(['tensorflowjs_converter',
+                                            '--quantize_float16',
+                                            '--input_format', 'tf_saved_model',
+                                            '--output_format', 'tfjs_graph_model',
+                                            '--signature_name', 'serving_default',
+                                            '--saved_model_tags', 'serve',
+                                            model_output_dir_path, f'{model_output_dir_path}/tfjs_model_float16'],
+                                            stderr=subprocess.PIPE).decode('utf-8')
+            print(result)
+            print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_dir_path}/tfjs_model_float16')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
+            import traceback
+            traceback.print_exc()
+
+    # TF-TRT (TensorRT) convert
+    if output_tftrt:
+        try:
+            def input_fn():
+                input_shapes_tmp = []
+                for tf_input in input_shapes:
+                    input_shapes_tmp.append(np.zeros(tf_input.shape).astype(np.float32))
+                yield input_shapes_tmp
+
+            print(f'{Color.REVERCE}TF-TRT (TensorRT) Float32 convertion started{Color.RESET}', '=' * 40)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP32', maximum_cached_engines=10000)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_dir_path, conversion_params=params)
+            converter.convert()
+            converter.build(input_fn=input_fn)
+            converter.save(f'{model_output_dir_path}/tensorrt_saved_model_float32')
+            print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_dir_path}/tensorrt_saved_model_float32')
+            print(f'{Color.REVERCE}TF-TRT (TensorRT) Float16 convertion started{Color.RESET}', '=' * 40)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=10000)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_dir_path, conversion_params=params)
+            converter.convert()
+            converter.build(input_fn=input_fn)
+            converter.save(f'{model_output_dir_path}/tensorrt_saved_model_float16')
+            print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_dir_path}/tensorrt_saved_model_float16')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+            print(f'{Color.RED}The binary versions of TensorFlow and TensorRT may not be compatible. Please check the version compatibility of each package.{Color.RESET}')
+
+    # CoreML convert
+    if output_coreml:
+        try:
+            import coremltools as ct
+            print(f'{Color.REVERCE}CoreML convertion started{Color.RESET}', '=' * 59)
+            mlmodel = ct.convert(model_output_dir_path, source='tensorflow')
+            mlmodel.save(f'{model_output_dir_path}/model_coreml_float32.mlmodel')
+            print(f'{Color.GREEN}CoreML convertion complete!{Color.RESET} - {model_output_dir_path}/model_coreml_float32.mlmodel')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--saved_model_dir_path', type=str, required=True, help='Input saved_model dir path')
@@ -232,6 +312,9 @@ def main():
     tfds_dl_default_path = f'{str(Path.home())}/TFDS'
     parser.add_argument('--download_dest_folder_path_for_the_calib_tfds', type=str, default=tfds_dl_default_path, help='Download destination folder path for the calibration dataset. Default: $HOME/TFDS')
     parser.add_argument('--tfds_download_flg', type=bool, default=True, help='True to automatically download datasets from TensorFlow Datasets. True or False')
+    parser.add_argument('--output_tfjs', type=bool, default=False, help='tfjs model output switch')
+    parser.add_argument('--output_tftrt', type=bool, default=False, help='tftrt model output switch')
+    parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
     parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
 
     args = parser.parse_args()
@@ -261,12 +344,18 @@ def main():
     split_name_for_tfds_for_calibration = args.split_name_for_tfds_for_calibration
     download_dest_folder_path_for_the_calib_tfds = args.download_dest_folder_path_for_the_calib_tfds
     tfds_download_flg = args.tfds_download_flg
+    output_tfjs = args.output_tfjs
+    output_tftrt = args.output_tftrt
+    output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
 
     if not output_no_quant_float32_tflite and \
        not output_weight_quant_tflite and \
        not output_integer_quant_tflite and \
        not output_full_integer_quant_tflite and \
+       not output_tfjs and \
+       not output_tftrt and \
+       not output_coreml and \
        not output_edgetpu:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
@@ -278,6 +367,22 @@ def main():
     package_list = []
     for dist in working_set:
         package_list.append(dist.project_name)
+
+    if output_tfjs:
+        if not 'tensorflowjs' in package_list:
+            print('\'tensorflowjs\' is not installed. Please run the following command to install \'tensorflowjs\'.')
+            print('pip3 install --upgrade tensorflowjs')
+            sys.exit(-1)
+    if output_tftrt:
+        if not 'tensorrt' in package_list:
+            print('\'tensorrt\' is not installed. Please check the following website and install \'tensorrt\'.')
+            print('https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html')
+            sys.exit(-1)
+    if output_coreml:
+        if not 'coremltools' in package_list:
+            print('\'coremltoos\' is not installed. Please run the following command to install \'coremltoos\'.')
+            print('pip3 install --upgrade coremltools')
+            sys.exit(-1)
 
     if output_integer_quant_tflite or output_full_integer_quant_tflite:
         if not 'tensorflow-datasets' in package_list:
@@ -318,6 +423,9 @@ def main():
             split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds,
             tfds_download_flg,
+            output_tfjs,
+            output_tftrt,
+            output_coreml,
             output_edgetpu)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 

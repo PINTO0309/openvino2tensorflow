@@ -266,6 +266,9 @@ usage: saved_model_to_tflite [-h] --saved_model_dir_path
                              [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
                              [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
                              [--tfds_download_flg TFDS_DOWNLOAD_FLG]
+                             [--output_tfjs OUTPUT_TFJS]
+                             [--output_tftrt OUTPUT_TFTRT]
+                             [--output_coreml OUTPUT_COREML]
                              [--output_edgetpu OUTPUT_EDGETPU]
 
 optional arguments:
@@ -279,7 +282,8 @@ optional arguments:
                         Specify the input shape in [n,h,w,c] format. For
                         non-4D tensors, specify [a,b,c,d,e], [a,b], etc. A
                         comma-separated list if there are multiple inputs.
-                        (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
+                        (e.g.) --input_shapes
+                        [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
                         The output folder path of the converted model file
   --output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE
@@ -314,6 +318,12 @@ optional arguments:
   --tfds_download_flg TFDS_DOWNLOAD_FLG
                         True to automatically download datasets from
                         TensorFlow Datasets. True or False
+  --output_tfjs OUTPUT_TFJS
+                        tfjs model output switch
+  --output_tftrt OUTPUT_TFTRT
+                        tftrt model output switch
+  --output_coreml OUTPUT_COREML
+                        coreml model output switch
   --output_edgetpu OUTPUT_EDGETPU
                         edgetpu model output switch
 ```
