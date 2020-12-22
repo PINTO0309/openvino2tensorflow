@@ -153,6 +153,7 @@ $ pip3 install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
 ```
 
 ## 5. Usage
+### 5-1. openvino to tensorflow convert
 ```bash
 usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--model_output_path MODEL_OUTPUT_PATH]
@@ -248,6 +249,7 @@ optional arguments:
                         The last layer number to output when debugging. Used
                         only when --debug=True
 ```
+### 5-2. saved_model to tflite convert
 ```bash
 usage: saved_model_to_tflite [-h] --saved_model_dir_path
                              SAVED_MODEL_DIR_PATH
@@ -327,6 +329,7 @@ optional arguments:
   --output_edgetpu OUTPUT_EDGETPU
                         edgetpu model output switch
 ```
+### 5-3. pb to saved_model convert
 ```bash
 usage: pb_to_saved_model [-h] --pb_file_path PB_FILE_PATH
                          --inputs INPUTS
@@ -344,6 +347,7 @@ optional arguments:
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
+### 5-4. pb to tflite convert
 ```bash
 usage: pb_to_tflite [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
                     --outputs OUTPUTS
@@ -360,6 +364,7 @@ optional arguments:
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
+### 5-5. saved_model to pb convert
 ```bash
 usage: saved_model_to_pb [-h] --saved_model_dir_path SAVED_MODEL_DIR_PATH
                          [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
@@ -375,6 +380,7 @@ optional arguments:
   --signature_name SIGNATURE_NAME
                         Signature name to be extracted from saved_model
 ```
+### 5-6. Extraction of IR weight
 ```bash
 usage: ir_weight_extractor [-h] -m MODEL -o OUTPUT_PATH
 
