@@ -281,9 +281,9 @@ optional arguments:
                         Specifies the signature name to load from saved_model
   --input_shapes INPUT_SHAPES
                         Overwrites an undefined input dimension (None or -1).
-                        Specify the input shape in [n,h,w,c] format. For
-                        non-4D tensors, specify [a,b,c,d,e], [a,b], etc. A
-                        comma-separated list if there are multiple inputs.
+                        Specify the input shape in [n,h,w,c] format.
+                        For non-4D tensors, specify [a,b,c,d,e], [a,b], etc.
+                        A comma-separated list if there are multiple inputs.
                         (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
                         The output folder path of the converted model file
@@ -339,10 +339,10 @@ optional arguments:
   -h, --help            show this help message and exit
   --pb_file_path PB_FILE_PATH
                         Input .pb file path (.pb)
-  --inputs INPUTS       (e.g.1) input:0,input:1,input:2 / (e.g.2)
-                        images:0,input:0,param:0
-  --outputs OUTPUTS     (e.g.1) output:0,output:1,output:2 / (e.g.2)
-                        Identity:0,Identity:1,output:0
+  --inputs INPUTS       (e.g.1) input:0,input:1,input:2
+                        (e.g.2) images:0,input:0,param:0
+  --outputs OUTPUTS     (e.g.1) output:0,output:1,output:2
+                        (e.g.2) Identity:0,Identity:1,output:0
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
@@ -356,10 +356,10 @@ optional arguments:
   -h, --help            show this help message and exit
   --pb_file_path PB_FILE_PATH
                         Input .pb file path (.pb)
-  --inputs INPUTS       (e.g.1) input,input_1,input_2 / (e.g.2)
-                        images,input,param
-  --outputs OUTPUTS     (e.g.1) output,output_1,output_2 / (e.g.2)
-                        Identity,Identity_1,output
+  --inputs INPUTS       (e.g.1) input,input_1,input_2
+                        (e.g.2) images,input,param
+  --outputs OUTPUTS     (e.g.1) output,output_1,output_2
+                        (e.g.2) Identity,Identity_1,output
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
@@ -374,8 +374,7 @@ optional arguments:
   --saved_model_dir_path SAVED_MODEL_DIR_PATH
                         Input saved_model dir path
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
-                        The output folder path of the converted model file
-                        (.pb)
+                        The output folder path of the converted model file (.pb)
   --signature_name SIGNATURE_NAME
                         Signature name to be extracted from saved_model
 ```
