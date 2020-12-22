@@ -226,7 +226,7 @@ def convert(saved_model_dir_path,
                                             '--output_format', 'tfjs_graph_model',
                                             '--signature_name', 'serving_default',
                                             '--saved_model_tags', 'serve',
-                                            model_output_dir_path, f'{model_output_dir_path}/tfjs_model_float32'],
+                                            saved_model_dir_path, f'{model_output_dir_path}/tfjs_model_float32'],
                                             stderr=subprocess.PIPE).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_dir_path}/tfjs_model_float32')
@@ -242,7 +242,7 @@ def convert(saved_model_dir_path,
                                             '--output_format', 'tfjs_graph_model',
                                             '--signature_name', 'serving_default',
                                             '--saved_model_tags', 'serve',
-                                            model_output_dir_path, f'{model_output_dir_path}/tfjs_model_float16'],
+                                            saved_model_dir_path, f'{model_output_dir_path}/tfjs_model_float16'],
                                             stderr=subprocess.PIPE).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_dir_path}/tfjs_model_float16')
@@ -262,14 +262,14 @@ def convert(saved_model_dir_path,
 
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float32 convertion started{Color.RESET}', '=' * 40)
             params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP32', maximum_cached_engines=10000)
-            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_dir_path, conversion_params=params)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=saved_model_dir_path, conversion_params=params)
             converter.convert()
             converter.build(input_fn=input_fn)
             converter.save(f'{model_output_dir_path}/tensorrt_saved_model_float32')
             print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_dir_path}/tensorrt_saved_model_float32')
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float16 convertion started{Color.RESET}', '=' * 40)
             params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=10000)
-            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_dir_path, conversion_params=params)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=saved_model_dir_path, conversion_params=params)
             converter.convert()
             converter.build(input_fn=input_fn)
             converter.save(f'{model_output_dir_path}/tensorrt_saved_model_float16')
@@ -285,7 +285,7 @@ def convert(saved_model_dir_path,
         try:
             import coremltools as ct
             print(f'{Color.REVERCE}CoreML convertion started{Color.RESET}', '=' * 59)
-            mlmodel = ct.convert(model_output_dir_path, source='tensorflow')
+            mlmodel = ct.convert(saved_model_dir_path, source='tensorflow')
             mlmodel.save(f'{model_output_dir_path}/model_coreml_float32.mlmodel')
             print(f'{Color.GREEN}CoreML convertion complete!{Color.RESET} - {model_output_dir_path}/model_coreml_float32.mlmodel')
         except Exception as e:
