@@ -647,12 +647,20 @@ def convert(model,
             def upsampling2d_bilinear(x, upsampling_factor_height, upsampling_factor_width):
                 h = x.shape[1] * upsampling_factor_height
                 w = x.shape[2] * upsampling_factor_width
-                return tf.compat.v1.image.resize_bilinear(x, (h, w))
+                if output_edgetpu:
+                    print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                    return tf.compat.v1.image.resize_bilinear(x, (h, w))
+                else:
+                    return tf.image.resize(x, [h, w], method='bilinear')
 
             def upsampling2d_nearest(x, upsampling_factor_height, upsampling_factor_width):
                 h = x.shape[1] * upsampling_factor_height
                 w = x.shape[2] * upsampling_factor_width
-                return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
+                if output_edgetpu:
+                    print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                    return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
+                else:
+                    return tf.image.resize(x, [h, w], method='nearest')
 
             if (upsampling_factor_height * input_shape_height) == out_height and (upsampling_factor_width * input_shape_width) == out_width and upsampling_factor_height >= 1.0 and upsampling_factor_width >= 1.0:
                 # Upsampling
@@ -685,9 +693,15 @@ def convert(model,
                         sys.exit(-1) 
                 else:
                     if mode == 'linear':
-                        tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
+                        if output_edgetpu:
+                            tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
+                        else:
+                            tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
                     elif mode == 'nearest':
-                        tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
+                        if output_edgetpu:
+                            tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
+                        else:
+                            tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
                     else:
                         print(f'The Interpolate - {mode} is not yet implemented.')
                         sys.exit(-1)
