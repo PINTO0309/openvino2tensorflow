@@ -633,6 +633,8 @@ def convert(model,
         ### Interpolate
         elif layer.attrib['type'] == 'Interpolate':
             mode = data.attrib['mode']
+            if mode == 'linear_onnx':
+                mode = 'linear'
             antialias = False if int(data.attrib['antialias']) == 0 else True
             out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
             out_height = int(out_port0[2])
@@ -1351,13 +1353,24 @@ def convert(model,
         ### Broadcast - TODO
         elif layer.attrib['type'] == 'Broadcast':
             mode = data.attrib['mode']
-            if mode == 'numpy':
-                tf_layers_dict[layer_id] = tf.broadcast_to(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-            elif mode == 'bidirectional':
-                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]))
+            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray:
+                if mode == 'numpy':
+                    tf_layers_dict[layer_id] = tf.broadcast_to(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                elif mode == 'bidirectional':
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]))
+                else:
+                    print(f'The {mode} mode of broadcast is not yet implemented.')
+                    sys.exit(-1)
             else:
-                print(f'The {mode} mode of broadcast is not yet implemented.')
-                sys.exit(-1)
+                target_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                target_shape[0], target_shape[1], target_shape[2], target_shape[3] = target_shape[0], target_shape[2], target_shape[3], target_shape[1]
+                if mode == 'numpy':
+                    tf_layers_dict[layer_id] = tf.broadcast_to(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], target_shape)
+                elif mode == 'bidirectional':
+                    tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.ones(target_shape))
+                else:
+                    print(f'The {mode} mode of broadcast is not yet implemented.')
+                    sys.exit(-1)
 
         ### Split
         elif layer.attrib['type'] == 'Split':
