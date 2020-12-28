@@ -129,6 +129,8 @@ def convert(model,
     from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda
     from tensorflow.keras.initializers import Constant
     from tensorflow.keras.activations import elu, hard_sigmoid
+    from typing import Union
+    from tensorflow.python.keras.engine.keras_tensor import KerasTensor
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
     if output_coreml:
         import coremltools as ct
@@ -950,17 +952,29 @@ def convert(model,
                 elif axis >= 2:
                     axis -= 1
             elif type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape) == 1:
-                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != tf.int32:
-                    axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
-                else:
-                    axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
+                try:
+                    if (tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy() == [1, 2]).all():
+                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
+                            axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf.int32)
+                        else:
+                            axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                    else:
+                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
+                            axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
+                        else:
+                            axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
+                except:
+                    if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
+                        axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
+                    else:
+                        axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
             else:
                 for idx, part_axis in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]):
                     if part_axis == 1:
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] = -1
                     elif part_axis >= 2:
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
-                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != tf.int32:
+                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
                     axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf.int32)
                 else:
                     axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
@@ -1142,8 +1156,13 @@ def convert(model,
         ### Range - TODO
         elif layer.attrib['type'] == 'Range':
             dtype = cast_type_ov_tf[data.attrib['output_type']]
-            tf_layers_dict[layer_id] = tf.range(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0],
-                                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+            start = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
+            limit = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            if start == 2 and 'Squeeze' in limit.name and type(limit.type_spec) == tf.TensorSpec and limit.type_spec.dtype == tf.int64:
+                start = 1
+                limit = tf.constant(3)
+            tf_layers_dict[layer_id] = tf.range(start,
+                                                limit,
                                                 delta=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]),
                                                 dtype=dtype)
 
