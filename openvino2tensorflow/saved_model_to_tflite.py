@@ -257,7 +257,7 @@ def convert(saved_model_dir_path,
             def input_fn():
                 input_shapes_tmp = []
                 for tf_input in input_shapes:
-                    input_shapes_tmp.append(np.zeros(tf_input.shape).astype(np.float32))
+                    input_shapes_tmp.append(np.zeros(tf_input).astype(np.float32))
                 yield input_shapes_tmp
 
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float32 convertion started{Color.RESET}', '=' * 40)

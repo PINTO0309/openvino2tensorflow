@@ -485,3 +485,4 @@ $ saved_model_cli show \
 25. yolov5s
 26. yolact
 27. MiDaS v2
+28. MODNet
