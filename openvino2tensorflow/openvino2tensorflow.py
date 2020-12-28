@@ -353,10 +353,13 @@ def convert(model,
             # 'Fused_Add_' == BiasAdd
             if len(tf_edges[layer_id]) == 2 and type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray:
                 try:
-                    # Biasadd
+                    # Biasadd or Add
                     edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
                     edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
-                    tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                    if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[-1] == tf_layers_dict[edge_id1].flatten().shape[0]:
+                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                    else:
+                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
                 except:
                     # Add
                     edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
@@ -380,7 +383,7 @@ def convert(model,
             alpha_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape)
 
             shared_axes = []
-            if alpha_len == 1:
+            if alpha_len < 4:
                 shared_axes = [val + 1 for val in range(input_len - 1)]
             else:
                 shared_axes = None
@@ -651,7 +654,7 @@ def convert(model,
                 w = x.shape[2] * upsampling_factor_width
                 if output_edgetpu:
                     print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
-                    return tf.compat.v1.image.resize_bilinear(x, (h, w))
+                    return tf.compat.v1.image.resize_bilinear(x, (h, w))#, align_corners=True, half_pixel_centers=True)
                 else:
                     return tf.image.resize(x, [h, w], method='bilinear')
 
@@ -660,7 +663,7 @@ def convert(model,
                 w = x.shape[2] * upsampling_factor_width
                 if output_edgetpu:
                     print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
-                    return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
+                    return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))#, align_corners=True, half_pixel_centers=True)
                 else:
                     return tf.image.resize(x, [h, w], method='nearest')
 
