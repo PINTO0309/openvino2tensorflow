@@ -486,3 +486,4 @@ $ saved_model_cli show \
 26. yolact
 27. MiDaS v2
 28. MODNet
+29. Person Reidentification
