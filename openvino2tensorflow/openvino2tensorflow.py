@@ -626,7 +626,13 @@ def convert(model,
                     if x_shape == y_shape:
                         tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
                     else:
-                        tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].reshape(x_shape))
+                        try:
+                            tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].reshape(x_shape))
+                        except:
+                            try:
+                                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,1))
+                            except:
+                                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
             elif len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) == np.ndarray):
                 if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].ndim == 4:
                     # 4D - NCHW->NHWC
@@ -638,7 +644,13 @@ def convert(model,
                     if x_shape == y_shape:
                         tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
                     else:
-                        tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].reshape(y_shape), tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                        try:
+                            tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].reshape(y_shape), tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                        except:
+                            try:
+                                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].transpose(0,2,1), tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                            except:
+                                tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
             else:
                 # unknown
                 tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
@@ -724,7 +736,10 @@ def convert(model,
 
         ### ShapeOf
         elif layer.attrib['type'] == 'ShapeOf':
-            tf_layers_dict[layer_id] = tf.shape(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], out_type=tf.int64)
+            try:
+                tf_layers_dict[layer_id] = tf.constant(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape), dtype=tf.int64)
+            except:
+                tf_layers_dict[layer_id] = tf.shape(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], out_type=tf.int64)
 
         ### Convert
         elif layer.attrib['type'] == 'Convert':
@@ -1166,9 +1181,14 @@ def convert(model,
             dtype = cast_type_ov_tf[data.attrib['output_type']]
             start = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
             limit = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            if start == 2 and 'Squeeze' in limit.name and type(limit.type_spec) == tf.TensorSpec and limit.type_spec.dtype == tf.int64:
-                start = 1
-                limit = tf.constant(3)
+            try:
+                if start == 2 and 'Squeeze' in limit.name and type(limit.type_spec) == tf.TensorSpec and limit.type_spec.dtype == tf.int64:
+                    start = 1
+                    limit = tf.constant(3)
+            except:
+                if start == 2 and limit.numpy() == 4:
+                    start = 1
+                    limit = tf.constant(3)
             tf_layers_dict[layer_id] = tf.range(start,
                                                 limit,
                                                 delta=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]),
