@@ -1599,6 +1599,7 @@ def convert(model,
     print(f'{Color.GREEN}TensorFlow/Keras model building process complete!{Color.RESET}')
 
     # saved_model output
+    flag_for_output_switching_from_saved_model_to_pb_due_to_error = False
     if output_saved_model:
         try:
             print(f'{Color.REVERCE}saved_model output started{Color.RESET}', '=' * 58)
@@ -1613,6 +1614,7 @@ def convert(model,
             print(f'{Color.GREEN}Switch to the output of an optimized protocol buffer file (.pb).{Color.RESET}')
             output_pb = True
             output_h5 = False
+            flag_for_output_switching_from_saved_model_to_pb_due_to_error = True
 
     # .h5 output
     if output_h5:
@@ -1650,6 +1652,47 @@ def convert(model,
                                 name=f'{model_output_path}/model_float32.pb',
                                 as_text=False)
             print(f'{Color.GREEN}.pb output complete!{Color.RESET} - {model_output_path}/model_float32.pb')
+
+            if flag_for_output_switching_from_saved_model_to_pb_due_to_error:
+                import shutil
+                saved_model_tmp = 'saved_model_tmp'
+                shutil.rmtree(saved_model_tmp, ignore_errors=True)
+                os.makedirs(saved_model_tmp, exist_ok=True)
+                inputs_tmp = []
+                outputs_tmp = []
+                for idx, _ in enumerate(model.inputs):
+                    if idx == 0:
+                        inputs_tmp.append(f'inputs:0')
+                    else:
+                        inputs_tmp.append(f'inputs_{idx}:0')
+                for idx, _ in enumerate(model.outputs):
+                    if idx == 0:
+                        outputs_tmp.append(f'Identity:0')
+                    else:
+                        outputs_tmp.append(f'Identity_{idx}:0')
+
+                def get_graph_def_from_file(graph_filepath):
+                    tf.compat.v1.reset_default_graph()
+                    tf.compat.v1.Graph().as_default()
+                    with tf.compat.v1.gfile.GFile(graph_filepath, 'rb') as f:
+                        graph_def = tf.compat.v1.GraphDef()
+                        graph_def.ParseFromString(f.read())
+                        return graph_def
+
+                graph_def = get_graph_def_from_file(f'{model_output_path}/model_float32.pb')
+                with tf.compat.v1.Session(graph=tf.Graph()) as sess:
+                    tf.compat.v1.import_graph_def(graph_def, name='')
+                    tf.compat.v1.saved_model.simple_save(
+                        sess,
+                        saved_model_tmp,
+                        inputs= {t.rstrip(":0"):sess.graph.get_tensor_by_name(t) for t in inputs_tmp},
+                        outputs={t.rstrip(":0"):sess.graph.get_tensor_by_name(t) for t in outputs_tmp}
+                    )
+                    from distutils.dir_util import copy_tree
+                    copy_tree(saved_model_tmp, model_output_path)
+                    shutil.rmtree(saved_model_tmp, ignore_errors=True)
+                    print(f'{Color.GREEN}Optimized graph converted to SavedModel!{Color.RESET} - {model_output_path}')
+                
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
             import traceback
