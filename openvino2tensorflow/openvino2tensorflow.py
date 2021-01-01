@@ -1580,6 +1580,23 @@ def convert(model,
         #         boxes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
 
 
+        ### NonZero
+        elif layer.attrib['type'] == 'NonZero':
+            try:
+                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.dtype != tf.bool:
+                    mask = tf.math.not_equal(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.constant([0]))
+                    tf_layers_dict[layer_id] = tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask)
+                else:
+                    mask = tf.math.not_equal(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.constant([False]))
+                    tf_layers_dict[layer_id] = tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask)
+            except:
+                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype != tf.bool:
+                    mask = tf.math.not_equal(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.constant([0]))
+                    tf_layers_dict[layer_id] = tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask)
+                else:
+                    mask = tf.math.not_equal(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.constant([False]))
+                    tf_layers_dict[layer_id] = tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask)
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], name=layer.attrib['name'].split('/')[0])

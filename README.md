@@ -136,7 +136,8 @@ Work in progress now.
 |78|Split|Split||
 |79|VariadicSplit|Split, Slice, SplitV||
 |80|MVN|reduce_mean, sqrt, reduce_variance|(x-reduce_mean(x))/sqrt(reduce_variance(x)+eps)|
-|81|Result|Identity|Output|
+|81|NonZero|not_equal, boolean_mask||
+|82|Result|Identity|Output|
 
 ## 4. Setup
 
