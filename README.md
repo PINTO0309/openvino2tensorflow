@@ -493,3 +493,4 @@ $ saved_model_cli show \
 27. MiDaS v2
 28. MODNet
 29. Person Reidentification
+30. DeepSort
