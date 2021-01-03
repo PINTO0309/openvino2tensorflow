@@ -979,8 +979,9 @@ def convert(model,
                 else:
                     tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], indices, axis=axis)
 
-        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd - TODO
-        elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd':
+        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd, ReduceL2 - TODO
+        elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
+             layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd' or layer.attrib['type'] == 'ReduceL2':
             keep_dims = True if data.attrib['keep_dims'] == "True" else False
             axis = None
             if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
@@ -1027,6 +1028,10 @@ def convert(model,
                 tf_layers_dict[layer_id] = tf.math.reduce_sum(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis, keepdims=keep_dims)
             elif layer.attrib['type'] == 'ReduceProd':
                 tf_layers_dict[layer_id] = tf.math.reduce_prod(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis, keepdims=keep_dims)
+            elif layer.attrib['type'] == 'ReduceL2':
+                reduceL2_mul = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                reduceL2_sum = tf.math.reduce_sum(reduceL2_mul, axis=axis, keepdims=keep_dims)
+                tf_layers_dict[layer_id] = tf.math.rsqrt(reduceL2_sum)
 
         ### MatMul
         elif layer.attrib['type'] == 'MatMul':
