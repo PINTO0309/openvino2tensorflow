@@ -883,13 +883,21 @@ def convert(model,
             perm = []
             if input_shape_len == 4:
                 if type(temp) == np.ndarray:
-                    for idx, dim in enumerate(temp):
-                        if dim == 0:
-                            perm.append(0)
-                        elif dim == 1:
-                            perm.append(input_shape_len - 1)
-                        else:
-                            perm.append(dim - 1)
+                    if np.all(temp == [0,3,1,2]):
+                        for idx, dim in enumerate(temp):
+                            perm.append(idx)
+                    elif np.all(temp == [1,0,2,3]):
+                        # for idx, dim in enumerate(temp):
+                        #     perm.append(idx)
+                        perm = [3,1,2,0]
+                    else:
+                        for idx, dim in enumerate(temp):
+                            if dim == 0:
+                                perm.append(0)
+                            elif dim == 1:
+                                perm.append(input_shape_len - 1)
+                            else:
+                                perm.append(dim - 1)
                 else:
                     # TODO
                     shape = tf.shape(temp)
@@ -901,10 +909,7 @@ def convert(model,
                         else:
                             perm.append(dim - 1)
             elif input_shape_len == 5:
-                perm_tmp = ''
-                for idx, dim in enumerate(temp):
-                    perm_tmp += str(dim)
-                if perm_tmp == '02134':
+                if np.all(temp == [0,2,1,3,4]):
                     perm.append(0)
                     perm.append(1)
                     perm.append(2)
@@ -1049,8 +1054,8 @@ def convert(model,
                     transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
                 except:
                     transpose_b = True if data.attrib['transpose_b'] == 'True' else False
-            tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                                                        transpose_a, transpose_b)
+            
+            tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], transpose_a, transpose_b)
 
         ### Reshape - TODO
         elif layer.attrib['type'] == 'Reshape':
@@ -1110,6 +1115,8 @@ def convert(model,
                 elif op_len2 > 4:
                     # print('@@@@@@@@@@@@@@@@@ op / const - route2', op_len2)
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                elif op_len2 == 1 and op2.shape[0] == 1:
+                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
                 elif op_len2 == 1 and op2.shape[0] == 2:
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
                 elif op_len2 == 1 and op2.shape[0] == 3:
@@ -1119,13 +1126,29 @@ def convert(model,
                             shape[0], shape[1], shape[2] = shape[0], shape[2], shape[1]
 
                 elif op_len2 == 1 and op2.shape[0] == 4:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route3', op_len2, shape)
-                    shape_tmp = []
-                    shape_tmp.append(op2[0])
-                    shape_tmp.append(op2[2])
-                    shape_tmp.append(op2[3])
-                    shape_tmp.append(op2[1])
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route3', op_len2, shape)                 
+                    one_count_1 = 0
+                    for idx in op1.shape:
+                        if idx == 1:
+                            one_count_1 += 1
+                    one_count_2 = 0
+                    for idx in op2:
+                        if idx == 1:
+                            one_count_2 += 1
+                    if one_count_1 != one_count_2 and one_count_2 == 3 and op2[3] != 1:
+                        shape_tmp = []
+                        shape_tmp.append(op2[0])
+                        shape_tmp.append(op2[1])
+                        shape_tmp.append(op2[2])
+                        shape_tmp.append(op2[3])
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                    else:
+                        shape_tmp = []
+                        shape_tmp.append(op2[0])
+                        shape_tmp.append(op2[2])
+                        shape_tmp.append(op2[3])
+                        shape_tmp.append(op2[1])
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
                 elif op_len2 == 1 and op2.shape[0] == 5:
                     # print('@@@@@@@@@@@@@@@@@ op / const - route4', op_len2, shape)
                     shape_tmp = []
@@ -1610,6 +1633,22 @@ def convert(model,
                 else:
                     mask = tf.math.not_equal(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.constant([False]))
                     tf_layers_dict[layer_id] = tf.expand_dims(tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask), axis=0)
+
+        ### SpaceToDepth
+        elif layer.attrib['type'] == 'SpaceToDepth':
+            block_size = int(data.attrib['block_size'])
+            mode = data.attrib['mode']
+            tf_layers_dict[layer_id] = tf.nn.space_to_depth(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], block_size=block_size)
+
+        ### DepthToSpace
+        elif layer.attrib['type'] == 'DepthToSpace':
+            block_size = int(data.attrib['block_size'])
+            mode = data.attrib['mode']
+
+            def depth_to_space(x, block_size):
+                return tf.raw_ops.DepthToSpace(input=x, block_size=block_size)
+
+            tf_layers_dict[layer_id] = Lambda(depth_to_space, arguments={'block_size': block_size})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### Result
         elif layer.attrib['type'] == 'Result':
