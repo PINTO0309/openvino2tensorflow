@@ -12,8 +12,8 @@ Work in progress now.
 ![ezgif com-gif-maker (3)](https://user-images.githubusercontent.com/33194443/103456348-8d5b2480-4d38-11eb-8a58-9b7c7203b18c.gif)
   
 ## 1. Environment
-- TensorFlow v2.3.1
-- OpenVINO 2021.1.110
+- TensorFlow v2.3.1+
+- OpenVINO 2021.1.110+
 - Python 3.6+
 
 ## 2. Use case
