@@ -149,7 +149,9 @@ Work in progress now.
 |82|ReduceL2|Multiply, reduce_sum, rsqrt||
 |83|SpaceToDepth|SpaceToDepth||
 |84|DepthToSpace|DepthToSpace||
-|85|Result|Identity|Output|
+|85|Sqrt|sqrt||
+|86|SquaredDifference|squared_difference||
+|87|Result|Identity|Output|
 
 ## 4. Setup
 

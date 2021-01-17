@@ -1650,6 +1650,14 @@ def convert(model,
 
             tf_layers_dict[layer_id] = Lambda(depth_to_space, arguments={'block_size': block_size})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
+        ### Sqrt
+        elif layer.attrib['type'] == 'Sqrt':
+            tf_layers_dict[layer_id] = tf.math.sqrt(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+        
+        ### SquaredDifference
+        elif layer.attrib['type'] == 'SquaredDifference':
+            tf_layers_dict[layer_id] = tf.math.squared_difference(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+
         ### Result
         elif layer.attrib['type'] == 'Result':
             tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], name=layer.attrib['name'].split('/')[0])
