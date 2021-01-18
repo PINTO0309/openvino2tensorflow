@@ -2060,6 +2060,7 @@ def main():
         not output_pb and \
         not output_no_quant_float32_tflite and \
         not output_weight_quant_tflite and \
+        not output_float16_quant_tflite and \
         not output_integer_quant_tflite and \
         not output_full_integer_quant_tflite and \
         not output_tfjs and \
