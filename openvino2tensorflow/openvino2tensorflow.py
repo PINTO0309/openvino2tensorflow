@@ -342,13 +342,23 @@ def convert(model,
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
-            tf_layers_dict[layer_id] = Conv2D(filters=filters,
-                                              kernel_size=kernel_size,
-                                              strides=strides,
-                                              padding=padding,
-                                              dilation_rate=dilations,
-                                              use_bias=False,
-                                              kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            try:
+                tf_layers_dict[layer_id] = Conv2D(filters=filters,
+                                                kernel_size=kernel_size,
+                                                strides=strides,
+                                                padding=padding,
+                                                dilation_rate=dilations,
+                                                use_bias=False,
+                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            except:
+                tf_layers_dict[layer_id] = Conv2D(filters=filters,
+                                                kernel_size=kernel_size,
+                                                strides=strides,
+                                                padding=padding,
+                                                dilation_rate=dilations,
+                                                use_bias=False,
+                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
 
         ### Add
         elif layer.attrib['type'] == 'Add':
@@ -536,7 +546,11 @@ def convert(model,
                 convs = []
                 kernel = None
                 if len(port1) == 5:
-                    kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,2,1,0)
+                    try:
+                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,2,1,0)
+                    except:
+                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,2,1,0)
+
                     for i in range(groups):
                         convs.append(Conv2D(filters=filters // groups,
                                             kernel_size=kernel_size,
@@ -546,7 +560,10 @@ def convert(model,
                                             use_bias=False,
                                             kernel_initializer=Constant(kernel[:,:,:,:,i])))
                 else:
-                    kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)
+                    try:
+                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)
+                    except:
+                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)
                     for i in range(groups):
                         convs.append(Conv2D(filters=filters // groups,
                                             kernel_size=kernel_size,
@@ -562,13 +579,22 @@ def convert(model,
        
             else:
                 # DepthwiseConv2D
-                tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
-                                                          strides=strides,
-                                                          padding=padding,
-                                                          depth_multiplier=depth_multiplier,
-                                                          dilation_rate=dilations,
-                                                          use_bias=False,
-                                                          depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                try:
+                    tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
+                                                            strides=strides,
+                                                            padding=padding,
+                                                            depth_multiplier=depth_multiplier,
+                                                            dilation_rate=dilations,
+                                                            use_bias=False,
+                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                except:
+                    tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
+                                                            strides=strides,
+                                                            padding=padding,
+                                                            depth_multiplier=depth_multiplier,
+                                                            dilation_rate=dilations,
+                                                            use_bias=False,
+                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### ConvolutionBackpropData
         elif layer.attrib['type'] == 'ConvolutionBackpropData':
@@ -1657,6 +1683,50 @@ def convert(model,
         ### SquaredDifference
         elif layer.attrib['type'] == 'SquaredDifference':
             tf_layers_dict[layer_id] = tf.math.squared_difference(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+
+        ### FakeQuantize
+        elif layer.attrib['type'] == 'FakeQuantize':
+            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            x = tf.cast(x, dtype=tf.float32)
+            if isinstance(x, tf.Tensor) and len(x.shape) == 4:
+                x = x.numpy().transpose(0,2,3,1)
+            elif type(x) == np.ndarray and len(x.shape) == 4:
+                x = x.transpose(0,2,3,1)
+
+            input_low = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            input_low = tf.cast(input_low, dtype=tf.float32)
+            if isinstance(input_low, tf.Tensor) and len(input_low.shape) == 4:
+                input_low = input_low.numpy().transpose(0,2,3,1)
+            elif type(input_low) == np.ndarray and len(input_low.shape) == 4:
+                input_low = input_low.transpose(0,2,3,1)
+
+            input_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+            input_high = tf.cast(input_high, dtype=tf.float32)
+            if isinstance(input_high, tf.Tensor) and len(input_high.shape) == 4:
+                input_high = input_high.numpy().transpose(0,2,3,1)
+            elif type(input_high) == np.ndarray and len(input_high.shape) == 4:
+                input_high = input_high.transpose(0,2,3,1)
+
+            output_low = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)]
+            output_low = tf.cast(output_low, dtype=tf.float32)
+            if isinstance(output_low, tf.Tensor) and len(output_low.shape) == 4:
+                output_low = output_low.numpy().transpose(0,2,3,1)
+            elif type(output_low) == np.ndarray and len(output_low.shape) == 4:
+                output_low = output_low.transpose(0,2,3,1)
+
+            output_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)]
+            output_high = tf.cast(output_high, dtype=tf.float32)
+            if isinstance(output_high, tf.Tensor) and len(output_high.shape) == 4:
+                output_high = output_high.numpy().transpose(0,2,3,1)
+            elif type(output_high) == np.ndarray and len(output_high.shape) == 4:
+                output_high = output_high.transpose(0,2,3,1)
+
+            levels = int(data.attrib['levels'])
+
+            tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)),
+                                                output_low, tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)),
+                                                output_high,
+                                                tf.math.round((x - input_low) / (input_high - input_low) * (levels-1)) / (levels-1) * (output_high - output_low) + output_low))
 
         ### Result
         elif layer.attrib['type'] == 'Result':

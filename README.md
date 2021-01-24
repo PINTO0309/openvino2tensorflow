@@ -151,7 +151,8 @@ Work in progress now.
 |84|DepthToSpace|DepthToSpace||
 |85|Sqrt|sqrt||
 |86|SquaredDifference|squared_difference||
-|87|Result|Identity|Output|
+|87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add|experimental|
+|88|Result|Identity|Output|
 
 ## 4. Setup
 
