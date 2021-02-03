@@ -341,6 +341,21 @@ def convert(model,
                     padding = 'valid'
             else:
                 padding = 'same'
+
+            temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            orig = None
+            if pads_begin > 0:
+                padding = 'valid'
+                # begin 0 = top
+                # begin 1 = left
+                # end 0 = bottom
+                # end 1 = right
+                begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+                end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+                orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+            else:
+                orig = temp
+
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
             try:
                 tf_layers_dict[layer_id] = Conv2D(filters=filters,
@@ -349,7 +364,7 @@ def convert(model,
                                                 padding=padding,
                                                 dilation_rate=dilations,
                                                 use_bias=False,
-                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
             except:
                 tf_layers_dict[layer_id] = Conv2D(filters=filters,
                                                 kernel_size=kernel_size,
@@ -357,7 +372,7 @@ def convert(model,
                                                 padding=padding,
                                                 dilation_rate=dilations,
                                                 use_bias=False,
-                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
 
 
         ### Add
@@ -536,6 +551,21 @@ def convert(model,
                     padding = 'valid'
             else:
                 padding = 'same'
+
+            temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            orig = None
+            if pads_begin > 0:
+                padding = 'valid'
+                # begin 0 = top
+                # begin 1 = left
+                # end 0 = bottom
+                # end 1 = right
+                begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+                end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+                orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+            else:
+                orig = temp
+
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
 
             if int(port1[1]) > 1:
@@ -586,7 +616,7 @@ def convert(model,
                                                             depth_multiplier=depth_multiplier,
                                                             dilation_rate=dilations,
                                                             use_bias=False,
-                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0)))(orig)
                 except:
                     tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
                                                             strides=strides,
@@ -594,7 +624,7 @@ def convert(model,
                                                             depth_multiplier=depth_multiplier,
                                                             dilation_rate=dilations,
                                                             use_bias=False,
-                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0)))(orig)
 
         ### ConvolutionBackpropData
         elif layer.attrib['type'] == 'ConvolutionBackpropData':
