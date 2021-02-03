@@ -65,7 +65,7 @@ Work in progress now.
 
 |No.|OpenVINO Layer|TF Layer|Remarks|
 |:--:|:--|:--|:--|
-|1|Parameter|Input|Input (4D tensor only)|
+|1|Parameter|Input||
 |2|Const|Constant, Bias||
 |3|Convolution|Conv2D||
 |4|Add|Add||

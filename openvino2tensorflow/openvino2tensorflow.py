@@ -300,7 +300,10 @@ def convert(model,
             if not data is None and 'shape' in data.attrib:
                 shape_str  = data.attrib['shape'].split(',')
                 shape = [int(s) for s in shape_str]
-                tf_layers_dict[layer_id] = Input(shape=(shape[2], shape[3], shape[1]), batch_size=shape[0], name=layer_name)
+                if len(shape) == 4:
+                    tf_layers_dict[layer_id] = Input(shape=(shape[2], shape[3], shape[1]), batch_size=shape[0], name=layer_name)
+                else:
+                    tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
                 tf_inputs.append(tf_layers_dict[layer_id])
 
         ### Const
@@ -373,7 +376,6 @@ def convert(model,
                                                 dilation_rate=dilations,
                                                 use_bias=False,
                                                 kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
-
 
         ### Add
         elif layer.attrib['type'] == 'Add':
@@ -1033,7 +1035,10 @@ def convert(model,
             if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
                 tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], indices, axis=axis)
             else:
+                print('@@@@@@@@@@@@@@@@@@@@@@@@ layer_id', layer_id)
                 if indices == [0] and axis == 0:
+                    print('@@@@@@@@@@@@@@@@@@@@@@@@ layer', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    print('@@@@@@@@@@@@@@@@@@@@@@@@ axis', axis)
                     tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis)
                     if tf_layers_dict[layer_id].type_spec.shape == []:
                         tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
