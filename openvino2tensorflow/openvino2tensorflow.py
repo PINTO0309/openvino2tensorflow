@@ -357,7 +357,10 @@ def convert(model,
                 end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
                 orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
             else:
-                orig = temp
+                if temp.shape[0] == 1 and temp.shape[2] == 1 and temp.shape[3] == 1:
+                    orig = tf.transpose(temp, perm=(0,2,3,1))
+                else:
+                    orig = temp
 
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
             try:
@@ -1035,10 +1038,7 @@ def convert(model,
             if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
                 tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], indices, axis=axis)
             else:
-                print('@@@@@@@@@@@@@@@@@@@@@@@@ layer_id', layer_id)
                 if indices == [0] and axis == 0:
-                    print('@@@@@@@@@@@@@@@@@@@@@@@@ layer', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                    print('@@@@@@@@@@@@@@@@@@@@@@@@ axis', axis)
                     tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis)
                     if tf_layers_dict[layer_id].type_spec.shape == []:
                         tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)

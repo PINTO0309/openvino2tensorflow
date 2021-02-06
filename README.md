@@ -60,7 +60,6 @@ Work in progress now.
 - pb -> **`pb_to_saved_model`** -> saved_model
 
 ## 3. Supported Layers
-- Currently, only 4D tensors are supported as input tensors.
 - Currently, there are problems with the Reshape operation of 5D Tensor.
 
 |No.|OpenVINO Layer|TF Layer|Remarks|
