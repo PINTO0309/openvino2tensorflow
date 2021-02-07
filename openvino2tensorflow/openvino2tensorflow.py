@@ -318,7 +318,15 @@ def convert(model,
                     prec = layer.find('output').find('port').attrib['precision']
                     formatstring = '<' + format_config[prec][0] * (len(blobBin)//format_config[prec][1])
                     decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)
-                    tf_layers_dict[layer_id] = decodedwgt
+
+                    #############################################################
+                    if layer_id == '1123':
+                        tf_layers_dict[layer_id] = np.array([1,2,513,513])
+                    elif layer_id == '1125':
+                        tf_layers_dict[layer_id] = np.array([0,3,1,2])
+                    else:
+                        tf_layers_dict[layer_id] = decodedwgt
+                    #############################################################
 
         ### Convolution
         elif layer.attrib['type'] == 'Convolution':
@@ -1719,14 +1727,14 @@ def convert(model,
         elif layer.attrib['type'] == 'SquaredDifference':
             tf_layers_dict[layer_id] = tf.math.squared_difference(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
 
-        ### FakeQuantize
+        ### FakeQuantize - WIP
         elif layer.attrib['type'] == 'FakeQuantize':
             x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
             x = tf.cast(x, dtype=tf.float32)
             if isinstance(x, tf.Tensor) and len(x.shape) == 4:
-                x = x.numpy().transpose(0,2,3,1)
+                x = x.numpy()
             elif type(x) == np.ndarray and len(x.shape) == 4:
-                x = x.transpose(0,2,3,1)
+                x = x
 
             input_low = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
             input_low = tf.cast(input_low, dtype=tf.float32)
@@ -1748,7 +1756,7 @@ def convert(model,
                 output_low = output_low.numpy().transpose(0,2,3,1)
             elif type(output_low) == np.ndarray and len(output_low.shape) == 4:
                 output_low = output_low.transpose(0,2,3,1)
-
+                
             output_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)]
             output_high = tf.cast(output_high, dtype=tf.float32)
             if isinstance(output_high, tf.Tensor) and len(output_high.shape) == 4:
@@ -1758,10 +1766,31 @@ def convert(model,
 
             levels = int(data.attrib['levels'])
 
-            tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)),
-                                                output_low, tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)),
-                                                output_high,
-                                                tf.math.round((x - input_low) / (input_high - input_low) * (levels-1)) / (levels-1) * (output_high - output_low) + output_low))
+            ### https://stackoverflow.com/questions/64111110/how-to-do-round-half-up-in-tensorflow
+            ### https://www.xspdf.com/resolution/50434452.html
+
+
+            # tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
+            #                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
+            #                                     tf.math.round(((x - input_low) / (input_high - input_low) * (levels-1))) / (levels-1) * (output_high - output_low) + output_low))
+
+            tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
+                                                tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
+                                                tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
+
+            # tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
+            #                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
+            #                                     tf.keras.backend.round((x - input_low) / (input_high - input_low) * (levels-1)) / (levels-1) * (output_high - output_low) + output_low))
+
+            # def roundc(x, input_low, input_high, levels):
+            #     y = (x - input_low) / (input_high - input_low) * (levels-1)
+            #     z = tf.minimum(y, 0) / tf.abs(y)
+            #     return tf.floor(tf.abs(y) + 0.5) * np.where(z == 0.0, 1, z)
+
+            # tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
+            #                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
+            #                                     Lambda(roundc, arguments={'input_low': input_low, 'input_high': input_high, 'levels': levels})(x) / (levels-1) * (output_high - output_low) + output_low))
+
 
         ### Result
         elif layer.attrib['type'] == 'Result':
@@ -1777,7 +1806,7 @@ def convert(model,
 
 
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
-    model.summary()
+    # model.summary()
 
     print(f'{Color.GREEN}TensorFlow/Keras model building process complete!{Color.RESET}')
 
