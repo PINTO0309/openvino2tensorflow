@@ -318,7 +318,8 @@ def convert(model,
                     prec = layer.find('output').find('port').attrib['precision']
                     formatstring = '<' + format_config[prec][0] * (len(blobBin)//format_config[prec][1])
                     decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)
-
+                    tf_layers_dict[layer_id] = decodedwgt
+                    
                     # #############################################################
                     # if layer_id == '1123':
                     #     tf_layers_dict[layer_id] = np.array([1,2,513,513])
