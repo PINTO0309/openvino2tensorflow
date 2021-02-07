@@ -195,8 +195,11 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
                            [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
                            [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
-                           [--yolact] [--debug]
+                           [--yolact]
+                           [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
+                           [--debug]
                            [--debug_layer_number DEBUG_LAYER_NUMBER]
+
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -259,6 +262,10 @@ optional arguments:
   --replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX
                         Replace prelu and minimum/maximum with each other
   --yolact              Specify when converting the Yolact model
+  --weight_replacement_config WEIGHT_REPLACEMENT_CONFIG
+                        Replaces the value of Const for each layer_id defined
+                        in json. Specify the path to the json file.
+                        'weight_replacement_config.json'
   --debug               debug mode switch
   --debug_layer_number DEBUG_LAYER_NUMBER
                         The last layer number to output when debugging. Used
@@ -453,6 +460,50 @@ $ saved_model_cli show \
   --tag_set serve \
   --signature_def serving_default
 ```
+
+### 6-7. Replace weights or constant values in **`Const`** OP
+If the transformation behavior of **`Reshape`**, **`Transpose`**, etc. does not go as expected, you can force the **`Const`** content to change by defining weights and constant values in a JSON file and having it read in.
+```
+$ openvino2tensorflow \
+  --model_path=xxx.xml \
+  --output_saved_model True \
+  --output_pb True \
+  --output_weight_quant_tflite True \
+  --output_float16_quant_tflite True \
+  --output_no_quant_float32_tflite True \
+  --weight_replacement_config weight_replacement_config_sample.json
+```
+Structure of JSON sample
+```json
+{
+    "format_version": 1,
+    "layers": [
+        {
+            "layer_id": "1123",
+            "replace_mode": "direct",
+            "values": [
+                1,
+                2,
+                513,
+                513
+            ]
+        },
+        {
+            "layer_id": "1125",
+            "replace_mode": "npy",
+            "values": "weights_sample/1125.npy"
+        }
+    ]
+}
+```
+
+|No.|Elements|Description|
+|:--|:--|:--|
+|1|format_version|Format version of weight_replacement_config. Only 1 so far.|
+|2|layers|A list of layers. Enclose it with "[ ]" to define multiple layers to child elements.|
+|2-1|layer_id|ID of the Const layer whose weight/constant parameter is to be swapped. For example, specify "1123" for layer id="1123" for type="Const" in .xml.<br>![Screenshot 2021-02-08 01:06:30](https://user-images.githubusercontent.com/33194443/107152221-068a0f00-69aa-11eb-9d9e-f48bb1c3f781.png)|
+|2-2|replace_mode|"direct" or "npy".<br>"direct": Specify the values of the Numpy matrix directly in the "values" attribute. Ignores the values recorded in the .bin file and replaces them with the values specified in "values".<br>![Screenshot 2021-02-08 01:12:06](https://user-images.githubusercontent.com/33194443/107152361-cc6d3d00-69aa-11eb-8302-5e18a723ec34.png)<br>"npy": Load a Numpy binary file with the matrix output by np.save('xyz', a). The "values" attribute specifies the path to the Numpy binary file.<br>![Screenshot 2021-02-08 01:12:23](https://user-images.githubusercontent.com/33194443/107152376-dc851c80-69aa-11eb-9b3f-469b91af1d19.png)|
+|2-3|values|Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin. The way to specify is as described in the description of 'replace_mode'.|
 
 ## 7. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)

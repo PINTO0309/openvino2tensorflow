@@ -1,0 +1,20 @@
+{
+    "format_version": 1,
+    "layers": [
+        {
+            "layer_id": "1123",
+            "replace_mode": "direct",
+            "values": [
+                1,
+                2,
+                513,
+                513
+            ]
+        },
+        {
+            "layer_id": "1125",
+            "replace_mode": "npy",
+            "values": "weights_sample/1125.npy"
+        }
+    ]
+}

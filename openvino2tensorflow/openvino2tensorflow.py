@@ -117,6 +117,7 @@ def convert(model,
             optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
             yolact,
+            weight_replacement_config,
             debug,
             debug_layer_number):
 
@@ -134,6 +135,8 @@ def convert(model,
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
     if output_coreml:
         import coremltools as ct
+    import json
+    import pprint
 
     # for unpacking binary buffer
     format_config = { 'FP32' : ['f', 4], 
@@ -243,6 +246,62 @@ def convert(model,
             else:
                 return tf_edges[layer_id][edge_index].split(':')[0]
 
+
+    """
+    format_version : Format version of weight_replacement_config.
+    layer_id : ID of the Const layer whose weight/constant parameter is to be swapped.
+               For example, specify "1123" for layer id="1123" for type="Const" in .xml.
+
+               <layer id="1123" name="Decoder/softmax/Reshape_1/Cast_123722_const657_const" type="Const" version="opset1">
+                   <data element_type="i64" offset="7632604" shape="4" size="32"/>
+                   <output>
+                       <port id="1" precision="I64">
+                           <dim>4</dim>
+                       </port>
+                   </output>
+               </layer>
+
+    replace_mode : "direct" or "npy"
+                   "direct": Specify the values of the Numpy matrix directly in the "values" attribute.
+                             Ignores the values recorded in the .bin file and replaces them with the values specified in "values".
+
+                   {
+                       "layer_id": "1123",
+                       "replace_mode": "direct",
+                       "values": [
+                           1,
+                           2,
+                           513,
+                           513
+                       ]
+                   }
+
+                   "npy": Load a Numpy binary file with the matrix output by np.save('xyz', a).
+                          The "values" attribute specifies the path to the Numpy binary file.
+                   {
+                       "layer_id": "1125",
+                       "replace_mode": "npy",
+                       "values": "weights/xyz.npy"
+                   }
+
+    values : Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin.
+             The way to specify is as described in the description of 'replace_mode'.
+    """
+    def parse_json(jsonfile_path):
+        j = json.load(open(jsonfile_path))
+        format_version = j['format_version']
+        layers = {}
+        for v in j['layers']:
+            layers[v['layer_id']] = v
+        print(f'{Color.GREEN}weight_replacement_config format_version:{Color.RESET} {format_version}')
+        print(f'{Color.GREEN}Replace the value of Const for each layer_id with the value below.{Color.RESET}')
+        pprint.pprint(layers)
+        return layers
+
+    wr_config = None
+    if weight_replacement_config:
+        wr_config = parse_json(weight_replacement_config)
+
     # edges
     added_key_list = []
     for edge in edges:
@@ -318,8 +377,25 @@ def convert(model,
                     prec = layer.find('output').find('port').attrib['precision']
                     formatstring = '<' + format_config[prec][0] * (len(blobBin)//format_config[prec][1])
                     decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)
-                    tf_layers_dict[layer_id] = decodedwgt
-                    
+
+                    if not wr_config or layer_id not in wr_config:
+                        tf_layers_dict[layer_id] = decodedwgt
+                    else:
+                        if layer_id in wr_config:
+                            if wr_config[layer_id]['replace_mode'] == 'direct':
+                                try:
+                                    tf_layers_dict[layer_id] = np.array(wr_config[layer_id]['values'])
+                                except:
+                                    tf_layers_dict[layer_id] = wr_config[layer_id]['values']
+                            elif wr_config[layer_id]['replace_mode'] == 'npy':
+                                tf_layers_dict[layer_id] = np.load(wr_config[layer_id]['values'])
+                            else:
+                                mode_str = wr_config[layer_id]['replace_mode']
+                                print(f'replace_mode = {mode_str} is not supported. Please review the weight_replacement_config json.')
+                                sys.exit(-1)
+                        else:
+                            tf_layers_dict[layer_id] = decodedwgt
+
                     # #############################################################
                     # if layer_id == '1123':
                     #     tf_layers_dict[layer_id] = np.array([1,2,513,513])
@@ -2155,6 +2231,7 @@ def main():
     parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
+    parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
     parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True')
     args = parser.parse_args()
@@ -2187,6 +2264,7 @@ def main():
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
     yolact = args.yolact
+    weight_replacement_config = args.weight_replacement_config
     debug = args.debug
     debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
@@ -2249,6 +2327,10 @@ def main():
         print('Only \'tfds\' or \'numpy\' can be specified for calib_ds_type.')
         sys.exit(-1)
 
+    if weight_replacement_config and not os.path.exists(weight_replacement_config):
+        print('The json file does not exist in the path specified in weight_replacement_config.')
+        sys.exit(-1) 
+
     del package_list
     os.makedirs(model_output_path, exist_ok=True)
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
@@ -2259,7 +2341,7 @@ def main():
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg,
             output_tfjs, output_tftrt, output_coreml, output_edgetpu,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, debug, debug_layer_number)
+            yolact, weight_replacement_config, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
