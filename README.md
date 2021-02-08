@@ -64,9 +64,15 @@ Work in progress now.
 
 - saved_model -> **`saved_model_to_pb`** -> pb
 
-- saved_model -> **`saved_model_to_tflite`** -> tflite
+- saved_model ->
+  - -> **`saved_model_to_tflite`** -> TFLite
+  - -> **`saved_model_to_tflite`** -> TFJS
+  - -> **`saved_model_to_tflite`** -> TF-TRT
+  - -> **`saved_model_to_tflite`** -> EdgeTPU
+  - -> **`saved_model_to_tflite`** -> CoreML
+  - -> **`saved_model_to_tflite`** -> ONNX
 
-- pb -> **`pb_to_tflite`** -> tflite
+- pb -> **`pb_to_tflite`** -> TFLite
 
 - pb -> **`pb_to_saved_model`** -> saved_model
 
