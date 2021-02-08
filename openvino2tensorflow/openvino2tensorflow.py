@@ -114,6 +114,7 @@ def convert(model,
             output_coreml,
             output_edgetpu,
             output_onnx,
+            onnx_opset,
             replace_swish_and_hardswish,
             optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
@@ -2201,6 +2202,7 @@ def convert(model,
             result = subprocess.check_output(['python3',
                                               '-m', 'tf2onnx.convert',
                                               '--saved-model', model_output_path,
+                                              '--opset', str(onnx_opset),
                                               '--output', f'{model_output_path}/model_float32.onnx'],
                                               stderr=subprocess.PIPE).decode('utf-8')
             print(result)
@@ -2236,6 +2238,7 @@ def main():
     parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
     parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
     parser.add_argument('--output_onnx', type=bool, default=False, help='onnx model output switch')
+    parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
     parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other')
     parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
@@ -2270,6 +2273,7 @@ def main():
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
     output_onnx = args.output_onnx
+    onnx_opset = args.onnx_opset
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
@@ -2320,6 +2324,7 @@ def main():
     if output_onnx:
         if not 'tf2onnx' in package_list:
             print('\'tf2onnx\' is not installed. Please run the following command to install \'tf2onnx\'.')
+            print('pip3 install --upgrade onnx')
             print('pip3 install --upgrade tf2onnx')
             sys.exit(-1)
 
@@ -2356,7 +2361,7 @@ def main():
             string_formulas_for_normalization,
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg,
-            output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx,
+            output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx, onnx_opset,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, weight_replacement_config, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)

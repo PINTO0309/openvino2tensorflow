@@ -17,9 +17,16 @@ Work in progress now.
 ![ezgif com-gif-maker (3)](https://user-images.githubusercontent.com/33194443/103456348-8d5b2480-4d38-11eb-8a58-9b7c7203b18c.gif)
   
 ## 1. Environment
-- TensorFlow v2.3.1+
+- TensorFlow v2.3.1+ **`pip3 install --upgrade tensorflow`** or **`pip3 install --upgrade tf-nightly`**
 - OpenVINO 2021.1.110+
 - Python 3.6+
+- tensorflowjs **`pip3 install --upgrade tensorflowjs`**
+- **[tensorrt](https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html)**
+- coremltools **`pip3 install --upgrade coremltools`**
+- onnx **`pip3 install --upgrade onnx`**
+- tf2onnx **`pip3 install --upgrade tf2onnx`**
+- tensorflow-datasets **`pip3 install --upgrade tensorflow-datasets`**
+- **[edgetpu_compiler](https://coral.ai/docs/edgetpu/compiler/#system-requirements)**
 
 ## 2. Use case
 

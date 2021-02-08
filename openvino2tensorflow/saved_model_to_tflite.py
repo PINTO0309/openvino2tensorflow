@@ -53,7 +53,8 @@ def convert(saved_model_dir_path,
             output_tftrt,
             output_coreml,
             output_edgetpu,
-            output_onnx):
+            output_onnx,
+            onnx_opset):
 
     print(f'{Color.REVERCE}Start conversion process from saved_model to tflite{Color.RESET}', '=' * 38)
 
@@ -302,6 +303,7 @@ def convert(saved_model_dir_path,
             result = subprocess.check_output(['python3',
                                               '-m', 'tf2onnx.convert',
                                               '--saved-model', model_output_dir_path,
+                                              '--opset', str(onnx_opset),
                                               '--output', f'{model_output_dir_path}/model_float32.onnx'],
                                               stderr=subprocess.PIPE).decode('utf-8')
             print(result)
@@ -335,6 +337,7 @@ def main():
     parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
     parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
     parser.add_argument('--output_onnx', type=bool, default=False, help='onnx model output switch')
+    parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
 
     args = parser.parse_args()
     saved_model_dir_path = args.saved_model_dir_path
@@ -368,6 +371,7 @@ def main():
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
     output_onnx = args.output_onnx
+    onnx_opset = args.onnx_opset
 
     if not output_no_quant_float32_tflite and \
        not output_weight_quant_tflite and \
@@ -453,7 +457,8 @@ def main():
             output_tftrt,
             output_coreml,
             output_edgetpu,
-            output_onnx)
+            output_onnx,
+            onnx_opset)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
