@@ -29,6 +29,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
 
 - Caffe (NCHW) -> OpenVINO (NCHW) ->
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
@@ -36,6 +37,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
 
 - MXNet (NCHW) -> OpenVINO (NCHW) ->
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
@@ -43,6 +45,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
 
 - Keras (NHWC) -> OpenVINO (NCHW・Optimized) ->
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
@@ -50,6 +53,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
 
 - saved_model -> **`saved_model_to_pb`** -> pb
 
@@ -150,7 +154,7 @@ Work in progress now.
 |84|DepthToSpace|DepthToSpace||
 |85|Sqrt|sqrt||
 |86|SquaredDifference|squared_difference||
-|87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add|experimental|
+|87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add||
 |88|Result|Identity|Output|
 
 ## 4. Setup
@@ -192,6 +196,7 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--output_tftrt OUTPUT_TFTRT]
                            [--output_coreml OUTPUT_COREML]
                            [--output_edgetpu OUTPUT_EDGETPU]
+                           [--output_onnx OUTPUT_ONNX]
                            [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
                            [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
                            [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
@@ -255,6 +260,8 @@ optional arguments:
                         coreml model output switch
   --output_edgetpu OUTPUT_EDGETPU
                         edgetpu model output switch
+  --output_onnx OUTPUT_ONNX
+                        onnx model output switch
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
                         Replace swish and hard-swish with each other
   --optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU
@@ -294,6 +301,7 @@ usage: saved_model_to_tflite [-h] --saved_model_dir_path
                              [--output_tftrt OUTPUT_TFTRT]
                              [--output_coreml OUTPUT_COREML]
                              [--output_edgetpu OUTPUT_EDGETPU]
+                             [--output_onnx OUTPUT_ONNX]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -349,6 +357,8 @@ optional arguments:
                         coreml model output switch
   --output_edgetpu OUTPUT_EDGETPU
                         edgetpu model output switch
+  --output_onnx OUTPUT_ONNX
+                        onnx model output switch
 ```
 ### 5-3. pb to saved_model convert
 ```bash

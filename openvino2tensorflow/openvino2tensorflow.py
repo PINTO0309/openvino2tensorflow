@@ -113,6 +113,7 @@ def convert(model,
             output_tftrt,
             output_coreml,
             output_edgetpu,
+            output_onnx,
             replace_swish_and_hardswish,
             optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
@@ -342,7 +343,6 @@ def convert(model,
     del added_key_list
 
     layer_id_port_dict = get_num_of_outputs_per_layer_id(tf_edges)
-    # print(layer_id_port_dict)
 
     # for i in tf_edges.items():
     #     print(i)
@@ -395,15 +395,6 @@ def convert(model,
                                 sys.exit(-1)
                         else:
                             tf_layers_dict[layer_id] = decodedwgt
-
-                    # #############################################################
-                    # if layer_id == '1123':
-                    #     tf_layers_dict[layer_id] = np.array([1,2,513,513])
-                    # elif layer_id == '1125':
-                    #     tf_layers_dict[layer_id] = np.array([0,3,1,2])
-                    # else:
-                    #     tf_layers_dict[layer_id] = decodedwgt
-                    # #############################################################
 
         ### Convolution
         elif layer.attrib['type'] == 'Convolution':
@@ -2202,6 +2193,23 @@ def convert(model,
             print('Please install edgetpu_compiler according to the following website.')
             print('https://coral.ai/docs/edgetpu/compiler/#system-requirements')
 
+    # ONNX convert
+    if output_onnx:
+        import subprocess
+        try:
+            print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
+            result = subprocess.check_output(['python3',
+                                              '-m', 'tf2onnx.convert',
+                                              '--saved-model', model_output_path,
+                                              '--output', f'{model_output_path}/model_float32.onnx'],
+                                              stderr=subprocess.PIPE).decode('utf-8')
+            print(result)
+            print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float32')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
+            import traceback
+            traceback.print_exc()
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_path', type=str, required=True, help='input IR model path (.xml)')
@@ -2227,6 +2235,7 @@ def main():
     parser.add_argument('--output_tftrt', type=bool, default=False, help='tftrt model output switch')
     parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
     parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
+    parser.add_argument('--output_onnx', type=bool, default=False, help='onnx model output switch')
     parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other')
     parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
@@ -2260,6 +2269,7 @@ def main():
     output_tftrt = args.output_tftrt
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
+    output_onnx = args.output_onnx
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
@@ -2279,7 +2289,8 @@ def main():
         not output_tfjs and \
         not output_tftrt and \
         not output_coreml and \
-        not output_edgetpu:
+        not output_edgetpu and \
+        not output_onnx:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
 
@@ -2306,6 +2317,12 @@ def main():
             print('\'coremltoos\' is not installed. Please run the following command to install \'coremltoos\'.')
             print('pip3 install --upgrade coremltools')
             sys.exit(-1)
+    if output_onnx:
+        if not 'tf2onnx' in package_list:
+            print('\'tf2onnx\' is not installed. Please run the following command to install \'tf2onnx\'.')
+            print('pip3 install --upgrade tf2onnx')
+            sys.exit(-1)
+
     if output_integer_quant_tflite or output_full_integer_quant_tflite:
         if not 'tensorflow-datasets' in package_list:
             print('\'tensorflow-datasets\' is not installed. Please run the following command to install \'tensorflow-datasets\'.')
@@ -2339,7 +2356,7 @@ def main():
             string_formulas_for_normalization,
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg,
-            output_tfjs, output_tftrt, output_coreml, output_edgetpu,
+            output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, weight_replacement_config, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)

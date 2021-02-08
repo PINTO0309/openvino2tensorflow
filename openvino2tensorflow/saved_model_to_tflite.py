@@ -52,7 +52,8 @@ def convert(saved_model_dir_path,
             output_tfjs,
             output_tftrt,
             output_coreml,
-            output_edgetpu):
+            output_edgetpu,
+            output_onnx):
 
     print(f'{Color.REVERCE}Start conversion process from saved_model to tflite{Color.RESET}', '=' * 38)
 
@@ -293,6 +294,23 @@ def convert(saved_model_dir_path,
             import traceback
             traceback.print_exc()
 
+    # ONNX convert
+    if output_onnx:
+        import subprocess
+        try:
+            print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
+            result = subprocess.check_output(['python3',
+                                              '-m', 'tf2onnx.convert',
+                                              '--saved-model', model_output_dir_path,
+                                              '--output', f'{model_output_dir_path}/model_float32.onnx'],
+                                              stderr=subprocess.PIPE).decode('utf-8')
+            print(result)
+            print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_dir_path}/tfjs_model_float32')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
+            import traceback
+            traceback.print_exc()
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--saved_model_dir_path', type=str, required=True, help='Input saved_model dir path')
@@ -316,6 +334,7 @@ def main():
     parser.add_argument('--output_tftrt', type=bool, default=False, help='tftrt model output switch')
     parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
     parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
+    parser.add_argument('--output_onnx', type=bool, default=False, help='onnx model output switch')
 
     args = parser.parse_args()
     saved_model_dir_path = args.saved_model_dir_path
@@ -348,6 +367,7 @@ def main():
     output_tftrt = args.output_tftrt
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
+    output_onnx = args.output_onnx
 
     if not output_no_quant_float32_tflite and \
        not output_weight_quant_tflite and \
@@ -356,7 +376,8 @@ def main():
        not output_tfjs and \
        not output_tftrt and \
        not output_coreml and \
-       not output_edgetpu:
+       not output_edgetpu and \
+       not output_onnx:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
 
@@ -382,6 +403,11 @@ def main():
         if not 'coremltools' in package_list:
             print('\'coremltoos\' is not installed. Please run the following command to install \'coremltoos\'.')
             print('pip3 install --upgrade coremltools')
+            sys.exit(-1)
+    if output_onnx:
+        if not 'tf2onnx' in package_list:
+            print('\'tf2onnx\' is not installed. Please run the following command to install \'tf2onnx\'.')
+            print('pip3 install --upgrade tf2onnx')
             sys.exit(-1)
 
     if output_integer_quant_tflite or output_full_integer_quant_tflite:
@@ -426,7 +452,8 @@ def main():
             output_tfjs,
             output_tftrt,
             output_coreml,
-            output_edgetpu)
+            output_edgetpu,
+            output_onnx)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
