@@ -204,6 +204,7 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--output_coreml OUTPUT_COREML]
                            [--output_edgetpu OUTPUT_EDGETPU]
                            [--output_onnx OUTPUT_ONNX]
+                           [--onnx_opset ONNX_OPSET]
                            [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
                            [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
                            [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
@@ -269,6 +270,8 @@ optional arguments:
                         edgetpu model output switch
   --output_onnx OUTPUT_ONNX
                         onnx model output switch
+  --onnx_opset ONNX_OPSET
+                        onnx opset version number
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
                         Replace swish and hard-swish with each other
   --optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU
@@ -309,6 +312,7 @@ usage: saved_model_to_tflite [-h] --saved_model_dir_path
                              [--output_coreml OUTPUT_COREML]
                              [--output_edgetpu OUTPUT_EDGETPU]
                              [--output_onnx OUTPUT_ONNX]
+                             [--onnx_opset ONNX_OPSET]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -366,6 +370,8 @@ optional arguments:
                         edgetpu model output switch
   --output_onnx OUTPUT_ONNX
                         onnx model output switch
+  --onnx_opset ONNX_OPSET
+                        onnx opset version number
 ```
 ### 5-3. pb to saved_model convert
 ```bash
