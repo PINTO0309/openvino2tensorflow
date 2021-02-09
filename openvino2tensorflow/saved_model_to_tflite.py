@@ -6,7 +6,11 @@ import argparse
 import numpy as np
 from pathlib import Path
 import re
-os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+import logging
+import warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=Warning)
 
 class Color:
     BLACK          = '\033[30m'
@@ -60,6 +64,9 @@ def convert(saved_model_dir_path,
 
     import subprocess
     import tensorflow as tf
+    tf.get_logger().setLevel('INFO')
+    tf.autograph.set_verbosity(0)
+    tf.get_logger().setLevel(logging.ERROR)
     import tensorflow_datasets as tfds
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2_as_graph
 

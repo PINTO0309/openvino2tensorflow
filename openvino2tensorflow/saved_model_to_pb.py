@@ -2,8 +2,15 @@
 ### tensorflow==2.3.1
 
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+import logging
+import warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=Warning)
 import tensorflow as tf
+tf.get_logger().setLevel('INFO')
+tf.autograph.set_verbosity(0)
+tf.get_logger().setLevel(logging.ERROR)
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2_as_graph
 from tensorflow.lite.python.util import run_graph_optimizations, get_grappler_config
 import shutil

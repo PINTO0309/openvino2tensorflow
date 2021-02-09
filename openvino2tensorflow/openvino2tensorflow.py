@@ -64,7 +64,11 @@ import numpy as np
 from pathlib import Path
 import xml.etree.ElementTree as et
 from openvino.inference_engine import IECore
-os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+import logging
+import warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=Warning)
 
 class Color:
     BLACK          = '\033[30m'
@@ -127,6 +131,9 @@ def convert(model,
 
     import subprocess
     import tensorflow as tf
+    tf.get_logger().setLevel('INFO')
+    tf.autograph.set_verbosity(0)
+    tf.get_logger().setLevel(logging.ERROR)
     import tensorflow_datasets as tfds
     from tensorflow.keras import Model, Input
     from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda
@@ -1847,20 +1854,6 @@ def convert(model,
                                                 tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
                                                 tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
 
-            # tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
-            #                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
-            #                                     tf.keras.backend.round((x - input_low) / (input_high - input_low) * (levels-1)) / (levels-1) * (output_high - output_low) + output_low))
-
-            # def roundc(x, input_low, input_high, levels):
-            #     y = (x - input_low) / (input_high - input_low) * (levels-1)
-            #     z = tf.minimum(y, 0) / tf.abs(y)
-            #     return tf.floor(tf.abs(y) + 0.5) * np.where(z == 0.0, 1, z)
-
-            # tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
-            #                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
-            #                                     Lambda(roundc, arguments={'input_low': input_low, 'input_high': input_high, 'levels': levels})(x) / (levels-1) * (output_high - output_low) + output_low))
-
-
         ### Result
         elif layer.attrib['type'] == 'Result':
             tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], name=layer.attrib['name'].split('/')[0])
@@ -1888,14 +1881,15 @@ def convert(model,
             # tf.keras.models.save_model(model, model_output_path, include_optimizer=False, save_format='tf', save_traces=False)
             # model.save(model_output_path, include_optimizer=False, save_format='tf', save_traces=False)
             print(f'{Color.GREEN}saved_model output complete!{Color.RESET}')
-        except Exception as e:
-            print(f'{Color.RED}ERROR:{Color.RESET}', e)
-            import traceback
-            traceback.print_exc()
+        except TypeError as e:
             print(f'{Color.GREEN}Switch to the output of an optimized protocol buffer file (.pb).{Color.RESET}')
             output_pb = True
             output_h5 = False
             flag_for_output_switching_from_saved_model_to_pb_due_to_error = True
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
 
     # .h5 output
     if output_h5:
