@@ -171,7 +171,32 @@ Work in progress now.
 |88|Result|Identity|Output|
 
 ## 4. Setup
+### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
+You do not need to install any packages other than Docker.
+```bash
+$ docker build -t pinto0309/openvino2tensorflow:latest .
 
+# If no INT8 quantization or conversion to EdgeTPU model is performed
+$ docker run --gpus all -it --rm \
+    -v `pwd`:/workspace/resources \
+    -e LOCAL_UID=$(id -u $USER) \
+    -e LOCAL_GID=$(id -g $USER) \
+    pinto0309/openvino2tensorflow:latest bash
+
+$ source /opt/intel/openvino_2021/bin/setupvars.sh
+
+# For INT8 quantization and conversion to EdgeTPU model
+# "TFDS" is the folder where TensorFlow Datasets are downloaded.
+$ docker run --gpus all -it --rm \
+    -v `pwd`:/workspace/resources \
+    -v ${HOME}/TFDS:/workspace/resources/TFDS \
+    -e LOCAL_UID=$(id -u $USER) \
+    -e LOCAL_GID=$(id -g $USER) \
+    pinto0309/openvino2tensorflow:latest bash
+
+$ source /opt/intel/openvino_2021/bin/setupvars.sh
+```
+### 4-2. **[Environment construction pattern 2]** Execution by Host machine
 To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
 
 ```bash
