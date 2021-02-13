@@ -27,6 +27,7 @@ Work in progress now.
 - tf2onnx **`pip3 install --upgrade tf2onnx`**
 - tensorflow-datasets **`pip3 install --upgrade tensorflow-datasets`**
 - **[edgetpu_compiler](https://coral.ai/docs/edgetpu/compiler/#system-requirements)**
+- Docker
 
 ## 2. Use case
 
@@ -174,6 +175,8 @@ Work in progress now.
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
 You do not need to install any packages other than Docker.
 ```bash
+$ docker pull pinto0309/openvino2tensorflow
+or
 $ docker build -t pinto0309/openvino2tensorflow:latest .
 
 # If no INT8 quantization or conversion to EdgeTPU model is performed
