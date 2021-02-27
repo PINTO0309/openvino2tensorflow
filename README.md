@@ -282,8 +282,8 @@ optional arguments:
                         Pythons eval() function.
                         Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
   --calib_ds_type CALIB_DS_TYPE
-                        Types of data sets for calibration. tfds or
-                        numpy(Future Implementation)
+                        Types of data sets for calibration. tfds or numpy
+                        Default: numpy
   --ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION
                         Dataset name for TensorFlow Datasets for calibration.
                         https://www.tensorflow.org/datasets/catalog/overview
