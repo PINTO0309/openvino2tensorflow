@@ -7,5 +7,6 @@ echo "Starting with UID : $USER_ID, GID: $GROUP_ID"
 useradd -u $USER_ID -o -m user
 groupmod -g $GROUP_ID user
 export HOME=/home/user
+cp -R /workspace/sample_npy /home/user
 
 exec /usr/sbin/gosu user "$@"
