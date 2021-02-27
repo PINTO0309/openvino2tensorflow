@@ -4,7 +4,7 @@
   <img src="https://user-images.githubusercontent.com/33194443/104584047-4e688f80-56a5-11eb-8dc2-5816487239d0.png" />
 </p>
 
-This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5, TensorFlow.js, TF-TRT(TensorRT), CoreML, EdgeTPU, ONNX and pb. And the conversion from .pb to saved_model and from saved_model to .pb and from .pb to .tflite and from saved_model to tflite and saved_model to onnx.
+This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5, TensorFlow.js, TF-TRT(TensorRT), CoreML, EdgeTPU, ONNX, Myriad blob and pb. And the conversion from .pb to saved_model and from saved_model to .pb and from .pb to .tflite and from saved_model to tflite and saved_model to onnx.
 
 Work in progress now.
 
@@ -233,12 +233,14 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
                            [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
                            [--tfds_download_flg TFDS_DOWNLOAD_FLG]
+                           [--load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY]
                            [--output_tfjs OUTPUT_TFJS]
                            [--output_tftrt OUTPUT_TFTRT]
                            [--output_coreml OUTPUT_COREML]
                            [--output_edgetpu OUTPUT_EDGETPU]
                            [--output_onnx OUTPUT_ONNX]
                            [--onnx_opset ONNX_OPSET]
+                           [--output_myriad OUTPUT_MYRIAD]
                            [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
                            [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
                            [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
@@ -294,6 +296,10 @@ optional arguments:
   --tfds_download_flg TFDS_DOWNLOAD_FLG
                         True to automatically download datasets from
                         TensorFlow Datasets. True or False
+  --load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY
+                        The path from which to load the .npy file containing
+                        the numpy binary version of the calibration data.
+                        Default: sample_npy/calibration_data_img_sample.npy
   --output_tfjs OUTPUT_TFJS
                         tfjs model output switch
   --output_tftrt OUTPUT_TFTRT
@@ -306,6 +312,8 @@ optional arguments:
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
+  --output_myriad OUTPUT_MYRIAD
+                        myriad inference engine blob output switch
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
                         Replace swish and hard-swish with each other
   --optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU
@@ -561,6 +569,13 @@ Structure of JSON sample
 |2-1|layer_id|ID of the Const layer whose weight/constant parameter is to be swapped. For example, specify "1123" for layer id="1123" for type="Const" in .xml.<br>![Screenshot 2021-02-08 01:06:30](https://user-images.githubusercontent.com/33194443/107152221-068a0f00-69aa-11eb-9d9e-f48bb1c3f781.png)|
 |2-2|replace_mode|"direct" or "npy".<br>"direct": Specify the values of the Numpy matrix directly in the "values" attribute. Ignores the values recorded in the .bin file and replaces them with the values specified in "values".<br>![Screenshot 2021-02-08 01:12:06](https://user-images.githubusercontent.com/33194443/107152361-cc6d3d00-69aa-11eb-8302-5e18a723ec34.png)<br>"npy": Load a Numpy binary file with the matrix output by np.save('xyz', a). The "values" attribute specifies the path to the Numpy binary file.<br>![Screenshot 2021-02-08 01:12:23](https://user-images.githubusercontent.com/33194443/107152376-dc851c80-69aa-11eb-9b3f-469b91af1d19.png)|
 |2-3|values|Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin. The way to specify is as described in the description of 'replace_mode'.|
+
+### 6-8. Check the contents of the .npy file, which is a binary version of the image file
+```
+$ view_npy --npy_file_path sample_npy/calibration_data_img_sample.npy
+```
+Press the **`Q`** button to display the next image. **`calibration_data_img_sample.npy`** contains 20 images extracted from the MS-COCO data set.  
+![ezgif com-gif-maker](https://user-images.githubusercontent.com/33194443/109318923-aba15480-7891-11eb-84aa-034f77125f34.gif)
 
 ## 7. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)

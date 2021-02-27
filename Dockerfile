@@ -69,6 +69,10 @@ RUN gdown --id 1nTSYsPXbZTIO2B7nIMtSpn5bBMlCr46N \
 
 WORKDIR /workspace
 
+# Download the ultra-small sample data set for INT8 calibration
+RUN mkdir sample_npy \
+    && gdown --id 1nTSYsPXbZTIO2B7nIMtSpn5bBMlCr46N -O sample_npy/calibration_data_img_sample.npy
+
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
