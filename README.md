@@ -38,6 +38,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
+  - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW)
 
 - Caffe (NCHW) -> OpenVINO (NCHW) ->
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
@@ -46,6 +47,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
+  - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW)
 
 - MXNet (NCHW) -> OpenVINO (NCHW) ->
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
@@ -54,6 +56,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
+  - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW)
 
 - Keras (NHWC) -> OpenVINO (NCHW・Optimized) ->
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC)
@@ -62,6 +65,7 @@ Work in progress now.
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC)
+  - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW)
 
 - saved_model -> **`saved_model_to_pb`** -> pb
 
