@@ -241,6 +241,8 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--output_onnx OUTPUT_ONNX]
                            [--onnx_opset ONNX_OPSET]
                            [--output_myriad OUTPUT_MYRIAD]
+                           [--vpu_number_of_shaves VPU_NUMBER_OF_SHAVES]
+                           [--vpu_number_of_cmx_slices VPU_NUMBER_OF_CMX_SLICES]
                            [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
                            [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
                            [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
@@ -314,6 +316,10 @@ optional arguments:
                         onnx opset version number
   --output_myriad OUTPUT_MYRIAD
                         myriad inference engine blob output switch
+  --vpu_number_of_shaves VPU_NUMBER_OF_SHAVES
+                        vpu number of shaves. Default: 4
+  --vpu_number_of_cmx_slices VPU_NUMBER_OF_CMX_SLICES
+                        vpu number of cmx slices. Default: 4
   --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
                         Replace swish and hard-swish with each other
   --optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU

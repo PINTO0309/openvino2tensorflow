@@ -122,6 +122,8 @@ def convert(model_path,
             output_onnx,
             onnx_opset,
             output_myriad,
+            vpu_number_of_shaves,
+            vpu_number_of_cmx_slices,
             replace_swish_and_hardswish,
             optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
@@ -2249,8 +2251,8 @@ def convert(model_path,
             INTEL_OPENVINO_DIR = os.environ['INTEL_OPENVINO_DIR']
             result = subprocess.check_output([f'{INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/lib/intel64/myriad_compile',
                                                 '-m', f'{model_path}.xml',
-                                                '-VPU_NUMBER_OF_SHAVES', '4',
-                                                '-VPU_NUMBER_OF_CMX_SLICES', '4',
+                                                '-VPU_NUMBER_OF_SHAVES', f'{vpu_number_of_shaves}',
+                                                '-VPU_NUMBER_OF_CMX_SLICES', f'{vpu_number_of_cmx_slices}',
                                                 '-o', f'{model_output_path}/openvino/myriad/saved_model.blob'],
                                                 stderr=subprocess.PIPE).decode('utf-8')
             print(result)
@@ -2290,6 +2292,8 @@ def main():
     parser.add_argument('--output_onnx', type=bool, default=False, help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
     parser.add_argument('--output_myriad', type=bool, default=False, help='myriad inference engine blob output switch')
+    parser.add_argument('--vpu_number_of_shaves', type=int, default=4, help='vpu number of shaves. Default: 4')
+    parser.add_argument('--vpu_number_of_cmx_slices', type=int, default=4, help='vpu number of cmx slices. Default: 4')
     parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other')
     parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
@@ -2327,6 +2331,8 @@ def main():
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
     output_myriad = args.output_myriad
+    vpu_number_of_shaves = args.vpu_number_of_shaves
+    vpu_number_of_cmx_slices = args.vpu_number_of_cmx_slices
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
@@ -2415,6 +2421,7 @@ def main():
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg, npy_load_default_path, load_dest_file_path_for_the_calib_npy,
             output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
+            vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, weight_replacement_config, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
