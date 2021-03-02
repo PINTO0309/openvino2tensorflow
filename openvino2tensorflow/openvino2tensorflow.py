@@ -485,7 +485,10 @@ def convert(model_path,
                     # Add
                     edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
                     edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
-                    tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                    try:
+                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                    except:
+                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].transpose(0,2,3,1))
             else:
                 # Add
                 if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
