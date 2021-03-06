@@ -140,7 +140,6 @@ def convert(saved_model_dir_path,
 
     # Downloading datasets for calibration
     raw_test_data = None
-    input_shapes = None
     if output_integer_quant_tflite or output_full_integer_quant_tflite:
         if calib_ds_type == 'tfds':
             print(f'{Color.REVERCE}TFDS download started{Color.RESET}', '=' * 63)
@@ -175,7 +174,6 @@ def convert(saved_model_dir_path,
                 traceback.print_exc()
         else:
             pass
-        input_shapes = [model_input.shape for model_input in model.inputs]
 
     def representative_dataset_gen():
         if calib_ds_type == 'tfds':
