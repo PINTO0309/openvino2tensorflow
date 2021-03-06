@@ -53,6 +53,8 @@ def convert(saved_model_dir_path,
             split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds,
             tfds_download_flg,
+            npy_load_default_path,
+            load_dest_file_path_for_the_calib_npy,
             output_tfjs,
             output_tftrt,
             output_coreml,
@@ -138,6 +140,7 @@ def convert(saved_model_dir_path,
 
     # Downloading datasets for calibration
     raw_test_data = None
+    input_shapes = None
     if output_integer_quant_tflite or output_full_integer_quant_tflite:
         if calib_ds_type == 'tfds':
             print(f'{Color.REVERCE}TFDS download started{Color.RESET}', '=' * 63)
@@ -148,20 +151,53 @@ def convert(saved_model_dir_path,
                                     download=tfds_download_flg)
             print(f'{Color.GREEN}TFDS download complete!{Color.RESET}')
         elif calib_ds_type == 'numpy':
-            pass
+            print(f'{Color.REVERCE}numpy dataset load started{Color.RESET}', '=' * 58)
+            try:
+                if load_dest_file_path_for_the_calib_npy == npy_load_default_path and not os.path.exists(npy_load_default_path):
+                    os.makedirs(os.path.dirname(npy_load_default_path), exist_ok=True)
+                    import gdown
+                    import subprocess
+                    try:
+                        result = subprocess.check_output(['gdown',
+                                                        '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
+                                                        '-O', load_dest_file_path_for_the_calib_npy],
+                                                        stderr=subprocess.PIPE).decode('utf-8')
+                    except:
+                        result = subprocess.check_output(['sudo', 'gdown',
+                                                        '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
+                                                        '-O', load_dest_file_path_for_the_calib_npy],
+                                                        stderr=subprocess.PIPE).decode('utf-8')
+                raw_test_data = np.load(load_dest_file_path_for_the_calib_npy)
+                print(f'{Color.GREEN}numpy dataset load complete!{Color.RESET}')
+            except subprocess.CalledProcessError as e:
+                print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
+                import traceback
+                traceback.print_exc()
         else:
             pass
+        input_shapes = [model_input.shape for model_input in model.inputs]
 
     def representative_dataset_gen():
-        for data in raw_test_data.take(10):
-            image = data['image'].numpy()
-            images = []
-            for shape in input_shapes:
-                data = tf.image.resize(image, (shape[1], shape[2]))
-                tmp_image = eval(string_formulas_for_normalization) # Default: (data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]
-                tmp_image = tmp_image[np.newaxis,:,:,:]
-                images.append(tmp_image)
-            yield images
+        if calib_ds_type == 'tfds':
+            for data in raw_test_data.take(10):
+                image = data['image'].numpy()
+                images = []
+                for shape in input_shapes:
+                    data = tf.image.resize(image, (shape[1], shape[2]))
+                    tmp_image = eval(string_formulas_for_normalization) # Default: (data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]
+                    tmp_image = tmp_image[np.newaxis,:,:,:]
+                    images.append(tmp_image)
+                yield images
+        elif calib_ds_type == 'numpy':
+            for idx in range(raw_test_data.shape[0]):
+                image = raw_test_data[idx]
+                images = []
+                for shape in input_shapes:
+                    data = tf.image.resize(image, (shape[1], shape[2]))
+                    tmp_image = eval(string_formulas_for_normalization) # Default: (data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]
+                    tmp_image = tmp_image[np.newaxis,:,:,:]
+                    images.append(tmp_image)
+                yield images
 
     # Integer Quantization
     if output_integer_quant_tflite:
@@ -333,12 +369,14 @@ def main():
     parser.add_argument('--output_full_integer_quant_tflite', type=bool, default=False, help='full integer quant tflite output switch')
     parser.add_argument('--output_integer_quant_type', type=str, default='int8', help='Input and output types when doing Integer Quantization (\'int8 (default)\' or \'uint8\')')
     parser.add_argument('--string_formulas_for_normalization', type=str, default='(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]', help='String formulas for normalization. It is evaluated by Python\'s eval() function. Default: \'(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]\'')
-    parser.add_argument('--calib_ds_type', type=str, default='tfds', help='Types of data sets for calibration. tfds or numpy(Future Implementation)')
+    parser.add_argument('--calib_ds_type', type=str, default='numpy', help='Types of data sets for calibration. tfds or numpy. Only one of them can be specified. Default: numpy [20, 513, 513, 3] -> [Number of images, h, w, c]')
     parser.add_argument('--ds_name_for_tfds_for_calibration', type=str, default='coco/2017', help='Dataset name for TensorFlow Datasets for calibration. https://www.tensorflow.org/datasets/catalog/overview')
     parser.add_argument('--split_name_for_tfds_for_calibration', type=str, default='validation', help='Split name for TensorFlow Datasets for calibration. https://www.tensorflow.org/datasets/catalog/overview')
     tfds_dl_default_path = f'{str(Path.home())}/TFDS'
     parser.add_argument('--download_dest_folder_path_for_the_calib_tfds', type=str, default=tfds_dl_default_path, help='Download destination folder path for the calibration dataset. Default: $HOME/TFDS')
     parser.add_argument('--tfds_download_flg', type=bool, default=True, help='True to automatically download datasets from TensorFlow Datasets. True or False')
+    npy_load_default_path = 'sample_npy/calibration_data_img_sample.npy'
+    parser.add_argument('--load_dest_file_path_for_the_calib_npy', type=str, default=npy_load_default_path, help='The path from which to load the .npy file containing the numpy binary version of the calibration data. Default: sample_npy/calibration_data_img_sample.npy')
     parser.add_argument('--output_tfjs', type=bool, default=False, help='tfjs model output switch')
     parser.add_argument('--output_tftrt', type=bool, default=False, help='tftrt model output switch')
     parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
@@ -373,6 +411,7 @@ def main():
     split_name_for_tfds_for_calibration = args.split_name_for_tfds_for_calibration
     download_dest_folder_path_for_the_calib_tfds = args.download_dest_folder_path_for_the_calib_tfds
     tfds_download_flg = args.tfds_download_flg
+    load_dest_file_path_for_the_calib_npy = args.load_dest_file_path_for_the_calib_npy
     output_tfjs = args.output_tfjs
     output_tftrt = args.output_tftrt
     output_coreml = args.output_coreml
@@ -436,8 +475,7 @@ def main():
     if calib_ds_type == 'tfds':
         pass
     elif calib_ds_type == 'numpy':
-        print('The Numpy mode of the data set for calibration will be implemented in the future.')
-        sys.exit(-1)
+        pass
     else:
         print('Only \'tfds\' or \'numpy\' can be specified for calib_ds_type.')
         sys.exit(-1)
@@ -460,6 +498,8 @@ def main():
             split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds,
             tfds_download_flg,
+            npy_load_default_path,
+            load_dest_file_path_for_the_calib_npy,
             output_tfjs,
             output_tftrt,
             output_coreml,
