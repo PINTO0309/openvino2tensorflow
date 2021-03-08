@@ -819,7 +819,11 @@ def convert(model_path,
             mode = data.attrib['mode']
             if mode == 'linear_onnx':
                 mode = 'linear'
-            antialias = False if int(data.attrib['antialias']) == 0 else True
+            antialias = False
+            try:
+                antialias = False if int(data.attrib['antialias']) == 0 else True
+            except:
+                antialias = False if data.attrib['antialias'].upper() == 'FALSE' else True
             out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
             out_height = int(out_port0[2])
             out_width  = int(out_port0[3])
