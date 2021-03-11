@@ -2244,7 +2244,7 @@ def convert(model_path,
                                               '--output', f'{model_output_path}/model_float32.onnx'],
                                               stderr=subprocess.PIPE).decode('utf-8')
             print(result)
-            print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float32')
+            print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_path}/model_float32.onnx')
         except subprocess.CalledProcessError as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
             import traceback
