@@ -1205,12 +1205,12 @@ def convert(model_path,
                 try:
                     transpose_a = True if int(data.attrib['transpose_a']) == 1 else False
                 except:
-                    transpose_a = True if data.attrib['transpose_a'] == 'True' else False
+                    transpose_a = True if (data.attrib['transpose_a'] == 'True' or data.attrib['transpose_a'] == 'true') else False
             if not data is None and 'transpose_b' in data.attrib:
                 try:
                     transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
                 except:
-                    transpose_b = True if data.attrib['transpose_b'] == 'True' else False
+                    transpose_b = True if (data.attrib['transpose_b'] == 'True'or data.attrib['transpose_b'] == 'true') else False
             
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], transpose_a, transpose_b)
 
@@ -1815,7 +1815,7 @@ def convert(model_path,
         elif layer.attrib['type'] == 'SquaredDifference':
             tf_layers_dict[layer_id] = tf.math.squared_difference(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
 
-        ### FakeQuantize - WIP
+        ### FakeQuantize
         elif layer.attrib['type'] == 'FakeQuantize':
             x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
             x = tf.cast(x, dtype=tf.float32)
@@ -1865,6 +1865,10 @@ def convert(model_path,
             tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
                                                 tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
                                                 tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
+
+        ### Tile
+        elif layer.attrib['type'] == 'Tile':
+            tf_layers_dict[layer_id] = tf.tile(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
 
         ### Result
         elif layer.attrib['type'] == 'Result':

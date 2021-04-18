@@ -173,7 +173,8 @@ Work in progress now.
 |85|Sqrt|sqrt||
 |86|SquaredDifference|squared_difference||
 |87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add||
-|88|Result|Identity|Output|
+|88|Tile|tile||
+|89|Result|Identity|Output|
 
 ## 4. Setup
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
