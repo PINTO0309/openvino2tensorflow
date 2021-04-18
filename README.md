@@ -184,24 +184,30 @@ or
 $ docker build -t pinto0309/openvino2tensorflow:latest .
 
 # If no INT8 quantization or conversion to EdgeTPU model is performed
-$ docker run --gpus all -it --rm \
-    -v `pwd`:/workspace/resources \
-    -e LOCAL_UID=$(id -u $USER) \
-    -e LOCAL_GID=$(id -g $USER) \
+$ xhost +local: && \
+  docker run --gpus all -it --rm \
+    -v `pwd`:/home/user/workdir \
+    -v /tmp/.X11-unix/:/tmp/.X11-unix:rw \
+    --device /dev/video0:/dev/video0:mwr \
+    --net=host \
+    -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+    -e DISPLAY=$DISPLAY \
+    --privileged \
     pinto0309/openvino2tensorflow:latest bash
-
-$ source /opt/intel/openvino_2021/bin/setupvars.sh
 
 # For INT8 quantization and conversion to EdgeTPU model
 # "TFDS" is the folder where TensorFlow Datasets are downloaded.
-$ docker run --gpus all -it --rm \
-    -v `pwd`:/workspace/resources \
-    -v ${HOME}/TFDS:/workspace/resources/TFDS \
-    -e LOCAL_UID=$(id -u $USER) \
-    -e LOCAL_GID=$(id -g $USER) \
+$ xhost +local: && \
+  docker run --gpus all -it --rm \
+    -v `pwd`:/home/user/workdir \
+    -v ${HOME}/TFDS:/workspace/TFDS \
+    -v /tmp/.X11-unix/:/tmp/.X11-unix:rw \
+    --device /dev/video0:/dev/video0:mwr \
+    --net=host \
+    -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+    -e DISPLAY=$DISPLAY \
+    --privileged \
     pinto0309/openvino2tensorflow:latest bash
-
-$ source /opt/intel/openvino_2021/bin/setupvars.sh
 ```
 ### 4-2. **[Environment construction pattern 2]** Execution by Host machine
 To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
