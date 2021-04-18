@@ -193,7 +193,7 @@ $ xhost +local: && \
     -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
     -e DISPLAY=$DISPLAY \
     --privileged \
-    pinto0309/openvino2tensorflow:latest bash
+    pinto0309/openvino2tensorflow:latest
 
 # For INT8 quantization and conversion to EdgeTPU model
 # "TFDS" is the folder where TensorFlow Datasets are downloaded.
@@ -207,7 +207,7 @@ $ xhost +local: && \
     -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
     -e DISPLAY=$DISPLAY \
     --privileged \
-    pinto0309/openvino2tensorflow:latest bash
+    pinto0309/openvino2tensorflow:latest
 ```
 ### 4-2. **[Environment construction pattern 2]** Execution by Host machine
 To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
