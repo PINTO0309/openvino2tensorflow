@@ -153,7 +153,7 @@ def convert(model_path,
     import pprint
 
     # for unpacking binary buffer
-    format_config = { 'FP32' : ['f', 4], 
+    format_config = { 'FP32' : ['f', 4],
                       'FP16' : ['e', 2],
                       'I64'  : ['q', 8],
                       'I32'  : ['i', 4],
@@ -197,7 +197,7 @@ def convert(model_path,
     # Read IR weight data
     with open(model_path+'.bin', 'rb') as f:
         binWeight = f.read()
-    # Parse IR XML file, 
+    # Parse IR XML file,
     tree = et.parse(model_path+'.xml')
     root = tree.getroot()
     edges = root.find('edges')
@@ -229,7 +229,7 @@ def convert(model_path,
             except:
                 # TopK
                 return 'other'
- 
+
     def get_tf_edges_from(tf_edges, layer_id, edge_index=-1):
         if edge_index == -1:
             # Add, Concat
@@ -256,7 +256,7 @@ def convert(model_path,
             if before_layer_type == 'Split':
                 return tf_edges[layer_id][edge_index]
             elif before_layer_type == 'other':
-                return tf_edges[layer_id][edge_index]            
+                return tf_edges[layer_id][edge_index]
             else:
                 return tf_edges[layer_id][edge_index].split(':')[0]
 
@@ -522,7 +522,7 @@ def convert(model_path,
                     tf_layers_dict[layer_id] = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 else:
                     tf_layers_dict[layer_id] = PReLU(alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]), shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-    
+
         ### Clamp
         elif layer.attrib['type'] == 'Clamp':
             cmin = float(data.attrib['min'])
@@ -699,11 +699,11 @@ def convert(model_path,
                                             dilation_rate=dilations,
                                             use_bias=False,
                                             kernel_initializer=Constant(kernel[:,:,:,i])))
- 
+
                 x_splits = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], groups, -1)
                 x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
                 tf_layers_dict[layer_id] = tf.concat(x_outputs, -1)
-       
+
             else:
                 # DepthwiseConv2D
                 try:
@@ -764,7 +764,22 @@ def convert(model_path,
                 axis = int(data.attrib['axis'])
             if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                 axis = -1
-            tf_layers_dict[layer_id] = tf.concat([tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)], axis=axis)
+
+            length_list = []
+            for from_layer_id in get_tf_edges_from(tf_edges, layer_id):
+                length_list.append(len(tf_layers_dict[from_layer_id].shape))
+            axis_zero_count = length_list.count(0)
+            sum_of_axis = sum(length_list)
+            if axis_zero_count > 0 and sum_of_axis > 0:
+                tensor_list = []
+                for length, from_layer_id in zip(length_list, get_tf_edges_from(tf_edges, layer_id)):
+                    if length == 0:
+                        tensor_list.append([tf_layers_dict[from_layer_id]])
+                    else:
+                        tensor_list.append(tf_layers_dict[from_layer_id])
+                tf_layers_dict[layer_id] = tf.concat(tensor_list, axis=axis)
+            else:
+                tf_layers_dict[layer_id] = tf.concat([tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)], axis=axis)
 
         ### Multiply
         elif layer.attrib['type'] == 'Multiply':
@@ -880,7 +895,7 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
                     else:
                         print(f'The Interpolate - {mode} is not yet implemented.')
-                        sys.exit(-1) 
+                        sys.exit(-1)
                 else:
                     if mode == 'linear':
                         if output_edgetpu:
@@ -947,7 +962,7 @@ def convert(model_path,
             if type(new_axis_mask) == np.ndarray and len(new_axis_mask) == 4:
                 new_axis_mask[0], new_axis_mask[1], new_axis_mask[2], new_axis_mask[3] = new_axis_mask[0], new_axis_mask[2], new_axis_mask[3], new_axis_mask[1]
             new_axis_mask = np.argmin(new_axis_mask)
-            
+
 
             if type(shrink_axis_mask) == np.ndarray and len(shrink_axis_mask) == 4:
                 shrink_axis_mask[0], shrink_axis_mask[1], shrink_axis_mask[2], shrink_axis_mask[3] = shrink_axis_mask[0], shrink_axis_mask[2], shrink_axis_mask[3], shrink_axis_mask[1]
@@ -1211,7 +1226,7 @@ def convert(model_path,
                     transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
                 except:
                     transpose_b = True if (data.attrib['transpose_b'] == 'True'or data.attrib['transpose_b'] == 'true') else False
-            
+
             tf_layers_dict[layer_id] = tf.linalg.matmul(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], transpose_a, transpose_b)
 
         ### Reshape - TODO
@@ -1283,7 +1298,7 @@ def convert(model_path,
                             shape[0], shape[1], shape[2] = shape[0], shape[2], shape[1]
 
                 elif op_len2 == 1 and op2.shape[0] == 4:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route3', op_len2, shape)                 
+                    # print('@@@@@@@@@@@@@@@@@ op / const - route3', op_len2, shape)
                     one_count_1 = 0
                     for idx in op1.shape:
                         if idx == 1:
@@ -1364,7 +1379,7 @@ def convert(model_path,
                 #     shape_tmp.append(op2[1])
                 else:
                     for i in range(op2.shape[0]):
-                        shape.append(op2[i])           
+                        shape.append(op2[i])
             else:
                 # const and const
                 if op_len1 == 4:
@@ -1540,7 +1555,7 @@ def convert(model_path,
         elif layer.attrib['type'] == 'Subtract':
             # No broadcast
             tf_layers_dict[layer_id] = tf.math.subtract(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-    
+
         ### Unsqueeze - TODO
         elif layer.attrib['type'] == 'Unsqueeze':
             input_shape = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
@@ -1810,7 +1825,7 @@ def convert(model_path,
         ### Sqrt
         elif layer.attrib['type'] == 'Sqrt':
             tf_layers_dict[layer_id] = tf.math.sqrt(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-        
+
         ### SquaredDifference
         elif layer.attrib['type'] == 'SquaredDifference':
             tf_layers_dict[layer_id] = tf.math.squared_difference(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
@@ -1844,7 +1859,7 @@ def convert(model_path,
                 output_low = output_low.numpy().transpose(0,2,3,1)
             elif type(output_low) == np.ndarray and len(output_low.shape) == 4:
                 output_low = output_low.transpose(0,2,3,1)
-                
+
             output_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)]
             output_high = tf.cast(output_high, dtype=tf.float32)
             if isinstance(output_high, tf.Tensor) and len(output_high.shape) == 4:
@@ -1983,7 +1998,7 @@ def convert(model_path,
                     copy_tree(saved_model_tmp, model_output_path)
                     shutil.rmtree(saved_model_tmp, ignore_errors=True)
                     print(f'{Color.GREEN}Optimized graph converted to SavedModel!{Color.RESET} - {model_output_path}')
-                
+
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
             import traceback
@@ -2421,7 +2436,7 @@ def main():
 
     if weight_replacement_config and not os.path.exists(weight_replacement_config):
         print('The json file does not exist in the path specified in weight_replacement_config.')
-        sys.exit(-1) 
+        sys.exit(-1)
 
     del package_list
     os.makedirs(model_output_path, exist_ok=True)
