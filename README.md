@@ -9,13 +9,13 @@ This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, 
 Work in progress now.
 
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
-  
+
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/openvino2tensorflow?color=2BAF2B&label=Downloads%EF%BC%8FInstalled)](https://pypistats.org/packages/openvino2tensorflow) ![GitHub](https://img.shields.io/github/license/PINTO0309/openvino2tensorflow?color=2BAF2B) [![PyPI](https://img.shields.io/pypi/v/openvino2tensorflow?color=2BAF2B)](https://pypi.org/project/openvino2tensorflow/)
-  
+
 ![ezgif com-gif-maker (4)](https://user-images.githubusercontent.com/33194443/103457894-4ffd9380-4d46-11eb-86dd-f753f2fca093.gif)
-  
+
 ![ezgif com-gif-maker (3)](https://user-images.githubusercontent.com/33194443/103456348-8d5b2480-4d38-11eb-8a58-9b7c7203b18c.gif)
-  
+
 ## 1. Environment
 - TensorFlow v2.3.1+ **`pip3 install --upgrade tensorflow`** or **`pip3 install --upgrade tf-nightly`**
 - OpenVINO 2021.1.110+
@@ -226,7 +226,8 @@ $ pip3 install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
 ## 5. Usage
 ### 5-1. openvino to tensorflow convert
 ```bash
-usage: openvino2tensorflow [-h] --model_path MODEL_PATH
+usage: openvino2tensorflow [-h]
+                           --model_path MODEL_PATH
                            [--model_output_path MODEL_OUTPUT_PATH]
                            [--output_saved_model OUTPUT_SAVED_MODEL]
                            [--output_h5 OUTPUT_H5]
@@ -258,6 +259,7 @@ usage: openvino2tensorflow [-h] --model_path MODEL_PATH
                            [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
                            [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
                            [--yolact]
+                           [--restricted_resize_image_mode]
                            [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
                            [--debug]
                            [--debug_layer_number DEBUG_LAYER_NUMBER]
@@ -337,12 +339,18 @@ optional arguments:
                         Optimizing hardswish for edgetpu
   --replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX
                         Replace prelu and minimum/maximum with each other
-  --yolact              Specify when converting the Yolact model
+  --yolact
+                        Specify when converting the Yolact model
+  --restricted_resize_image_mode
+                        Specify this if the upsampling contains OPs that are
+                        not scaled by integer multiples. Optimization for
+                        EdgeTPU will be disabled.
   --weight_replacement_config WEIGHT_REPLACEMENT_CONFIG
                         Replaces the value of Const for each layer_id defined
                         in json. Specify the path to the json file.
                         'weight_replacement_config.json'
-  --debug               debug mode switch
+  --debug
+                        debug mode switch
   --debug_layer_number DEBUG_LAYER_NUMBER
                         The last layer number to output when debugging. Used
                         only when --debug=True
@@ -596,7 +604,7 @@ Structure of JSON sample
 ```
 $ view_npy --npy_file_path sample_npy/calibration_data_img_sample.npy
 ```
-Press the **`Q`** button to display the next image. **`calibration_data_img_sample.npy`** contains 20 images extracted from the MS-COCO data set.  
+Press the **`Q`** button to display the next image. **`calibration_data_img_sample.npy`** contains 20 images extracted from the MS-COCO data set.
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/33194443/109318923-aba15480-7891-11eb-84aa-034f77125f34.gif)
 
 ## 7. Output sample
@@ -604,7 +612,7 @@ Press the **`Q`** button to display the next image. **`calibration_data_img_samp
 
 
 ## 8. Model Structure
-**[https://digital-standard.com/threedpose/models/Resnet34_3inputs_448x448_20200609.onnx](https://github.com/digital-standard/ThreeDPoseUnityBarracuda#download-and-put-files)**  
+**[https://digital-standard.com/threedpose/models/Resnet34_3inputs_448x448_20200609.onnx](https://github.com/digital-standard/ThreeDPoseUnityBarracuda#download-and-put-files)**
 
 |ONNX|OpenVINO|TFLite|
 |:--:|:--:|:--:|
