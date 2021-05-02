@@ -128,6 +128,7 @@ def convert(model_path,
             optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
             yolact,
+            restricted_resize_image_mode,
             weight_replacement_config,
             debug,
             debug_layer_number):
@@ -461,13 +462,17 @@ def convert(model_path,
                                                 use_bias=False,
                                                 kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
             except:
-                tf_layers_dict[layer_id] = Conv2D(filters=filters,
-                                                kernel_size=kernel_size,
-                                                strides=strides,
-                                                padding=padding,
-                                                dilation_rate=dilations,
-                                                use_bias=False,
-                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                try:
+                    tf_layers_dict[layer_id] = Conv2D(filters=filters,
+                                                    kernel_size=kernel_size,
+                                                    strides=strides,
+                                                    padding=padding,
+                                                    dilation_rate=dilations,
+                                                    use_bias=False,
+                                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                except:
+                    # Weights from OP that are not fixed values
+                    tf_layers_dict[layer_id] = tf.nn.conv2d(input=orig, filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], strides=strides, padding=padding.upper(), dilations=dilations)
 
         ### Add
         elif layer.attrib['type'] == 'Add':
@@ -850,6 +855,7 @@ def convert(model_path,
             upsampling_factor_width  = out_width // input_shape_width
 
             def upsampling2d_bilinear(x, upsampling_factor_height, upsampling_factor_width):
+                print('x.shape[1], upsampling_factor_height', x.shape[1], upsampling_factor_height, 'x.shape[2], upsampling_factor_width', x.shape[2], upsampling_factor_width, x)
                 h = x.shape[1] * upsampling_factor_height
                 w = x.shape[2] * upsampling_factor_width
                 if output_edgetpu:
@@ -867,50 +873,59 @@ def convert(model_path,
                 else:
                     return tf.image.resize(x, [h, w], method='nearest')
 
-            if (upsampling_factor_height * input_shape_height) == out_height and (upsampling_factor_width * input_shape_width) == out_width and upsampling_factor_height >= 1.0 and upsampling_factor_width >= 1.0:
-                # Upsampling
+            if not restricted_resize_image_mode:
+
+                if (upsampling_factor_height * input_shape_height) == out_height and (upsampling_factor_width * input_shape_width) == out_width and upsampling_factor_height >= 1.0 and upsampling_factor_width >= 1.0:
+                    # Upsampling
+                    if mode == 'linear':
+                        tf_layers_dict[layer_id] = Lambda(upsampling2d_bilinear,
+                                                            arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                    'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    elif mode == 'nearest':
+                        tf_layers_dict[layer_id] = Lambda(upsampling2d_nearest,
+                                                            arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                    'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    else:
+                        print(f'The Interpolate - {mode} is not yet implemented.')
+                        sys.exit(-1)
+                else:
+                    # Others
+                    if yolact:
+                        if mode == 'linear':
+                            x = Lambda(upsampling2d_bilinear,
+                                        arguments={'upsampling_factor_height': 2,
+                                                'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                        elif mode == 'nearest':
+                            x = Lambda(upsampling2d_nearest,
+                                    arguments={'upsampling_factor_height': 2,
+                                                'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                        else:
+                            print(f'The Interpolate - {mode} is not yet implemented.')
+                            sys.exit(-1)
+                    else:
+                        if mode == 'linear':
+                            if output_edgetpu:
+                                tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
+                            else:
+                                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
+                        elif mode == 'nearest':
+                            if output_edgetpu:
+                                tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
+                            else:
+                                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
+                        else:
+                            print(f'The Interpolate - {mode} is not yet implemented.')
+                            sys.exit(-1)
+            else:
                 if mode == 'linear':
-                    tf_layers_dict[layer_id] = Lambda(upsampling2d_bilinear,
-                                                        arguments={'upsampling_factor_height': upsampling_factor_height,
-                                                                   'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
                 elif mode == 'nearest':
-                    tf_layers_dict[layer_id] = Lambda(upsampling2d_nearest,
-                                                        arguments={'upsampling_factor_height': upsampling_factor_height,
-                                                                   'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
                 else:
                     print(f'The Interpolate - {mode} is not yet implemented.')
                     sys.exit(-1)
-            else:
-                # Others
-                if yolact:
-                    if mode == 'linear':
-                        x = Lambda(upsampling2d_bilinear,
-                                    arguments={'upsampling_factor_height': 2,
-                                               'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                        tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
-                    elif mode == 'nearest':
-                        x = Lambda(upsampling2d_nearest,
-                                   arguments={'upsampling_factor_height': 2,
-                                              'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                        tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
-                    else:
-                        print(f'The Interpolate - {mode} is not yet implemented.')
-                        sys.exit(-1)
-                else:
-                    if mode == 'linear':
-                        if output_edgetpu:
-                            tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
-                        else:
-                            tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
-                    elif mode == 'nearest':
-                        if output_edgetpu:
-                            tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
-                        else:
-                            tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
-                    else:
-                        print(f'The Interpolate - {mode} is not yet implemented.')
-                        sys.exit(-1)
-
 
         ### ShapeOf
         elif layer.attrib['type'] == 'ShapeOf':
@@ -1096,6 +1111,7 @@ def convert(model_path,
             else:
                 for idx, dim in enumerate(temp):
                     perm.append(dim)
+
             tf_layers_dict[layer_id] = tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], perm=perm)
 
         ### Squeeze
@@ -1150,7 +1166,10 @@ def convert(model_path,
                 tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], indices, axis=axis)
             else:
                 if indices == [0] and axis == 0:
-                    tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis)
+                    try:
+                        tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=axis)
+                    except:
+                        tf_layers_dict[layer_id] = tf.gather(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], indices, axis=axis)
                     if tf_layers_dict[layer_id].type_spec.shape == []:
                         tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
                 else:
@@ -1554,7 +1573,15 @@ def convert(model_path,
         ### Subtract
         elif layer.attrib['type'] == 'Subtract':
             # No broadcast
-            tf_layers_dict[layer_id] = tf.math.subtract(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            if type(x) == np.ndarray:
+                x = x.astype(np.float32)
+            if type(y) == np.ndarray:
+                y = y.astype(np.float32)
+
+            # tf_layers_dict[layer_id] = tf.math.subtract(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+            tf_layers_dict[layer_id] = tf.math.subtract(x, y)
 
         ### Unsqueeze - TODO
         elif layer.attrib['type'] == 'Unsqueeze':
@@ -2324,6 +2351,7 @@ def main():
     parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
+    parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
     parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True')
@@ -2363,6 +2391,7 @@ def main():
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
     yolact = args.yolact
+    restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
     debug = args.debug
     debug_layer_number = args.debug_layer_number
@@ -2449,7 +2478,7 @@ def main():
             output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, weight_replacement_config, debug, debug_layer_number)
+            yolact, restricted_resize_image_mode, weight_replacement_config, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
