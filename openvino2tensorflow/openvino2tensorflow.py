@@ -128,6 +128,7 @@ def convert(model_path,
             optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
             yolact,
+            restricted_resize_image_mode,
             weight_replacement_config,
             debug,
             debug_layer_number):
