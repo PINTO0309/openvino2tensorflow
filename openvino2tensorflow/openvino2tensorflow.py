@@ -367,9 +367,6 @@ def convert(model_path,
     # layers
     for idx, layer in enumerate(layers):
 
-        # if process_interruption_by_non_max_suppression:
-        #     break
-
         layer_id = layer.attrib['id']
         layer_name = layer.attrib['name'].replace('.', '_').replace('/', '_')
         data = layer.find('data')
@@ -460,21 +457,27 @@ def convert(model_path,
 
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
             try:
-                tf_layers_dict[layer_id] = Conv2D(filters=filters,
-                                                kernel_size=kernel_size,
-                                                strides=strides,
-                                                padding=padding,
-                                                dilation_rate=dilations,
-                                                use_bias=False,
-                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
+                tf_layers_dict[layer_id] = Conv2D(
+                    filters=filters,
+                    kernel_size=kernel_size,
+                    strides=strides,
+                    padding=padding,
+                    dilation_rate=dilations,
+                    use_bias=False,
+                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
             except:
-                tf_layers_dict[layer_id] = Conv2D(filters=filters,
-                                                kernel_size=kernel_size,
-                                                strides=strides,
-                                                padding=padding,
-                                                dilation_rate=dilations,
-                                                use_bias=False,
-                                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                try:
+                    tf_layers_dict[layer_id] = Conv2D(
+                        filters=filters,
+                        kernel_size=kernel_size,
+                        strides=strides,
+                        padding=padding,
+                        dilation_rate=dilations,
+                        use_bias=False,
+                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                except:
+                    # Weights from OP that are not fixed values
+                    tf_layers_dict[layer_id] = tf.nn.conv2d(input=orig, filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], strides=strides, padding=padding.upper(), dilations=dilations)
 
         ### Add
         elif layer.attrib['type'] == 'Add':
@@ -756,13 +759,14 @@ def convert(model_path,
             else:
                 padding = 'same'
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
-            tf_layers_dict[layer_id] = Conv2DTranspose(filters=filters,
-                                                       kernel_size=kernel_size,
-                                                       strides=strides,
-                                                       padding=padding,
-                                                       dilation_rate=dilations,
-                                                       use_bias=False,
-                                                       kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            tf_layers_dict[layer_id] = Conv2DTranspose(
+                filters=filters,
+                kernel_size=kernel_size,
+                strides=strides,
+                padding=padding,
+                dilation_rate=dilations,
+                use_bias=False,
+                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
         ### Concat
         elif layer.attrib['type'] == 'Concat':
@@ -874,50 +878,59 @@ def convert(model_path,
                 else:
                     return tf.image.resize(x, [h, w], method='nearest')
 
-            if (upsampling_factor_height * input_shape_height) == out_height and (upsampling_factor_width * input_shape_width) == out_width and upsampling_factor_height >= 1.0 and upsampling_factor_width >= 1.0:
-                # Upsampling
+            if not restricted_resize_image_mode:
+
+                if (upsampling_factor_height * input_shape_height) == out_height and (upsampling_factor_width * input_shape_width) == out_width and upsampling_factor_height >= 1.0 and upsampling_factor_width >= 1.0:
+                    # Upsampling
+                    if mode == 'linear':
+                        tf_layers_dict[layer_id] = Lambda(upsampling2d_bilinear,
+                                                            arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                    'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    elif mode == 'nearest':
+                        tf_layers_dict[layer_id] = Lambda(upsampling2d_nearest,
+                                                            arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                    'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    else:
+                        print(f'The Interpolate - {mode} is not yet implemented.')
+                        sys.exit(-1)
+                else:
+                    # Others
+                    if yolact:
+                        if mode == 'linear':
+                            x = Lambda(upsampling2d_bilinear,
+                                        arguments={'upsampling_factor_height': 2,
+                                                'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                        elif mode == 'nearest':
+                            x = Lambda(upsampling2d_nearest,
+                                    arguments={'upsampling_factor_height': 2,
+                                                'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                        else:
+                            print(f'The Interpolate - {mode} is not yet implemented.')
+                            sys.exit(-1)
+                    else:
+                        if mode == 'linear':
+                            if output_edgetpu:
+                                tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
+                            else:
+                                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
+                        elif mode == 'nearest':
+                            if output_edgetpu:
+                                tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
+                            else:
+                                tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
+                        else:
+                            print(f'The Interpolate - {mode} is not yet implemented.')
+                            sys.exit(-1)
+            else:
                 if mode == 'linear':
-                    tf_layers_dict[layer_id] = Lambda(upsampling2d_bilinear,
-                                                        arguments={'upsampling_factor_height': upsampling_factor_height,
-                                                                   'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
                 elif mode == 'nearest':
-                    tf_layers_dict[layer_id] = Lambda(upsampling2d_nearest,
-                                                        arguments={'upsampling_factor_height': upsampling_factor_height,
-                                                                   'upsampling_factor_width': upsampling_factor_width})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
                 else:
                     print(f'The Interpolate - {mode} is not yet implemented.')
                     sys.exit(-1)
-            else:
-                # Others
-                if yolact:
-                    if mode == 'linear':
-                        x = Lambda(upsampling2d_bilinear,
-                                    arguments={'upsampling_factor_height': 2,
-                                               'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                        tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
-                    elif mode == 'nearest':
-                        x = Lambda(upsampling2d_nearest,
-                                   arguments={'upsampling_factor_height': 2,
-                                              'upsampling_factor_width':  2})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                        tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
-                    else:
-                        print(f'The Interpolate - {mode} is not yet implemented.')
-                        sys.exit(-1)
-                else:
-                    if mode == 'linear':
-                        if output_edgetpu:
-                            tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
-                        else:
-                            tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='bilinear')
-                    elif mode == 'nearest':
-                        if output_edgetpu:
-                            tf_layers_dict[layer_id] = tf.compat.v1.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
-                        else:
-                            tf_layers_dict[layer_id] = tf.image.resize(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], [out_height, out_width], method='nearest')
-                    else:
-                        print(f'The Interpolate - {mode} is not yet implemented.')
-                        sys.exit(-1)
-
 
         ### ShapeOf
         elif layer.attrib['type'] == 'ShapeOf':
@@ -1073,8 +1086,6 @@ def convert(model_path,
                         for idx, dim in enumerate(temp):
                             perm.append(idx)
                     elif np.all(temp == [1,0,2,3]):
-                        # for idx, dim in enumerate(temp):
-                        #     perm.append(idx)
                         perm = [3,1,2,0]
                     else:
                         for idx, dim in enumerate(temp):
@@ -1105,8 +1116,6 @@ def convert(model_path,
                     # TODO
                     for idx, dim in enumerate(temp):
                         perm.append(dim)
-                    # tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                    # continue
             else:
                 for idx, dim in enumerate(temp):
                     perm.append(dim)
@@ -1140,13 +1149,6 @@ def convert(model_path,
             input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
             indices = []
             if type(temp) == np.ndarray:
-                # for idx, dim in enumerate(temp):
-                #     if idx == 0:
-                #         indices.append(0)
-                #     elif idx == input_shape - 1:
-                #         indices.append(1)
-                #     else:
-                #         indices.append(dim + 1)
                 for idx, dim in enumerate(temp):
                     indices.append(dim)
             else:
@@ -1269,7 +1271,6 @@ def convert(model_path,
             shape = []
             if op_type1 != np.ndarray and op_type2 != np.ndarray:
                 # op and op
-                # print('@@@@@@@@@@@@@@@@@ op / const - route0', op_len1, op_len2, op1, op2)
                 if op_len2 > 1:
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
 
@@ -1287,33 +1288,18 @@ def convert(model_path,
 
                 elif op_len2 == 1 and op2.shape[0] == 5:
                     # TODO
-                    # shape_tmp = []
-                    # shape_tmp.append(op2[0])
-                    # shape_tmp.append(op2[1])
-                    # shape_tmp.append(op2[2])
-                    # shape_tmp.append(op2[3])
-                    # shape_tmp.append(op2[4])
                     shape = op2
 
                 elif op_len2 == 1 and op2.shape[0] == 6:
                     # YoloV4
-                    # shape_tmp = []
-                    # shape_tmp.append(op2[0])
-                    # shape_tmp.append(op2[1])
-                    # shape_tmp.append(op2[2])
-                    # shape_tmp.append(op2[3])
-                    # shape_tmp.append(op2[4])
-                    # shape_tmp.append(op2[5])
                     shape = op2
 
             elif op_type1 != np.ndarray and op_type2 == np.ndarray:
                 # op and const
                 if op_len2 == 4:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route1', op_len2)
                     op2 = op2.transpose(0,2,3,1)
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
                 elif op_len2 > 4:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route2', op_len2)
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
                 elif op_len2 == 1 and op2.shape[0] == 1:
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
@@ -1326,7 +1312,6 @@ def convert(model_path,
                             shape[0], shape[1], shape[2] = shape[0], shape[2], shape[1]
 
                 elif op_len2 == 1 and op2.shape[0] == 4:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route3', op_len2, shape)
                     one_count_1 = 0
                     for idx in op1.shape:
                         if idx == 1:
@@ -1350,7 +1335,6 @@ def convert(model_path,
                         shape_tmp.append(op2[1])
                         shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
                 elif op_len2 == 1 and op2.shape[0] == 5:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route4', op_len2, shape)
                     shape_tmp = []
                     if op2[1] == op2[2]:
                         shape_tmp.append(op2[0])
@@ -1367,7 +1351,6 @@ def convert(model_path,
 
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
                 elif op_len2 == 1 and op2.shape[0] == 6:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route5', op_len2)
                     # YoloV4
                     shape_tmp = []
                     shape_tmp.append(op2[0])
@@ -1378,7 +1361,6 @@ def convert(model_path,
                     shape_tmp.append(op2[1])
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
                 else:
-                    # print('@@@@@@@@@@@@@@@@@ op / const - route6', op1, op2, op_len2, np.asarray(op2.shape))
                     for i in range(op2.shape[0]):
                         shape.append(op2[i])
 
@@ -1389,22 +1371,6 @@ def convert(model_path,
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
                 elif op_len1 > 4:
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                # elif op_len1 == 1 and op1.shape[0] == 5:
-                #     shape_tmp = []
-                #     shape_tmp.append(op2[0])
-                #     shape_tmp.append(op2[3])
-                #     shape_tmp.append(op2[4])
-                #     shape_tmp.append(op2[1])
-                #     shape_tmp.append(op2[2])
-                # elif op_len2 == 1 and op2.shape[0] == 6:
-                #     # YoloV4
-                #     shape_tmp = []
-                #     shape_tmp.append(op2[0])
-                #     shape_tmp.append(op2[2])
-                #     shape_tmp.append(op2[3])
-                #     shape_tmp.append(op2[4])
-                #     shape_tmp.append(op2[5])
-                #     shape_tmp.append(op2[1])
                 else:
                     for i in range(op2.shape[0]):
                         shape.append(op2[i])
@@ -1416,7 +1382,6 @@ def convert(model_path,
                     op2 = op2.transpose(0,2,3,1)
                 shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
 
-            # print('@@@@@@@@@@@@@@@@@ op / const', op1, op2, shape)
             tf_layers_dict[layer_id] = tf.reshape(op1, shape)
 
         ### Range - TODO
@@ -1582,7 +1547,13 @@ def convert(model_path,
         ### Subtract
         elif layer.attrib['type'] == 'Subtract':
             # No broadcast
-            tf_layers_dict[layer_id] = tf.math.subtract(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            if type(x) == np.ndarray:
+                x = x.astype(np.float32)
+            if type(y) == np.ndarray:
+                y = y.astype(np.float32)
+            tf_layers_dict[layer_id] = tf.math.subtract(x, y)
 
         ### Unsqueeze - TODO
         elif layer.attrib['type'] == 'Unsqueeze':
@@ -1623,9 +1594,10 @@ def convert(model_path,
 
         ### Select
         elif layer.attrib['type'] == 'Select':
-            tf_layers_dict[layer_id] = tf.raw_ops.SelectV2(condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                                           t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                                                           e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
+            tf_layers_dict[layer_id] = tf.raw_ops.SelectV2(
+                condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
 
         ### LogicalAnd
         elif layer.attrib['type'] == 'LogicalAnd':
@@ -1706,8 +1678,9 @@ def convert(model_path,
 
             if len(num_or_size_splits) > 1 and np.average(num_or_size_splits) == num_or_size_splits[0]:
                 outputs = Lambda(split_tensor,
-                                arguments={'axis': axis,
-                                           'num_split': len(num_or_size_splits)})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                arguments={
+                                    'axis': axis,
+                                    'num_split': len(num_or_size_splits)})(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
             else:
                 if len(num_or_size_splits) > 1:
                     outputs = []
@@ -1769,15 +1742,6 @@ def convert(model_path,
                 across_channels = False
             elif across_channels == 'True':
                 across_channels = True
-
-            # if normalize_variance == '0':
-            #     normalize_variance = False
-            # elif normalize_variance == '1':
-            #     normalize_variance = True
-            # elif normalize_variance == 'False':
-            #     normalize_variance = False
-            # elif normalize_variance == 'True':
-            #     normalize_variance = True
 
             mean = None
             var = None
@@ -1842,19 +1806,6 @@ def convert(model_path,
                 score_top_values_flat = tf.reshape(score_top_values, [-1])
                 score_top_idxes_flat = tf.reshape(score_top_idxes, [-1])
                 output_size = tf.math.minimum(total_boxes_count, max_output_boxes_per_class)
-
-                # selected_indices_padded, num_valid = tf.image.non_max_suppression_padded(
-                #     boxes=[boxes],
-                #     scores=[score_top_values_flat],
-                #     max_output_size=output_size,
-                #     iou_threshold=iou_threshold,
-                #     score_threshold=score_threshold,
-                #     pad_to_max_output_size=True
-                # )
-                # selected_indices = tf.slice(selected_indices_padded[0], tf.constant([0]), num_valid)
-                # selected_boxes = tf.gather(boxes, selected_indices)
-                # selected_class_idx = tf.gather(score_top_idxes_flat, selected_indices)
-                # selected_scores = tf.gather(score_top_values_flat, selected_indices)
 
                 selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
                     boxes=boxes,
@@ -1963,12 +1914,6 @@ def convert(model_path,
 
             ### https://stackoverflow.com/questions/64111110/how-to-do-round-half-up-in-tensorflow
             ### https://www.xspdf.com/resolution/50434452.html
-
-
-            # tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
-            #                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
-            #                                     tf.math.round(((x - input_low) / (input_high - input_low) * (levels-1))) / (levels-1) * (output_high - output_low) + output_low))
-
             tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
                                                 tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
                                                 tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
@@ -2417,6 +2362,7 @@ def main():
     parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
+    parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
     parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True')
@@ -2456,6 +2402,7 @@ def main():
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
     yolact = args.yolact
+    restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
     debug = args.debug
     debug_layer_number = args.debug_layer_number
@@ -2542,7 +2489,7 @@ def main():
             output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, weight_replacement_config, debug, debug_layer_number)
+            yolact, restricted_resize_image_mode, weight_replacement_config, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
