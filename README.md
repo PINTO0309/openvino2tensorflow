@@ -174,7 +174,9 @@ Work in progress now.
 |86|SquaredDifference|squared_difference||
 |87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add||
 |88|Tile|tile||
-|89|Result|Identity|Output|
+|89|GatherND|gather_nd||
+|90|NonMaxSuppression|non_max_suppression|WIP. Only available for batch size 1. To simplify post-processing ignore all OPs after non_max_suppression.|
+|91|Result|Identity|Output|
 
 ## 4. Setup
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
