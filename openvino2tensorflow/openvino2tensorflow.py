@@ -2459,15 +2459,23 @@ def convert(model_path,
                     import gdown
                     import subprocess
                     try:
-                        result = subprocess.check_output(['gdown',
-                                                        '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
-                                                        '-O', load_dest_file_path_for_the_calib_npy],
-                                                        stderr=subprocess.PIPE).decode('utf-8')
+                        result = subprocess.check_output(
+                            [
+                                'gdown',
+                                '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
+                                '-O', load_dest_file_path_for_the_calib_npy
+                            ],
+                            stderr=subprocess.PIPE
+                        ).decode('utf-8')
                     except:
-                        result = subprocess.check_output(['sudo', 'gdown',
-                                                        '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
-                                                        '-O', load_dest_file_path_for_the_calib_npy],
-                                                        stderr=subprocess.PIPE).decode('utf-8')
+                        result = subprocess.check_output(
+                            [
+                                'sudo', 'gdown',
+                                '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
+                                '-O', load_dest_file_path_for_the_calib_npy
+                            ],
+                            stderr=subprocess.PIPE
+                        ).decode('utf-8')
                 raw_test_data = np.load(load_dest_file_path_for_the_calib_npy)
                 print(f'{Color.GREEN}numpy dataset load complete!{Color.RESET}')
             except subprocess.CalledProcessError as e:
@@ -2548,13 +2556,17 @@ def convert(model_path,
         import subprocess
         try:
             print(f'{Color.REVERCE}TensorFlow.js Float32 convertion started{Color.RESET}', '=' * 44)
-            result = subprocess.check_output(['tensorflowjs_converter',
-                                            '--input_format', 'tf_saved_model',
-                                            '--output_format', 'tfjs_graph_model',
-                                            '--signature_name', 'serving_default',
-                                            '--saved_model_tags', 'serve',
-                                            model_output_path, f'{model_output_path}/tfjs_model_float32'],
-                                            stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'tensorflowjs_converter',
+                    '--input_format', 'tf_saved_model',
+                    '--output_format', 'tfjs_graph_model',
+                    '--signature_name', 'serving_default',
+                    '--saved_model_tags', 'serve',
+                    model_output_path, f'{model_output_path}/tfjs_model_float32'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float32')
         except subprocess.CalledProcessError as e:
@@ -2563,14 +2575,18 @@ def convert(model_path,
             traceback.print_exc()
         try:
             print(f'{Color.REVERCE}TensorFlow.js Float16 convertion started{Color.RESET}', '=' * 44)
-            result = subprocess.check_output(['tensorflowjs_converter',
-                                            '--quantize_float16',
-                                            '--input_format', 'tf_saved_model',
-                                            '--output_format', 'tfjs_graph_model',
-                                            '--signature_name', 'serving_default',
-                                            '--saved_model_tags', 'serve',
-                                            model_output_path, f'{model_output_path}/tfjs_model_float16'],
-                                            stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'tensorflowjs_converter',
+                    '--quantize_float16',
+                    '--input_format', 'tf_saved_model',
+                    '--output_format', 'tfjs_graph_model',
+                    '--signature_name', 'serving_default',
+                    '--saved_model_tags', 'serve',
+                    model_output_path, f'{model_output_path}/tfjs_model_float16'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_path}/tfjs_model_float16')
         except subprocess.CalledProcessError as e:
@@ -2623,11 +2639,15 @@ def convert(model_path,
     if output_edgetpu:
         try:
             print(f'{Color.REVERCE}EdgeTPU convertion started{Color.RESET}', '=' * 58)
-            result = subprocess.check_output(['edgetpu_compiler',
-                                              '-o', model_output_path,
-                                              '-s',
-                                              f'{model_output_path}/model_full_integer_quant.tflite'],
-                                              stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'edgetpu_compiler',
+                    '-o', model_output_path,
+                    '-s',
+                    f'{model_output_path}/model_full_integer_quant.tflite'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}EdgeTPU convert complete!{Color.RESET} - {model_output_path}/model_full_integer_quant_edgetpu.tflite')
         except subprocess.CalledProcessError as e:
@@ -2643,12 +2663,16 @@ def convert(model_path,
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
-            result = subprocess.check_output(['python3',
-                                              '-m', 'tf2onnx.convert',
-                                              '--saved-model', model_output_path,
-                                              '--opset', str(onnx_opset),
-                                              '--output', f'{model_output_path}/model_float32.onnx'],
-                                              stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'python3',
+                    '-m', 'tf2onnx.convert',
+                    '--saved-model', model_output_path,
+                    '--opset', str(onnx_opset),
+                    '--output', f'{model_output_path}/model_float32.onnx'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_path}/model_float32.onnx')
         except subprocess.CalledProcessError as e:
@@ -2662,12 +2686,16 @@ def convert(model_path,
             print(f'{Color.REVERCE}Myriad Inference Engine blob convertion started{Color.RESET}', '=' * 44)
             os.makedirs(f'{model_output_path}/openvino/myriad', exist_ok=True)
             INTEL_OPENVINO_DIR = os.environ['INTEL_OPENVINO_DIR']
-            result = subprocess.check_output([f'{INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/lib/intel64/myriad_compile',
-                                                '-m', f'{model_path}.xml',
-                                                '-VPU_NUMBER_OF_SHAVES', f'{vpu_number_of_shaves}',
-                                                '-VPU_NUMBER_OF_CMX_SLICES', f'{vpu_number_of_cmx_slices}',
-                                                '-o', f'{model_output_path}/openvino/myriad/saved_model.blob'],
-                                                stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    f'{INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/lib/intel64/myriad_compile',
+                    '-m', f'{model_path}.xml',
+                    '-VPU_NUMBER_OF_SHAVES', f'{vpu_number_of_shaves}',
+                    '-VPU_NUMBER_OF_CMX_SLICES', f'{vpu_number_of_cmx_slices}',
+                    '-o', f'{model_output_path}/openvino/myriad/saved_model.blob'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}Myriad Inference Engine blob convertion complete!{Color.RESET} - {model_output_path}/openvino/myriad')
         except subprocess.CalledProcessError as e:
@@ -2679,15 +2707,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_path', type=str, required=True, help='input IR model path (.xml)')
     parser.add_argument('--model_output_path', type=str, default='saved_model', help='The output folder path of the converted model file')
-    parser.add_argument('--output_saved_model', type=bool, default=False, help='saved_model output switch')
-    parser.add_argument('--output_h5', type=bool, default=False, help='.h5 output switch')
-    parser.add_argument('--output_weight_and_json', type=bool, default=False, help='weight of h5 and json output switch')
-    parser.add_argument('--output_pb', type=bool, default=False, help='.pb output switch')
-    parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
-    parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
-    parser.add_argument('--output_float16_quant_tflite', type=bool, default=False, help='float16 quant tflite output switch')
-    parser.add_argument('--output_integer_quant_tflite', type=bool, default=False, help='integer quant tflite output switch')
-    parser.add_argument('--output_full_integer_quant_tflite', type=bool, default=False, help='full integer quant tflite output switch')
+    parser.add_argument('--output_saved_model', action='store_true', help='saved_model output switch')
+    parser.add_argument('--output_h5', action='store_true', help='.h5 output switch')
+    parser.add_argument('--output_weight_and_json', action='store_true', help='weight of h5 and json output switch')
+    parser.add_argument('--output_pb', action='store_true', help='.pb output switch')
+    parser.add_argument('--output_no_quant_float32_tflite', action='store_true', help='float32 tflite output switch')
+    parser.add_argument('--output_weight_quant_tflite', action='store_true', help='weight quant tflite output switch')
+    parser.add_argument('--output_float16_quant_tflite', action='store_true', help='float16 quant tflite output switch')
+    parser.add_argument('--output_integer_quant_tflite', action='store_true', help='integer quant tflite output switch')
+    parser.add_argument('--output_full_integer_quant_tflite', action='store_true', help='full integer quant tflite output switch')
     parser.add_argument('--output_integer_quant_type', type=str, default='int8', help='Input and output types when doing Integer Quantization (\'int8 (default)\' or \'uint8\')')
     parser.add_argument('--string_formulas_for_normalization', type=str, default='(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]', help='String formulas for normalization. It is evaluated by Python\'s eval() function. Default: \'(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]\'')
     parser.add_argument('--calib_ds_type', type=str, default='numpy', help='Types of data sets for calibration. tfds or numpy. Only one of them can be specified. Default: numpy [20, 513, 513, 3] -> [Number of images, h, w, c]')
@@ -2695,21 +2723,21 @@ def main():
     parser.add_argument('--split_name_for_tfds_for_calibration', type=str, default='validation', help='Split name for TensorFlow Datasets for calibration. https://www.tensorflow.org/datasets/catalog/overview')
     tfds_dl_default_path = f'{str(Path.home())}/TFDS'
     parser.add_argument('--download_dest_folder_path_for_the_calib_tfds', type=str, default=tfds_dl_default_path, help='Download destination folder path for the calibration dataset. Default: $HOME/TFDS')
-    parser.add_argument('--tfds_download_flg', type=bool, default=True, help='True to automatically download datasets from TensorFlow Datasets. True or False')
+    parser.add_argument('--tfds_download_flg', action='store_true', help='True to automatically download datasets from TensorFlow Datasets. True or False')
     npy_load_default_path = 'sample_npy/calibration_data_img_sample.npy'
     parser.add_argument('--load_dest_file_path_for_the_calib_npy', type=str, default=npy_load_default_path, help='The path from which to load the .npy file containing the numpy binary version of the calibration data. Default: sample_npy/calibration_data_img_sample.npy')
-    parser.add_argument('--output_tfjs', type=bool, default=False, help='tfjs model output switch')
-    parser.add_argument('--output_tftrt', type=bool, default=False, help='tftrt model output switch')
-    parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
-    parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
-    parser.add_argument('--output_onnx', type=bool, default=False, help='onnx model output switch')
+    parser.add_argument('--output_tfjs', action='store_true', help='tfjs model output switch')
+    parser.add_argument('--output_tftrt', action='store_true', help='tftrt model output switch')
+    parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
+    parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
+    parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
-    parser.add_argument('--output_myriad', type=bool, default=False, help='myriad inference engine blob output switch')
+    parser.add_argument('--output_myriad', action='store_true', help='myriad inference engine blob output switch')
     parser.add_argument('--vpu_number_of_shaves', type=int, default=4, help='vpu number of shaves. Default: 4')
     parser.add_argument('--vpu_number_of_cmx_slices', type=int, default=4, help='vpu number of cmx slices. Default: 4')
-    parser.add_argument('--replace_swish_and_hardswish', type=bool, default=False, help='Replace swish and hard-swish with each other')
-    parser.add_argument('--optimizing_hardswish_for_edgetpu', type=bool, default=False, help='Optimizing hardswish for edgetpu')
-    parser.add_argument('--replace_prelu_and_minmax', type=bool, default=False, help='Replace prelu and minimum/maximum with each other')
+    parser.add_argument('--replace_swish_and_hardswish', action='store_true', help='Replace swish and hard-swish with each other')
+    parser.add_argument('--optimizing_hardswish_for_edgetpu', action='store_true', help='Optimizing hardswish for edgetpu')
+    parser.add_argument('--replace_prelu_and_minmax', action='store_true', help='Replace prelu and minimum/maximum with each other')
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
     parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')

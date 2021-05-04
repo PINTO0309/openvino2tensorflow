@@ -197,6 +197,7 @@ $ xhost +local: && \
     -e DISPLAY=$DISPLAY \
     --privileged \
     pinto0309/openvino2tensorflow:latest
+$ cd workdir
 
 # For INT8 quantization and conversion to EdgeTPU model
 # "TFDS" is the folder where TensorFlow Datasets are downloaded.
@@ -211,6 +212,7 @@ $ xhost +local: && \
     -e DISPLAY=$DISPLAY \
     --privileged \
     pinto0309/openvino2tensorflow:latest
+$ cd workdir
 ```
 ### 4-2. **[Environment construction pattern 2]** Execution by Host machine
 To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
@@ -232,35 +234,35 @@ usage: openvino2tensorflow
   [-h]
   --model_path MODEL_PATH
   [--model_output_path MODEL_OUTPUT_PATH]
-  [--output_saved_model OUTPUT_SAVED_MODEL]
-  [--output_h5 OUTPUT_H5]
-  [--output_weight_and_json OUTPUT_WEIGHT_AND_JSON]
-  [--output_pb OUTPUT_PB]
-  [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
-  [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
-  [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
-  [--output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE]
-  [--output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE]
+  [--output_saved_model]
+  [--output_h5]
+  [--output_weight_and_json]
+  [--output_pb]
+  [--output_no_quant_float32_tflite]
+  [--output_weight_quant_tflite]
+  [--output_float16_quant_tflite]
+  [--output_integer_quant_tflite]
+  [--output_full_integer_quant_tflite]
   [--output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE]
   [--string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION]
   [--calib_ds_type CALIB_DS_TYPE]
   [--ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION]
   [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
   [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
-  [--tfds_download_flg TFDS_DOWNLOAD_FLG]
+  [--tfds_download_flg]
   [--load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY]
-  [--output_tfjs OUTPUT_TFJS]
-  [--output_tftrt OUTPUT_TFTRT]
-  [--output_coreml OUTPUT_COREML]
-  [--output_edgetpu OUTPUT_EDGETPU]
-  [--output_onnx OUTPUT_ONNX]
+  [--output_tfjs]
+  [--output_tftrt]
+  [--output_coreml]
+  [--output_edgetpu]
+  [--output_onnx]
   [--onnx_opset ONNX_OPSET]
-  [--output_myriad OUTPUT_MYRIAD]
+  [--output_myriad]
   [--vpu_number_of_shaves VPU_NUMBER_OF_SHAVES]
   [--vpu_number_of_cmx_slices VPU_NUMBER_OF_CMX_SLICES]
-  [--replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH]
-  [--optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU]
-  [--replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX]
+  [--replace_swish_and_hardswish]
+  [--optimizing_hardswish_for_edgetpu]
+  [--replace_prelu_and_minmax]
   [--yolact]
   [--restricted_resize_image_mode]
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
@@ -275,23 +277,23 @@ optional arguments:
                         input IR model path (.xml)
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
-  --output_saved_model OUTPUT_SAVED_MODEL
+  --output_saved_model
                         saved_model output switch
-  --output_h5 OUTPUT_H5
+  --output_h5
                         .h5 output switch
-  --output_weight_and_json OUTPUT_WEIGHT_AND_JSON
+  --output_weight_and_json
                         weight of h5 and json output switch
-  --output_pb OUTPUT_PB
+  --output_pb
                         .pb output switch
-  --output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE
+  --output_no_quant_float32_tflite
                         float32 tflite output switch
-  --output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE
+  --output_weight_quant_tflite
                         weight quant tflite output switch
-  --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
+  --output_float16_quant_tflite
                         float16 quant tflite output switch
-  --output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE
+  --output_integer_quant_tflite
                         integer quant tflite output switch
-  --output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE
+  --output_full_integer_quant_tflite
                         full integer quant tflite output switch
   --output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE
                         Input and output types when doing Integer Quantization
@@ -312,36 +314,36 @@ optional arguments:
   --download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS
                         Download destination folder path for the calibration
                         dataset. Default: $HOME/TFDS
-  --tfds_download_flg TFDS_DOWNLOAD_FLG
+  --tfds_download_flg
                         True to automatically download datasets from
                         TensorFlow Datasets. True or False
   --load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY
                         The path from which to load the .npy file containing
                         the numpy binary version of the calibration data.
                         Default: sample_npy/calibration_data_img_sample.npy
-  --output_tfjs OUTPUT_TFJS
+  --output_tfjs
                         tfjs model output switch
-  --output_tftrt OUTPUT_TFTRT
+  --output_tftrt
                         tftrt model output switch
-  --output_coreml OUTPUT_COREML
+  --output_coreml
                         coreml model output switch
-  --output_edgetpu OUTPUT_EDGETPU
+  --output_edgetpu
                         edgetpu model output switch
-  --output_onnx OUTPUT_ONNX
+  --output_onnx
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
-  --output_myriad OUTPUT_MYRIAD
+  --output_myriad
                         myriad inference engine blob output switch
   --vpu_number_of_shaves VPU_NUMBER_OF_SHAVES
                         vpu number of shaves. Default: 4
   --vpu_number_of_cmx_slices VPU_NUMBER_OF_CMX_SLICES
                         vpu number of cmx slices. Default: 4
-  --replace_swish_and_hardswish REPLACE_SWISH_AND_HARDSWISH
+  --replace_swish_and_hardswish
                         Replace swish and hard-swish with each other
-  --optimizing_hardswish_for_edgetpu OPTIMIZING_HARDSWISH_FOR_EDGETPU
+  --optimizing_hardswish_for_edgetpu
                         Optimizing hardswish for edgetpu
-  --replace_prelu_and_minmax REPLACE_PRELU_AND_MINMAX
+  --replace_prelu_and_minmax
                         Replace prelu and minimum/maximum with each other
   --yolact
                         Specify when converting the Yolact model
@@ -367,24 +369,24 @@ usage: saved_model_to_tflite
   [--signature_def SIGNATURE_DEF]
   [--input_shapes INPUT_SHAPES]
   [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
-  [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
-  [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
-  [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
-  [--output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE]
-  [--output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE]
+  [--output_no_quant_float32_tflite]
+  [--output_weight_quant_tflite]
+  [--output_float16_quant_tflite]
+  [--output_integer_quant_tflite]
+  [--output_full_integer_quant_tflite]
   [--output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE]
   [--string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION]
   [--calib_ds_type CALIB_DS_TYPE]
   [--ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION]
   [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
   [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
-  [--tfds_download_flg TFDS_DOWNLOAD_FLG]
+  [--tfds_download_flg]
   [--load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY]
-  [--output_tfjs OUTPUT_TFJS]
-  [--output_tftrt OUTPUT_TFTRT]
-  [--output_coreml OUTPUT_COREML]
-  [--output_edgetpu OUTPUT_EDGETPU]
-  [--output_onnx OUTPUT_ONNX]
+  [--output_tfjs]
+  [--output_tftrt]
+  [--output_coreml]
+  [--output_edgetpu]
+  [--output_onnx]
   [--onnx_opset ONNX_OPSET]
 
 optional arguments:
@@ -402,15 +404,15 @@ optional arguments:
                         (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
                         The output folder path of the converted model file
-  --output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE
+  --output_no_quant_float32_tflite
                         float32 tflite output switch
-  --output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE
+  --output_weight_quant_tflite
                         weight quant tflite output switch
-  --output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE
+  --output_float16_quant_tflite
                         float16 quant tflite output switch
-  --output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE
+  --output_integer_quant_tflite
                         integer quant tflite output switch
-  --output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE
+  --output_full_integer_quant_tflite
                         full integer quant tflite output switch
   --output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE
                         Input and output types when doing Integer Quantization
@@ -431,22 +433,22 @@ optional arguments:
   --download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS
                         Download destination folder path for the calibration
                         dataset. Default: $HOME/TFDS
-  --tfds_download_flg TFDS_DOWNLOAD_FLG
+  --tfds_download_flg
                         True to automatically download datasets from
                         TensorFlow Datasets. True or False
   --load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY
                         The path from which to load the .npy file containing
                         the numpy binary version of the calibration data.
                         Default: sample_npy/calibration_data_img_sample.npy
-  --output_tfjs OUTPUT_TFJS
+  --output_tfjs
                         tfjs model output switch
-  --output_tftrt OUTPUT_TFTRT
+  --output_tftrt
                         tftrt model output switch
-  --output_coreml OUTPUT_COREML
+  --output_coreml
                         coreml model output switch
-  --output_edgetpu OUTPUT_EDGETPU
+  --output_edgetpu
                         edgetpu model output switch
-  --output_onnx OUTPUT_ONNX
+  --output_onnx
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
@@ -537,11 +539,11 @@ OutOfMemory may occur when converting to saved_model or h5 when the file size of
 ```
 $ openvino2tensorflow \
   --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
-  --output_saved_model True \
-  --output_pb True \
-  --output_weight_quant_tflite True \
-  --output_float16_quant_tflite True \
-  --output_no_quant_float32_tflite True
+  --output_saved_model \
+  --output_pb \
+  --output_weight_quant_tflite \
+  --output_float16_quant_tflite \
+  --output_no_quant_float32_tflite
 ```
 ### 6-2. Convert Protocol Buffer (.pb) to saved_model
 This tool is useful if you want to check the internal structure of pb files, tflite files, .h5 files, coreml files and IR (.xml) files. **https://lutzroeder.github.io/netron/**
@@ -585,11 +587,11 @@ If the transformation behavior of **`Reshape`**, **`Transpose`**, etc. does not 
 ```
 $ openvino2tensorflow \
   --model_path=xxx.xml \
-  --output_saved_model True \
-  --output_pb True \
-  --output_weight_quant_tflite True \
-  --output_float16_quant_tflite True \
-  --output_no_quant_float32_tflite True \
+  --output_saved_model \
+  --output_pb \
+  --output_weight_quant_tflite \
+  --output_float16_quant_tflite \
+  --output_no_quant_float32_tflite \
   --weight_replacement_config weight_replacement_config_sample.json
 ```
 Structure of JSON sample

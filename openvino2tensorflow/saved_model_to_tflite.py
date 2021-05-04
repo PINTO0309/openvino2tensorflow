@@ -37,30 +37,32 @@ class Color:
     BG_DEFAULT     = '\033[49m'
     RESET          = '\033[0m'
 
-def convert(saved_model_dir_path,
-            signature_def,
-            input_shapes,
-            model_output_dir_path,
-            output_no_quant_float32_tflite,
-            output_weight_quant_tflite,
-            output_float16_quant_tflite,
-            output_integer_quant_tflite,
-            output_full_integer_quant_tflite,
-            output_integer_quant_type,
-            string_formulas_for_normalization,
-            calib_ds_type,
-            ds_name_for_tfds_for_calibration,
-            split_name_for_tfds_for_calibration,
-            download_dest_folder_path_for_the_calib_tfds,
-            tfds_download_flg,
-            npy_load_default_path,
-            load_dest_file_path_for_the_calib_npy,
-            output_tfjs,
-            output_tftrt,
-            output_coreml,
-            output_edgetpu,
-            output_onnx,
-            onnx_opset):
+def convert(
+    saved_model_dir_path,
+    signature_def,
+    input_shapes,
+    model_output_dir_path,
+    output_no_quant_float32_tflite,
+    output_weight_quant_tflite,
+    output_float16_quant_tflite,
+    output_integer_quant_tflite,
+    output_full_integer_quant_tflite,
+    output_integer_quant_type,
+    string_formulas_for_normalization,
+    calib_ds_type,
+    ds_name_for_tfds_for_calibration,
+    split_name_for_tfds_for_calibration,
+    download_dest_folder_path_for_the_calib_tfds,
+    tfds_download_flg,
+    npy_load_default_path,
+    load_dest_file_path_for_the_calib_npy,
+    output_tfjs,
+    output_tftrt,
+    output_coreml,
+    output_edgetpu,
+    output_onnx,
+    onnx_opset
+    ):
 
     print(f'{Color.REVERCE}Start conversion process from saved_model to tflite{Color.RESET}', '=' * 38)
 
@@ -143,11 +145,13 @@ def convert(saved_model_dir_path,
     if output_integer_quant_tflite or output_full_integer_quant_tflite:
         if calib_ds_type == 'tfds':
             print(f'{Color.REVERCE}TFDS download started{Color.RESET}', '=' * 63)
-            raw_test_data = tfds.load(name=ds_name_for_tfds_for_calibration,
-                                    with_info=False,
-                                    split=split_name_for_tfds_for_calibration,
-                                    data_dir=download_dest_folder_path_for_the_calib_tfds,
-                                    download=tfds_download_flg)
+            raw_test_data = tfds.load(
+                name=ds_name_for_tfds_for_calibration,
+                with_info=False,
+                split=split_name_for_tfds_for_calibration,
+                data_dir=download_dest_folder_path_for_the_calib_tfds,
+                download=tfds_download_flg
+            )
             print(f'{Color.GREEN}TFDS download complete!{Color.RESET}')
         elif calib_ds_type == 'numpy':
             print(f'{Color.REVERCE}numpy dataset load started{Color.RESET}', '=' * 58)
@@ -157,15 +161,23 @@ def convert(saved_model_dir_path,
                     import gdown
                     import subprocess
                     try:
-                        result = subprocess.check_output(['gdown',
-                                                        '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
-                                                        '-O', load_dest_file_path_for_the_calib_npy],
-                                                        stderr=subprocess.PIPE).decode('utf-8')
+                        result = subprocess.check_output(
+                            [
+                                'gdown',
+                                '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
+                                '-O', load_dest_file_path_for_the_calib_npy
+                            ],
+                            stderr=subprocess.PIPE
+                        ).decode('utf-8')
                     except:
-                        result = subprocess.check_output(['sudo', 'gdown',
-                                                        '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
-                                                        '-O', load_dest_file_path_for_the_calib_npy],
-                                                        stderr=subprocess.PIPE).decode('utf-8')
+                        result = subprocess.check_output(
+                            [
+                                'sudo', 'gdown',
+                                '--id', '1z-K0KZCK3JBH9hXFuBTmIM4jaMPOubGN',
+                                '-O', load_dest_file_path_for_the_calib_npy
+                            ],
+                            stderr=subprocess.PIPE
+                        ).decode('utf-8')
                 raw_test_data = np.load(load_dest_file_path_for_the_calib_npy)
                 print(f'{Color.GREEN}numpy dataset load complete!{Color.RESET}')
             except subprocess.CalledProcessError as e:
@@ -244,11 +256,15 @@ def convert(saved_model_dir_path,
     if output_edgetpu:
         try:
             print(f'{Color.REVERCE}EdgeTPU convertion started{Color.RESET}', '=' * 58)
-            result = subprocess.check_output(['edgetpu_compiler',
-                                              '-o', model_output_dir_path,
-                                              '-s',
-                                              f'{model_output_dir_path}/model_full_integer_quant.tflite'],
-                                              stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'edgetpu_compiler',
+                    '-o', model_output_dir_path,
+                    '-s',
+                    f'{model_output_dir_path}/model_full_integer_quant.tflite'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}EdgeTPU convert complete!{Color.RESET} - {model_output_dir_path}/model_full_integer_quant_edgetpu.tflite')
         except subprocess.CalledProcessError as e:
@@ -264,13 +280,17 @@ def convert(saved_model_dir_path,
         import subprocess
         try:
             print(f'{Color.REVERCE}TensorFlow.js Float32 convertion started{Color.RESET}', '=' * 44)
-            result = subprocess.check_output(['tensorflowjs_converter',
-                                            '--input_format', 'tf_saved_model',
-                                            '--output_format', 'tfjs_graph_model',
-                                            '--signature_name', 'serving_default',
-                                            '--saved_model_tags', 'serve',
-                                            saved_model_dir_path, f'{model_output_dir_path}/tfjs_model_float32'],
-                                            stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'tensorflowjs_converter',
+                    '--input_format', 'tf_saved_model',
+                    '--output_format', 'tfjs_graph_model',
+                    '--signature_name', 'serving_default',
+                    '--saved_model_tags', 'serve',
+                    saved_model_dir_path, f'{model_output_dir_path}/tfjs_model_float32'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_dir_path}/tfjs_model_float32')
         except subprocess.CalledProcessError as e:
@@ -279,14 +299,18 @@ def convert(saved_model_dir_path,
             traceback.print_exc()
         try:
             print(f'{Color.REVERCE}TensorFlow.js Float16 convertion started{Color.RESET}', '=' * 44)
-            result = subprocess.check_output(['tensorflowjs_converter',
-                                            '--quantize_float16',
-                                            '--input_format', 'tf_saved_model',
-                                            '--output_format', 'tfjs_graph_model',
-                                            '--signature_name', 'serving_default',
-                                            '--saved_model_tags', 'serve',
-                                            saved_model_dir_path, f'{model_output_dir_path}/tfjs_model_float16'],
-                                            stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'tensorflowjs_converter',
+                    '--quantize_float16',
+                    '--input_format', 'tf_saved_model',
+                    '--output_format', 'tfjs_graph_model',
+                    '--signature_name', 'serving_default',
+                    '--saved_model_tags', 'serve',
+                    saved_model_dir_path, f'{model_output_dir_path}/tfjs_model_float16'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}TensorFlow.js convertion complete!{Color.RESET} - {model_output_dir_path}/tfjs_model_float16')
         except subprocess.CalledProcessError as e:
@@ -341,12 +365,16 @@ def convert(saved_model_dir_path,
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
-            result = subprocess.check_output(['python3',
-                                              '-m', 'tf2onnx.convert',
-                                              '--saved-model', model_output_dir_path,
-                                              '--opset', str(onnx_opset),
-                                              '--output', f'{model_output_dir_path}/model_float32.onnx'],
-                                              stderr=subprocess.PIPE).decode('utf-8')
+            result = subprocess.check_output(
+                [
+                    'python3',
+                    '-m', 'tf2onnx.convert',
+                    '--saved-model', model_output_dir_path,
+                    '--opset', str(onnx_opset),
+                    '--output', f'{model_output_dir_path}/model_float32.onnx'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
             print(result)
             print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_dir_path}/model_float32.onnx')
         except subprocess.CalledProcessError as e:
@@ -360,11 +388,11 @@ def main():
     parser.add_argument('--signature_def', type=str, default='', help='Specifies the signature name to load from saved_model')
     parser.add_argument('--input_shapes', type=str, default='', help='Overwrites an undefined input dimension (None or -1). Specify the input shape in [n,h,w,c] format. For non-4D tensors, specify [a,b,c,d,e], [a,b], etc. A comma-separated list if there are multiple inputs. (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]')
     parser.add_argument('--model_output_dir_path', type=str, default='tflite_from_saved_model', help='The output folder path of the converted model file')
-    parser.add_argument('--output_no_quant_float32_tflite', type=bool, default=False, help='float32 tflite output switch')
-    parser.add_argument('--output_weight_quant_tflite', type=bool, default=False, help='weight quant tflite output switch')
-    parser.add_argument('--output_float16_quant_tflite', type=bool, default=False, help='float16 quant tflite output switch')
-    parser.add_argument('--output_integer_quant_tflite', type=bool, default=False, help='integer quant tflite output switch')
-    parser.add_argument('--output_full_integer_quant_tflite', type=bool, default=False, help='full integer quant tflite output switch')
+    parser.add_argument('--output_no_quant_float32_tflite', action='store_true', help='float32 tflite output switch')
+    parser.add_argument('--output_weight_quant_tflite', action='store_true', help='weight quant tflite output switch')
+    parser.add_argument('--output_float16_quant_tflite', action='store_true', help='float16 quant tflite output switch')
+    parser.add_argument('--output_integer_quant_tflite', action='store_true', help='integer quant tflite output switch')
+    parser.add_argument('--output_full_integer_quant_tflite',, action='store_true', help='full integer quant tflite output switch')
     parser.add_argument('--output_integer_quant_type', type=str, default='int8', help='Input and output types when doing Integer Quantization (\'int8 (default)\' or \'uint8\')')
     parser.add_argument('--string_formulas_for_normalization', type=str, default='(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]', help='String formulas for normalization. It is evaluated by Python\'s eval() function. Default: \'(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]\'')
     parser.add_argument('--calib_ds_type', type=str, default='numpy', help='Types of data sets for calibration. tfds or numpy. Only one of them can be specified. Default: numpy [20, 513, 513, 3] -> [Number of images, h, w, c]')
@@ -372,14 +400,14 @@ def main():
     parser.add_argument('--split_name_for_tfds_for_calibration', type=str, default='validation', help='Split name for TensorFlow Datasets for calibration. https://www.tensorflow.org/datasets/catalog/overview')
     tfds_dl_default_path = f'{str(Path.home())}/TFDS'
     parser.add_argument('--download_dest_folder_path_for_the_calib_tfds', type=str, default=tfds_dl_default_path, help='Download destination folder path for the calibration dataset. Default: $HOME/TFDS')
-    parser.add_argument('--tfds_download_flg', type=bool, default=True, help='True to automatically download datasets from TensorFlow Datasets. True or False')
+    parser.add_argument('--tfds_download_flg', action='store_true', help='True to automatically download datasets from TensorFlow Datasets. True or False')
     npy_load_default_path = 'sample_npy/calibration_data_img_sample.npy'
     parser.add_argument('--load_dest_file_path_for_the_calib_npy', type=str, default=npy_load_default_path, help='The path from which to load the .npy file containing the numpy binary version of the calibration data. Default: sample_npy/calibration_data_img_sample.npy')
-    parser.add_argument('--output_tfjs', type=bool, default=False, help='tfjs model output switch')
-    parser.add_argument('--output_tftrt', type=bool, default=False, help='tftrt model output switch')
-    parser.add_argument('--output_coreml', type=bool, default=False, help='coreml model output switch')
-    parser.add_argument('--output_edgetpu', type=bool, default=False, help='edgetpu model output switch')
-    parser.add_argument('--output_onnx', type=bool, default=False, help='onnx model output switch')
+    parser.add_argument('--output_tfjs', action='store_true', help='tfjs model output switch')
+    parser.add_argument('--output_tftrt', action='store_true', help='tftrt model output switch')
+    parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
+    parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
+    parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
 
     args = parser.parse_args()
@@ -418,14 +446,14 @@ def main():
     onnx_opset = args.onnx_opset
 
     if not output_no_quant_float32_tflite and \
-       not output_weight_quant_tflite and \
-       not output_integer_quant_tflite and \
-       not output_full_integer_quant_tflite and \
-       not output_tfjs and \
-       not output_tftrt and \
-       not output_coreml and \
-       not output_edgetpu and \
-       not output_onnx:
+        not output_weight_quant_tflite and \
+            not output_integer_quant_tflite and \
+                not output_full_integer_quant_tflite and \
+                    not output_tfjs and \
+                        not output_tftrt and \
+                            not output_coreml and \
+                                not output_edgetpu and \
+                                    not output_onnx:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
 
@@ -480,30 +508,32 @@ def main():
 
     del package_list
     os.makedirs(model_output_dir_path, exist_ok=True)
-    convert(saved_model_dir_path,
-            signature_def,
-            input_shapes,
-            model_output_dir_path,
-            output_no_quant_float32_tflite,
-            output_weight_quant_tflite,
-            output_float16_quant_tflite,
-            output_integer_quant_tflite,
-            output_full_integer_quant_tflite,
-            output_integer_quant_type,
-            string_formulas_for_normalization,
-            calib_ds_type,
-            ds_name_for_tfds_for_calibration,
-            split_name_for_tfds_for_calibration,
-            download_dest_folder_path_for_the_calib_tfds,
-            tfds_download_flg,
-            npy_load_default_path,
-            load_dest_file_path_for_the_calib_npy,
-            output_tfjs,
-            output_tftrt,
-            output_coreml,
-            output_edgetpu,
-            output_onnx,
-            onnx_opset)
+    convert(
+        saved_model_dir_path,
+        signature_def,
+        input_shapes,
+        model_output_dir_path,
+        output_no_quant_float32_tflite,
+        output_weight_quant_tflite,
+        output_float16_quant_tflite,
+        output_integer_quant_tflite,
+        output_full_integer_quant_tflite,
+        output_integer_quant_type,
+        string_formulas_for_normalization,
+        calib_ds_type,
+        ds_name_for_tfds_for_calibration,
+        split_name_for_tfds_for_calibration,
+        download_dest_folder_path_for_the_calib_tfds,
+        tfds_download_flg,
+        npy_load_default_path,
+        load_dest_file_path_for_the_calib_npy,
+        output_tfjs,
+        output_tftrt,
+        output_coreml,
+        output_edgetpu,
+        output_onnx,
+        onnx_opset
+    )
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
