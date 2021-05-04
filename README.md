@@ -361,33 +361,35 @@ optional arguments:
 ```
 ### 5-2. saved_model to tflite convert
 ```bash
-usage: saved_model_to_tflite [-h] --saved_model_dir_path
-                             SAVED_MODEL_DIR_PATH
-                             [--signature_def SIGNATURE_DEF]
-                             [--input_shapes INPUT_SHAPES]
-                             [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
-                             [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
-                             [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
-                             [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
-                             [--output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE]
-                             [--output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE]
-                             [--output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE]
-                             [--string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION]
-                             [--calib_ds_type CALIB_DS_TYPE]
-                             [--ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION]
-                             [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
-                             [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
-                             [--tfds_download_flg TFDS_DOWNLOAD_FLG]
-                             [--load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY]
-                             [--output_tfjs OUTPUT_TFJS]
-                             [--output_tftrt OUTPUT_TFTRT]
-                             [--output_coreml OUTPUT_COREML]
-                             [--output_edgetpu OUTPUT_EDGETPU]
-                             [--output_onnx OUTPUT_ONNX]
-                             [--onnx_opset ONNX_OPSET]
+usage: saved_model_to_tflite
+  [-h]
+  --saved_model_dir_path SAVED_MODEL_DIR_PATH
+  [--signature_def SIGNATURE_DEF]
+  [--input_shapes INPUT_SHAPES]
+  [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
+  [--output_no_quant_float32_tflite OUTPUT_NO_QUANT_FLOAT32_TFLITE]
+  [--output_weight_quant_tflite OUTPUT_WEIGHT_QUANT_TFLITE]
+  [--output_float16_quant_tflite OUTPUT_FLOAT16_QUANT_TFLITE]
+  [--output_integer_quant_tflite OUTPUT_INTEGER_QUANT_TFLITE]
+  [--output_full_integer_quant_tflite OUTPUT_FULL_INTEGER_QUANT_TFLITE]
+  [--output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE]
+  [--string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION]
+  [--calib_ds_type CALIB_DS_TYPE]
+  [--ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION]
+  [--split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION]
+  [--download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS]
+  [--tfds_download_flg TFDS_DOWNLOAD_FLG]
+  [--load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY]
+  [--output_tfjs OUTPUT_TFJS]
+  [--output_tftrt OUTPUT_TFTRT]
+  [--output_coreml OUTPUT_COREML]
+  [--output_edgetpu OUTPUT_EDGETPU]
+  [--output_onnx OUTPUT_ONNX]
+  [--onnx_opset ONNX_OPSET]
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help
+                        show this help message and exit
   --saved_model_dir_path SAVED_MODEL_DIR_PATH
                         Input saved_model dir path
   --signature_def SIGNATURE_DEF
@@ -451,47 +453,61 @@ optional arguments:
 ```
 ### 5-3. pb to saved_model convert
 ```bash
-usage: pb_to_saved_model [-h] --pb_file_path PB_FILE_PATH
-                         --inputs INPUTS
-                         --outputs OUTPUTS
-                         [--model_output_path MODEL_OUTPUT_PATH]
+usage: pb_to_saved_model
+  [-h]
+  --pb_file_path PB_FILE_PATH
+  --inputs INPUTS
+  --outputs OUTPUTS
+  [--model_output_path MODEL_OUTPUT_PATH]
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help
+                        show this help message and exit
   --pb_file_path PB_FILE_PATH
                         Input .pb file path (.pb)
-  --inputs INPUTS       (e.g.1) input:0,input:1,input:2
+  --inputs INPUTS
+                        (e.g.1) input:0,input:1,input:2
                         (e.g.2) images:0,input:0,param:0
-  --outputs OUTPUTS     (e.g.1) output:0,output:1,output:2
+  --outputs OUTPUTS
+                        (e.g.1) output:0,output:1,output:2
                         (e.g.2) Identity:0,Identity:1,output:0
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
 ### 5-4. pb to tflite convert
 ```bash
-usage: pb_to_tflite [-h] --pb_file_path PB_FILE_PATH --inputs INPUTS
-                    --outputs OUTPUTS
-                    [--model_output_path MODEL_OUTPUT_PATH]
+usage: pb_to_tflite
+  [-h]
+  --pb_file_path PB_FILE_PATH
+  --inputs INPUTS
+  --outputs OUTPUTS
+  [--model_output_path MODEL_OUTPUT_PATH]
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help
+                        show this help message and exit
   --pb_file_path PB_FILE_PATH
                         Input .pb file path (.pb)
-  --inputs INPUTS       (e.g.1) input,input_1,input_2
+  --inputs INPUTS
+                        (e.g.1) input,input_1,input_2
                         (e.g.2) images,input,param
-  --outputs OUTPUTS     (e.g.1) output,output_1,output_2
+  --outputs OUTPUTS
+                        (e.g.1) output,output_1,output_2
                         (e.g.2) Identity,Identity_1,output
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
 ### 5-5. saved_model to pb convert
 ```bash
-usage: saved_model_to_pb [-h] --saved_model_dir_path SAVED_MODEL_DIR_PATH
-                         [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
-                         [--signature_name SIGNATURE_NAME]
+usage: saved_model_to_pb
+  [-h]
+  --saved_model_dir_path SAVED_MODEL_DIR_PATH
+  [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
+  [--signature_name SIGNATURE_NAME]
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help
+                        show this help message and exit
   --saved_model_dir_path SAVED_MODEL_DIR_PATH
                         Input saved_model dir path
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
@@ -501,10 +517,14 @@ optional arguments:
 ```
 ### 5-6. Extraction of IR weight
 ```bash
-usage: ir_weight_extractor [-h] -m MODEL -o OUTPUT_PATH
+usage: ir_weight_extractor
+  [-h]
+  -m MODEL
+  -o OUTPUT_PATH
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help
+                        show this help message and exit
   -m MODEL, --model MODEL
                         input IR model path
   -o OUTPUT_PATH, --output_path OUTPUT_PATH
