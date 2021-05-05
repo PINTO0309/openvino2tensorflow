@@ -369,7 +369,7 @@ def convert(
                 [
                     'python3',
                     '-m', 'tf2onnx.convert',
-                    '--saved-model', model_output_dir_path,
+                    '--saved-model', saved_model_dir_path,
                     '--opset', str(onnx_opset),
                     '--output', f'{model_output_dir_path}/model_float32.onnx'
                 ],
@@ -392,7 +392,7 @@ def main():
     parser.add_argument('--output_weight_quant_tflite', action='store_true', help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', action='store_true', help='float16 quant tflite output switch')
     parser.add_argument('--output_integer_quant_tflite', action='store_true', help='integer quant tflite output switch')
-    parser.add_argument('--output_full_integer_quant_tflite',, action='store_true', help='full integer quant tflite output switch')
+    parser.add_argument('--output_full_integer_quant_tflite', action='store_true', help='full integer quant tflite output switch')
     parser.add_argument('--output_integer_quant_type', type=str, default='int8', help='Input and output types when doing Integer Quantization (\'int8 (default)\' or \'uint8\')')
     parser.add_argument('--string_formulas_for_normalization', type=str, default='(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]', help='String formulas for normalization. It is evaluated by Python\'s eval() function. Default: \'(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]\'')
     parser.add_argument('--calib_ds_type', type=str, default='numpy', help='Types of data sets for calibration. tfds or numpy. Only one of them can be specified. Default: numpy [20, 513, 513, 3] -> [Number of images, h, w, c]')
