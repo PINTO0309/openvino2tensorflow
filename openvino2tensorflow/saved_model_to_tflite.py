@@ -260,7 +260,7 @@ def convert(
                 [
                     'edgetpu_compiler',
                     '-o', model_output_dir_path,
-                    '-s',
+                    '-sa',
                     f'{model_output_dir_path}/model_full_integer_quant.tflite'
                 ],
                 stderr=subprocess.PIPE
