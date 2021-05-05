@@ -1156,7 +1156,7 @@ def convert(model_path,
 
             if pad_mode != 'CONSTANT':
                 if (pads_end[0] == 0 and pads_begin[0] == 0):
-                    tom = pad_b_top = 0
+                    pad_b_bottom = pad_b_top = 0
                 else:
                     pad_b_top = pads_begin[0]
                     pad_b_bottom = pads_end[0]
@@ -2013,17 +2013,33 @@ def convert(model_path,
         ### MVN
         elif layer.attrib['type'] == 'MVN':
             eps = float(data.attrib['eps'])
-            across_channels = data.attrib['across_channels']
-            # normalize_variance = data.attrib['normalize_variance']
+            across_channels = None
+            if not data is None and 'across_channels' in data.attrib:
+                across_channels = data.attrib['across_channels']
+            normalize_variance = None
+            if not data is None and 'normalize_variance' in data.attrib:
+                normalize_variance = data.attrib['normalize_variance']
+            eps_mode = None
+            if not data is None and 'eps_mode' in data.attrib:
+                eps_mode = data.attrib['eps_mode']
 
             if across_channels == '0':
                 across_channels = False
             elif across_channels == '1':
                 across_channels = True
-            elif across_channels == 'False':
+            elif across_channels == 'False' or across_channels == 'false':
                 across_channels = False
-            elif across_channels == 'True':
+            elif across_channels == 'True' or across_channels == 'true':
                 across_channels = True
+
+            if normalize_variance == '0':
+                normalize_variance = False
+            elif normalize_variance == '1':
+                normalize_variance = True
+            elif normalize_variance == 'False' or normalize_variance == 'false':
+                normalize_variance = False
+            elif normalize_variance == 'True' or normalize_variance == 'true':
+                normalize_variance = True
 
             mean = None
             var = None
@@ -2034,7 +2050,16 @@ def convert(model_path,
             else:
                 mean = tf.math.reduce_mean(x, keepdims=True)
                 var = tf.math.reduce_variance(x, keepdims=True)
-            mvn = (x - mean) / tf.math.sqrt(var + eps)
+
+            if normalize_variance:
+                if eps_mode == 'inside_sqrt':
+                    mvn = (x - mean) / tf.math.sqrt(var + eps)
+                elif eps_mode == 'outside_sqrt':
+                    mvn = (x - mean) / tf.math.sqrt(var) + eps
+                else:
+                    mvn = (x - mean) / tf.math.sqrt(var + eps)
+            else:
+                mvn = (x - mean)
 
             tf_layers_dict[layer_id] = mvn
 
