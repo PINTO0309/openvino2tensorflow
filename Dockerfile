@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y \
         libva-drm2 libva-x11-2 vainfo libva-wayland2 libva-glx2 \
         libva-dev libdrm-dev xorg xorg-dev \
         openbox libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
-        libtbb2 libtbb-dev \
+        libtbb2 libtbb-dev libcusolver10 libopenblas-dev libopenmpi-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
