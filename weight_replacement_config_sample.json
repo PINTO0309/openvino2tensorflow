@@ -10,6 +10,11 @@
                 513,
                 513
             ]
+        },
+        {
+            "layer_id": "1125",
+            "replace_mode": "npy",
+            "values": "weights_sample/1125.npy"
         }
     ]
 }
