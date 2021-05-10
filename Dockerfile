@@ -35,6 +35,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade coremltools \
     && pip install --upgrade onnx \
     && pip install --upgrade tf2onnx \
+    && pip install --upgrade onnx-tf \
     && pip install --upgrade tensorflow-datasets \
     && pip install --upgrade openvino2tensorflow \
     && pip install --upgrade tflite2tensorflow \
