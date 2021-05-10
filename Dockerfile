@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
         libgtk-3-dev libxtst-dev sudo apt-transport-https \
         build-essential gnupg git xz-utils vim \
         libva-drm2 libva-x11-2 vainfo libva-wayland2 libva-glx2 \
-        libva-dev libdrm-dev xorg xorg-dev \
+        libva-dev libdrm-dev xorg xorg-dev protobuf-compiler \
         openbox libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
         libtbb2 libtbb-dev libopenblas-dev libopenmpi-dev \
     && apt clean \
@@ -42,6 +42,8 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade onnx-simplifier \
     && pip install --upgrade gdown \
     && pip install --upgrade PyYAML \
+    && pip install --upgrade matplotlib \
+    && pip install --upgrade tf_slim \
     && ldconfig \
     && pip cache purge \
     && apt clean \
