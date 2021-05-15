@@ -1,11 +1,11 @@
-FROM nvcr.io/nvidia/tensorrt:20.09-py3
+FROM nvcr.io/nvidia/tensorrt:20.11-py3
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu1804
-ARG TENSORFLOWVER=2.4.1
+ARG TENSORFLOWVER=2.5.0
 ARG OPENVINOVER=2021.3.394
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
-ARG TENSORRTVER=cuda11.0-trt7.1.3.4-ga-20200617
+ARG TENSORRTVER=cuda11.1-trt7.2.1.6-ga-20201007
 ARG wkdir=/home/user
 
 # dash -> bash
@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies (2)
+# Install dependencies (2) - Ubuntu18.04: numpy==1.19.5, Ubuntu20.04: numpy>=1.20.x
 RUN pip3 install --upgrade pip \
     && pip install --upgrade tensorflowjs \
     && pip install --upgrade coremltools \
@@ -45,16 +45,17 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade PyYAML \
     && pip install --upgrade matplotlib \
     && pip install --upgrade tf_slim \
+    && pip install --upgrade numpy==1.19.5 \
     && ldconfig \
     && pip cache purge \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install custom tflite_runtime, flatc, edgetpu-compiler
-RUN gdown --id 1RWZmfFgtxm3muunv6BSf4yU29SKKFXIh \
-    && chmod +x tflite_runtime-${TENSORFLOWVER}-py3-none-any.whl \
-    && pip3 install tflite_runtime-${TENSORFLOWVER}-py3-none-any.whl \
-    && rm tflite_runtime-${TENSORFLOWVER}-py3-none-any.whl \
+RUN gdown --id 17ZmkAqIthgQ9x32BUYYkTBweyqIQWuRa \
+    && chmod +x tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
+    && pip3 install --force-reinstall tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
+    && rm tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && gdown --id 1drnpyrXkUHsMSqb8klV2YosEU9jdoJTP \
     && tar -zxvf flatc.tar.gz \
     && chmod +x flatc \
@@ -91,7 +92,7 @@ RUN gdown --id 1GfpkEn_rnfYEYY_QzTTM2oiaCPlfbvex \
     && rm -rf /var/lib/apt/lists/*
 
 # Install TensorRT additional package
-RUN gdown --id 19vGQBrxJ-q6wMD995bgJq_GXqzaF8RhE \
+RUN gdown --id 1P4618gXcqp3X3n0RPznyen9F2XvaFZaj \
     && dpkg -i nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && apt-key add /var/nv-tensorrt-repo-${TENSORRTVER}/7fa2af80.pub \
     && apt-get update \
@@ -101,7 +102,7 @@ RUN gdown --id 19vGQBrxJ-q6wMD995bgJq_GXqzaF8RhE \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
-RUN gdown --id 1nTSYsPXbZTIO2B7nIMtSpn5bBMlCr46N \
+RUN gdown --id 15TIFvuyiOeP4uHcXTkiw8RaacG3t1UPo \
     && pip3 install --force-reinstall tensorflow-${TENSORFLOWVER}-cp36-cp36m-linux_x86_64.whl \
     && rm tensorflow-${TENSORFLOWVER}-cp36-cp36m-linux_x86_64.whl \
     && pip cache purge \
