@@ -52,7 +52,7 @@ RUN pip3 install --upgrade pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install custom tflite_runtime, flatc, edgetpu-compiler
-RUN gdown --id 17ZmkAqIthgQ9x32BUYYkTBweyqIQWuRa \
+RUN gdown --id 19B7BpoYVZERRh1ww04SnLelQ8dW60hvh \
     && chmod +x tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && pip3 install --force-reinstall tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && rm tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
