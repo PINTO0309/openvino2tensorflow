@@ -186,32 +186,30 @@ $ docker pull pinto0309/openvino2tensorflow
 or
 $ docker build -t pinto0309/openvino2tensorflow:latest .
 
-# If no INT8 quantization or conversion to EdgeTPU model is performed
+# If conversion to TF-TRT is not required
 $ xhost +local: && \
   docker run -it --rm \
-    -v `pwd`:/home/user/workdir \
-    -v /tmp/.X11-unix/:/tmp/.X11-unix:rw \
-    --device /dev/video0:/dev/video0:mwr \
-    --net=host \
-    -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
-    -e DISPLAY=$DISPLAY \
-    --privileged \
-    pinto0309/openvino2tensorflow:latest
+  -v `pwd`:/home/user/workdir \
+  -v /tmp/.X11-unix/:/tmp/.X11-unix:rw \
+  --device /dev/video0:/dev/video0:mwr \
+  --net=host \
+  -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+  -e DISPLAY=$DISPLAY \
+  --privileged \
+  pinto0309/openvino2tensorflow:latest
 $ cd workdir
 
-# For INT8 quantization and conversion to EdgeTPU model
-# "TFDS" is the folder where TensorFlow Datasets are downloaded.
+# If you need to convert to TF-TRT
 $ xhost +local: && \
-  docker run -it --rm \
-    -v `pwd`:/home/user/workdir \
-    -v ${HOME}/TFDS:/workspace/TFDS \
-    -v /tmp/.X11-unix/:/tmp/.X11-unix:rw \
-    --device /dev/video0:/dev/video0:mwr \
-    --net=host \
-    -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
-    -e DISPLAY=$DISPLAY \
-    --privileged \
-    pinto0309/openvino2tensorflow:latest
+  docker run --gpus all -it --rm \
+  -v `pwd`:/home/user/workdir \
+  -v /tmp/.X11-unix/:/tmp/.X11-unix:rw \
+  --device /dev/video0:/dev/video0:mwr \
+  --net=host \
+  -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+  -e DISPLAY=$DISPLAY \
+  --privileged \
+  pinto0309/openvino2tensorflow:latest
 $ cd workdir
 ```
 ### 4-2. **[Environment construction pattern 2]** Execution by Host machine
