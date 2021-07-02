@@ -18,7 +18,7 @@ Work in progress now.
 
 ## 1. Environment
 - TensorFlow v2.5.0+ **`pip3 install --upgrade tensorflow`** or **`pip3 install --upgrade tf-nightly`**
-- OpenVINO 2021.3.394+
+- OpenVINO 2021.4.582+
 - Python 3.6+
 - tensorflowjs **`pip3 install --upgrade tensorflowjs`**
 - **[tensorrt](https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html)**

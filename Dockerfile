@@ -3,7 +3,7 @@ FROM nvcr.io/nvidia/tensorrt:20.11-py3
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu1804
 ARG TENSORFLOWVER=2.5.0
-ARG OPENVINOVER=2021.3.394
+ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
 ARG TENSORRTVER=cuda11.1-trt7.2.1.6-ga-20201007
 ARG wkdir=/home/user
@@ -70,7 +70,7 @@ RUN gdown --id 19B7BpoYVZERRh1ww04SnLelQ8dW60hvh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install OpenVINO
-RUN gdown --id 1GfpkEn_rnfYEYY_QzTTM2oiaCPlfbvex \
+RUN gdown --id 1sKAaJfMbZ9ISiH6PHl6m6bZNQZGdwl5X \
     && tar xf l_openvino_toolkit_p_${OPENVINOVER}.tgz \
     && rm l_openvino_toolkit_p_${OPENVINOVER}.tgz \
     && l_openvino_toolkit_p_${OPENVINOVER}/install_openvino_dependencies.sh -y \
