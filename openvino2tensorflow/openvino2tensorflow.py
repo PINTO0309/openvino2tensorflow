@@ -709,21 +709,18 @@ def convert(model_path,
                 padding = 'same'
 
             temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            # orig = None
-            # if pads_begin > 0:
-            #     padding = 'valid'
-            #     # begin 0 = top
-            #     # begin 1 = left
-            #     # end 0 = bottom
-            #     # end 1 = right
-            #     begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
-            #     end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
-            #     orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
-            # else:
-            #     orig = temp
             orig = None
-            orig = temp
-            padding = 'same'
+            if pads_begin > 0:
+                padding = 'valid'
+                # begin 0 = top
+                # begin 1 = left
+                # end 0 = bottom
+                # end 1 = right
+                begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+                end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+                orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+            else:
+                orig = temp
 
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
 
