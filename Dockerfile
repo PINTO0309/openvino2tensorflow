@@ -6,6 +6,7 @@ ARG TENSORFLOWVER=2.5.0
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
 ARG TENSORRTVER=cuda11.1-trt7.2.1.6-ga-20201007
+ARG APPVER=v1.14.1
 ARG wkdir=/home/user
 
 # dash -> bash
@@ -70,7 +71,7 @@ RUN gdown --id 19B7BpoYVZERRh1ww04SnLelQ8dW60hvh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install OpenVINO
-RUN gdown --id 1sKAaJfMbZ9ISiH6PHl6m6bZNQZGdwl5X \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/l_openvino_toolkit_p_2021.4.582.tgz \
     && tar xf l_openvino_toolkit_p_${OPENVINOVER}.tgz \
     && rm l_openvino_toolkit_p_${OPENVINOVER}.tgz \
     && l_openvino_toolkit_p_${OPENVINOVER}/install_openvino_dependencies.sh -y \
@@ -92,7 +93,7 @@ RUN gdown --id 1sKAaJfMbZ9ISiH6PHl6m6bZNQZGdwl5X \
     && rm -rf /var/lib/apt/lists/*
 
 # Install TensorRT additional package
-RUN gdown --id 1P4618gXcqp3X3n0RPznyen9F2XvaFZaj \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/nv-tensorrt-repo-ubuntu1804-cuda11.1-trt7.2.1.6-ga-20201007_1-1_amd64.deb \
     && dpkg -i nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && apt-key add /var/nv-tensorrt-repo-${TENSORRTVER}/7fa2af80.pub \
     && apt-get update \
@@ -102,7 +103,7 @@ RUN gdown --id 1P4618gXcqp3X3n0RPznyen9F2XvaFZaj \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
-RUN gdown --id 15TIFvuyiOeP4uHcXTkiw8RaacG3t1UPo \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tensorflow-2.5.0-cp36-cp36m-linux_x86_64.whl \
     && pip3 install --force-reinstall tensorflow-${TENSORFLOWVER}-cp36-cp36m-linux_x86_64.whl \
     && rm tensorflow-${TENSORFLOWVER}-cp36-cp36m-linux_x86_64.whl \
     && pip cache purge \
