@@ -1308,6 +1308,9 @@ def convert(model_path,
             axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
             temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
             input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
+            batch_dims = 0
+            if not data is None and 'batch_dims' in data.attrib:
+                batch_dims = data.attrib['batch_dims']
             indices = []
             if type(temp) == np.ndarray:
                 for idx, dim in enumerate(temp):
@@ -1327,7 +1330,8 @@ def convert(model_path,
                 tf_layers_dict[layer_id] = tf.gather(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     indices,
-                    axis=axis
+                    axis=axis,
+                    batch_dims=batch_dims
                 )
             else:
                 if indices == [0] and axis == 0:
@@ -1342,13 +1346,15 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = tf.gather(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             indices,
-                            axis=axis
+                            axis=axis,
+                            batch_dims=batch_dims
                         )
                 else:
                     tf_layers_dict[layer_id] = tf.gather(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         indices,
-                        axis=axis
+                        axis=axis,
+                        batch_dims=batch_dims
                     )
 
         ### GatherND
@@ -2014,7 +2020,7 @@ def convert(model_path,
             for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                 tf_layers_dict[layer_id_port] = output
 
-        ### MVN
+        ### MVN - TODO axes
         elif layer.attrib['type'] == 'MVN':
             eps = float(data.attrib['eps'])
             across_channels = None
@@ -2047,23 +2053,28 @@ def convert(model_path,
 
             mean = None
             var = None
-            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            axes = None
+            data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            try:
+                axes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+            except:
+                pass
             if across_channels:
-                mean = tf.math.reduce_mean(x, axis=[-1], keepdims=True)
-                var = tf.math.reduce_variance(x, axis=[-1], keepdims=True)
+                mean = tf.math.reduce_mean(data, axis=[-1], keepdims=True)
+                var = tf.math.reduce_variance(data, axis=[-1], keepdims=True)
             else:
-                mean = tf.math.reduce_mean(x, keepdims=True)
-                var = tf.math.reduce_variance(x, keepdims=True)
+                mean = tf.math.reduce_mean(data, axis=axes, keepdims=True)
+                var = tf.math.reduce_variance(data, axis=axes, keepdims=True)
 
             if normalize_variance:
                 if eps_mode == 'inside_sqrt':
-                    mvn = (x - mean) / tf.math.sqrt(var + eps)
+                    mvn = (data - mean) / tf.math.sqrt(var + eps)
                 elif eps_mode == 'outside_sqrt':
-                    mvn = (x - mean) / tf.math.sqrt(var) + eps
+                    mvn = (data - mean) / (tf.math.sqrt(var) + eps)
                 else:
-                    mvn = (x - mean) / tf.math.sqrt(var + eps)
+                    mvn = (data - mean) / tf.math.sqrt(var + eps)
             else:
-                mvn = (x - mean)
+                mvn = (data - mean)
 
             tf_layers_dict[layer_id] = mvn
 
