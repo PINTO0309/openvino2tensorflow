@@ -397,7 +397,10 @@ def convert(model_path,
                     decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)
 
                     if not wr_config or layer_id not in wr_config:
-                        tf_layers_dict[layer_id] = decodedwgt
+                        if type(decodedwgt) == np.ndarray and decodedwgt.dtype == np.float64:
+                            tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
+                        else:
+                            tf_layers_dict[layer_id] = decodedwgt
                     else:
                         if layer_id in wr_config:
                             if wr_config[layer_id]['replace_mode'] == 'direct':
@@ -412,7 +415,10 @@ def convert(model_path,
                                 print(f'replace_mode = {mode_str} is not supported. Please review the weight_replacement_config json.')
                                 sys.exit(-1)
                         else:
-                            tf_layers_dict[layer_id] = decodedwgt
+                            if type(decodedwgt) == np.ndarray and decodedwgt.dtype == np.float64:
+                                tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
+                            else:
+                                tf_layers_dict[layer_id] = decodedwgt
 
         ### Convolution
         elif layer.attrib['type'] == 'Convolution':
@@ -703,18 +709,21 @@ def convert(model_path,
                 padding = 'same'
 
             temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+            # orig = None
+            # if pads_begin > 0:
+            #     padding = 'valid'
+            #     # begin 0 = top
+            #     # begin 1 = left
+            #     # end 0 = bottom
+            #     # end 1 = right
+            #     begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+            #     end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+            #     orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+            # else:
+            #     orig = temp
             orig = None
-            if pads_begin > 0:
-                padding = 'valid'
-                # begin 0 = top
-                # begin 1 = left
-                # end 0 = bottom
-                # end 1 = right
-                begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
-                end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
-                orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
-            else:
-                orig = temp
+            orig = temp
+            padding = 'same'
 
             dilations = [int(s) for s in data.attrib['dilations'].split(',')]
 
