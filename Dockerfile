@@ -112,7 +112,7 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
 
 # Download the ultra-small sample data set for INT8 calibration
 RUN mkdir sample_npy \
-    && wget -O sample_npy/calibration_data_img_sample.npy https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/calibration_data_img_sample.npy \
+    && wget -O sample_npy/calibration_data_img_sample.npy https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/calibration_data_img_sample.npy
 
 # Clear caches
 RUN apt clean \
