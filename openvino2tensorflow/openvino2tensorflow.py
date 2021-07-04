@@ -1277,6 +1277,7 @@ def convert(model_path,
             else:
                 for idx, dim in enumerate(temp):
                     perm.append(dim)
+
             tf_layers_dict[layer_id] = tf.transpose(
                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                 perm=perm
@@ -1316,7 +1317,9 @@ def convert(model_path,
             input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
             batch_dims = 0
             if not data is None and 'batch_dims' in data.attrib:
-                batch_dims = data.attrib['batch_dims']
+                batch_dims = int(data.attrib['batch_dims'])
+                if batch_dims == 0:
+                    batch_dims = None
             indices = []
             if type(temp) == np.ndarray:
                 for idx, dim in enumerate(temp):
@@ -1362,6 +1365,9 @@ def convert(model_path,
                         axis=axis,
                         batch_dims=batch_dims
                     )
+
+                if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
+                    tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
 
         ### GatherND
         elif layer.attrib['type'] == 'GatherND':
@@ -2313,6 +2319,22 @@ def convert(model_path,
                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
             )
+
+        ### Gelu
+        elif layer.attrib['type'] == 'Gelu':
+            approximation_mode = None
+            if not data is None and 'approximation_mode' in data.attrib:
+                approximation_mode = data.attrib['approximation_mode']
+            if approximation_mode == 'ERF' or approximation_mode is None:
+                tf_layers_dict[layer_id] = tf.nn.gelu(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    approximate=False
+                )
+            elif approximation_mode == 'TANH':
+                tf_layers_dict[layer_id] = tf.nn.gelu(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    approximate=True
+                )
 
         ### Result
         elif layer.attrib['type'] == 'Result':

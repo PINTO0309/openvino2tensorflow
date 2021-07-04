@@ -6,7 +6,7 @@ ARG TENSORFLOWVER=2.5.0
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
 ARG TENSORRTVER=cuda11.1-trt7.2.1.6-ga-20201007
-ARG APPVER=v1.14.3
+ARG APPVER=v1.14.4
 ARG wkdir=/home/user
 
 # dash -> bash
@@ -53,11 +53,11 @@ RUN pip3 install --upgrade pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install custom tflite_runtime, flatc, edgetpu-compiler
-RUN gdown --id 19B7BpoYVZERRh1ww04SnLelQ8dW60hvh \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tflite_runtime-2.5.0-cp36-none-linux_x86_64.whl \
     && chmod +x tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && pip3 install --force-reinstall tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && rm tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
-    && gdown --id 1drnpyrXkUHsMSqb8klV2YosEU9jdoJTP \
+    && wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/flatc.tar.gz \
     && tar -zxvf flatc.tar.gz \
     && chmod +x flatc \
     && rm flatc.tar.gz \
@@ -112,7 +112,7 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
 
 # Download the ultra-small sample data set for INT8 calibration
 RUN mkdir sample_npy \
-    && gdown --id 1e-Zg2OVgeTDgpndIBrwW5Ka07C5WrhSS -O sample_npy/calibration_data_img_sample.npy
+    && wget -O sample_npy/calibration_data_img_sample.npy https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/calibration_data_img_sample.npy \
 
 # Clear caches
 RUN apt clean \
