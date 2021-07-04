@@ -1,60 +1,14 @@
 #! /usr/bin/env python
 '''
-tensorflow==2.3.1+
+tensorflow==2.5.0+
 
 python3 openvino2tensorflow.py \
-  --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
-  --output_saved_model=True \
-  --output_pb=True \
-  --output_weight_quant_tflite=True \
-  --output_float16_quant_tflite=True \
-  --output_no_quant_float32_tflite=True
-
-python3 openvino2tensorflow.py \
-  --model_path=openvino/kitti_192x640/FP32/footprints_kitti_192x640.xml \
-  --output_saved_model=True \
-  --output_no_quant_float32_tflite=True
-
-python3 openvino2tensorflow.py \
-  --model_path=openvino/dense_depth_nyu_480x640/FP32/dense_depth_nyu_480x640.xml \
-  --output_saved_model=True \
-  --output_no_quant_float32_tflite=True
-
-python3 openvino2tensorflow.py \
-  --model_path=openvino/480x640/FP32/u2netp_480x640.xml \
-  --output_saved_model=True \
-  --output_no_quant_float32_tflite=True
-
-python3 openvino2tensorflow.py \
-  --model_path=openvino/deeplabv3/FP32/deeplabv3.xml \
-  --output_saved_model=True \
-  --output_no_quant_float32_tflite=True
-
-python3 openvino2tensorflow.py \
-  --model_path=openvino/efficientnet-b0-pytorch/FP32/efficientnet-b0-pytorch.xml \
-  --output_saved_model=True \
-  --output_pb=True \
-  --output_no_quant_float32_tflite=True \
-  --debug \
-  --debug_layer_number=5
-
-python3 openvino2tensorflow.py \
-  --model_path=openvino/mobilenet-v2-pytorch/FP32/mobilenet-v2-pytorch.xml \
-  --output_saved_model=True \
-  --output_no_quant_float32_tflite=True \
-  --debug \
-  --debug_layer_number=258
-
-python3 openvino2tensorflow.py \
-  --model_path=openvino/midasnet/FP32/midasnet.xml \
-  --output_weight_and_json=True \
-  --output_pb=True
-
-python3 openvino2tensorflow.py \
-  --model_path openvino/tf_efficientnet_lite3_256x256/FP32/tf_efficientnet_lite3.xml \
-  --output_saved_model=True \
-  --output_pb=True \
-  --output_no_quant_float32_tflite=True
+  --model_path openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
+  --output_saved_model \
+  --output_pb \
+  --output_weight_quant_tflite \
+  --output_float16_quant_tflit \
+  --output_no_quant_float32_tflite
 '''
 import os
 import sys
@@ -372,107 +326,98 @@ def convert(model_path,
         layer_name = layer.attrib['name'].replace('.', '_').replace('/', '_')
         data = layer.find('data')
 
-        ### Parameter
-        if layer.attrib['type'] == 'Parameter':
-            if not data is None and 'shape' in data.attrib:
-                shape_str  = data.attrib['shape'].split(',')
-                shape = [int(s) for s in shape_str]
-                if len(shape) == 4:
-                    tf_layers_dict[layer_id] = Input(shape=(shape[2], shape[3], shape[1]), batch_size=shape[0], name=layer_name)
-                else:
-                    tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
-                tf_inputs.append(tf_layers_dict[layer_id])
-
-        ### Const
-        elif layer.attrib['type'] == 'Const':
-            if not data is None:
-                if 'offset' in data.attrib and 'size' in data.attrib:
-                    offset = int(data.attrib['offset'])
-                    size   = int(data.attrib['size'])
-                    shape_str = '1' if data.attrib['shape'] == '' else data.attrib['shape'].split(',')
+        try:
+            ### Parameter
+            if layer.attrib['type'] == 'Parameter':
+                if not data is None and 'shape' in data.attrib:
+                    shape_str  = data.attrib['shape'].split(',')
                     shape = [int(s) for s in shape_str]
-                    blobBin = binWeight[offset:offset+size]
-                    prec = layer.find('output').find('port').attrib['precision']
-                    formatstring = '<' + format_config[prec][0] * (len(blobBin)//format_config[prec][1])
-                    decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)
-
-                    if not wr_config or layer_id not in wr_config:
-                        if type(decodedwgt) == np.ndarray and decodedwgt.dtype == np.float64:
-                            tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
-                        else:
-                            tf_layers_dict[layer_id] = decodedwgt
+                    if len(shape) == 4:
+                        tf_layers_dict[layer_id] = Input(shape=(shape[2], shape[3], shape[1]), batch_size=shape[0], name=layer_name)
                     else:
-                        if layer_id in wr_config:
-                            if wr_config[layer_id]['replace_mode'] == 'direct':
-                                try:
-                                    tf_layers_dict[layer_id] = np.array(wr_config[layer_id]['values'])
-                                except:
-                                    tf_layers_dict[layer_id] = wr_config[layer_id]['values']
-                            elif wr_config[layer_id]['replace_mode'] == 'npy':
-                                tf_layers_dict[layer_id] = np.load(wr_config[layer_id]['values'])
-                            else:
-                                mode_str = wr_config[layer_id]['replace_mode']
-                                print(f'replace_mode = {mode_str} is not supported. Please review the weight_replacement_config json.')
-                                sys.exit(-1)
-                        else:
+                        tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
+                    tf_inputs.append(tf_layers_dict[layer_id])
+
+            ### Const
+            elif layer.attrib['type'] == 'Const':
+                if not data is None:
+                    if 'offset' in data.attrib and 'size' in data.attrib:
+                        offset = int(data.attrib['offset'])
+                        size   = int(data.attrib['size'])
+                        shape_str = '1' if data.attrib['shape'] == '' else data.attrib['shape'].split(',')
+                        shape = [int(s) for s in shape_str]
+                        blobBin = binWeight[offset:offset+size]
+                        prec = layer.find('output').find('port').attrib['precision']
+                        formatstring = '<' + format_config[prec][0] * (len(blobBin)//format_config[prec][1])
+                        decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)
+
+                        if not wr_config or layer_id not in wr_config:
                             if type(decodedwgt) == np.ndarray and decodedwgt.dtype == np.float64:
                                 tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
                             else:
                                 tf_layers_dict[layer_id] = decodedwgt
+                        else:
+                            if layer_id in wr_config:
+                                if wr_config[layer_id]['replace_mode'] == 'direct':
+                                    try:
+                                        tf_layers_dict[layer_id] = np.array(wr_config[layer_id]['values'])
+                                    except:
+                                        tf_layers_dict[layer_id] = wr_config[layer_id]['values']
+                                elif wr_config[layer_id]['replace_mode'] == 'npy':
+                                    tf_layers_dict[layer_id] = np.load(wr_config[layer_id]['values'])
+                                else:
+                                    mode_str = wr_config[layer_id]['replace_mode']
+                                    print(f'replace_mode = {mode_str} is not supported. Please review the weight_replacement_config json.')
+                                    sys.exit(-1)
+                            else:
+                                if type(decodedwgt) == np.ndarray and decodedwgt.dtype == np.float64:
+                                    tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
+                                else:
+                                    tf_layers_dict[layer_id] = decodedwgt
 
-        ### Convolution
-        elif layer.attrib['type'] == 'Convolution':
-            # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
-            port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
-            filters = int(port1[0])
-            kernel_size = [int(port1[2]), int(port1[3])]
-            strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = 0
-            pads_end = 0
-            if not data is None and 'pads_begin' in data.attrib:
-                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            if not data is None and 'pads_end' in data.attrib:
-                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
-            padding = ''
-            if (pads_begin + pads_end) == 0:
-                if 'auto_pad' in data.attrib:
-                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
-                        padding = 'same'
+            ### Convolution
+            elif layer.attrib['type'] == 'Convolution':
+                # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
+                port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
+                filters = int(port1[0])
+                kernel_size = [int(port1[2]), int(port1[3])]
+                strides = [int(s) for s in data.attrib['strides'].split(',')]
+                pads_begin = 0
+                pads_end = 0
+                if not data is None and 'pads_begin' in data.attrib:
+                    pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+                if not data is None and 'pads_end' in data.attrib:
+                    pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+                padding = ''
+                if (pads_begin + pads_end) == 0:
+                    if 'auto_pad' in data.attrib:
+                        if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                            padding = 'same'
+                        else:
+                            padding = 'valid'
                     else:
                         padding = 'valid'
                 else:
+                    padding = 'same'
+
+                temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                orig = None
+                if pads_begin > 0:
                     padding = 'valid'
-            else:
-                padding = 'same'
-
-            temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            orig = None
-            if pads_begin > 0:
-                padding = 'valid'
-                # begin 0 = top
-                # begin 1 = left
-                # end 0 = bottom
-                # end 1 = right
-                begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
-                end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
-                orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
-            else:
-                if temp.shape[0] == 1 and temp.shape[2] == 1 and temp.shape[3] == 1:
-                    orig = tf.transpose(temp, perm=(0,2,3,1))
+                    # begin 0 = top
+                    # begin 1 = left
+                    # end 0 = bottom
+                    # end 1 = right
+                    begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+                    end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+                    orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
                 else:
-                    orig = temp
+                    if temp.shape[0] == 1 and temp.shape[2] == 1 and temp.shape[3] == 1:
+                        orig = tf.transpose(temp, perm=(0,2,3,1))
+                    else:
+                        orig = temp
 
-            dilations = [int(s) for s in data.attrib['dilations'].split(',')]
-            try:
-                tf_layers_dict[layer_id] = Conv2D(
-                    filters=filters,
-                    kernel_size=kernel_size,
-                    strides=strides,
-                    padding=padding,
-                    dilation_rate=dilations,
-                    use_bias=False,
-                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
-            except:
+                dilations = [int(s) for s in data.attrib['dilations'].split(',')]
                 try:
                     tf_layers_dict[layer_id] = Conv2D(
                         filters=filters,
@@ -481,1876 +426,1902 @@ def convert(model_path,
                         padding=padding,
                         dilation_rate=dilations,
                         use_bias=False,
-                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
                 except:
-                    # Weights from OP that are not fixed values
-                    tf_layers_dict[layer_id] = tf.nn.conv2d(
-                        input=orig,
-                        filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                        strides=strides,
-                        padding=padding.upper(),
-                        dilations=dilations
-                    )
+                    try:
+                        tf_layers_dict[layer_id] = Conv2D(
+                            filters=filters,
+                            kernel_size=kernel_size,
+                            strides=strides,
+                            padding=padding,
+                            dilation_rate=dilations,
+                            use_bias=False,
+                            kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                    except:
+                        # Weights from OP that are not fixed values
+                        tf_layers_dict[layer_id] = tf.nn.conv2d(
+                            input=orig,
+                            filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                            strides=strides,
+                            padding=padding.upper(),
+                            dilations=dilations
+                        )
 
-        ### Add
-        elif layer.attrib['type'] == 'Add':
-            # 'Fused_Add_' == BiasAdd
-            if len(tf_edges[layer_id]) == 2 and type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray:
-                try:
-                    # Biasadd or Add
-                    edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
-                    edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
-                    if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[-1] == tf_layers_dict[edge_id1].flatten().shape[0]:
-                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
-                    else:
-                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
-                except:
+            ### Add
+            elif layer.attrib['type'] == 'Add':
+                # 'Fused_Add_' == BiasAdd
+                if len(tf_edges[layer_id]) == 2 and type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray:
+                    try:
+                        # Biasadd or Add
+                        edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
+                        edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
+                        if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[-1] == tf_layers_dict[edge_id1].flatten().shape[0]:
+                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                        else:
+                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                    except:
+                        # Add
+                        edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
+                        edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
+                        try:
+                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                        except:
+                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].transpose(0,2,3,1))
+                else:
                     # Add
-                    edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
-                    edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
-                    try:
-                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
-                    except:
-                        tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].transpose(0,2,3,1))
-            else:
-                # Add
-                if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
-                    try:
-                        tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
-                        tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
-                    except:
-                        tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
-                        tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+                    if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
+                        try:
+                            tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                            tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+                        except:
+                            tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                            tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+                    else:
+                        tf_layers_dict[layer_id] = tf.math.add_n(
+                            [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                        )
+
+            ### ReLU
+            elif layer.attrib['type'] == 'ReLU':
+                tf_layers_dict[layer_id] = tf.nn.relu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### PReLU
+            elif layer.attrib['type'] == 'PReLU':
+                input_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
+                alpha_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape)
+
+                shared_axes = []
+                if alpha_len < 4:
+                    shared_axes = [val + 1 for val in range(input_len - 1)]
                 else:
-                    tf_layers_dict[layer_id] = tf.math.add_n(
-                        [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                    shared_axes = None
+
+                if alpha_len == 4:
+                    if replace_prelu_and_minmax:
+                        tf_layers_dict[layer_id] = \
+                            tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    else:
+                        tf_layers_dict[layer_id] = PReLU(
+                            alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
+                            shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                else:
+                    if replace_prelu_and_minmax:
+                        tf_layers_dict[layer_id] = \
+                            tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    else:
+                        tf_layers_dict[layer_id] = PReLU(
+                            alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                            shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+
+            ### Clamp
+            elif layer.attrib['type'] == 'Clamp':
+                cmin = float(data.attrib['min'])
+                cmax = float(data.attrib['max'])
+                if cmin == 0.0 and cmax == 6.0:
+                    # ReLU6
+                    tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                else:
+                    # Other
+                    tf_layers_dict[layer_id] = tf.clip_by_value(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        clip_value_min=cmin,
+                        clip_value_max=cmax
                     )
 
-        ### ReLU
-        elif layer.attrib['type'] == 'ReLU':
-            tf_layers_dict[layer_id] = tf.nn.relu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            ### Tan
+            elif layer.attrib['type'] == 'Tan':
+                tf_layers_dict[layer_id] = tf.math.tan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-        ### PReLU
-        elif layer.attrib['type'] == 'PReLU':
-            input_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
-            alpha_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape)
+            ### Tanh
+            elif layer.attrib['type'] == 'Tanh':
+                tf_layers_dict[layer_id] = tf.math.tanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-            shared_axes = []
-            if alpha_len < 4:
-                shared_axes = [val + 1 for val in range(input_len - 1)]
-            else:
-                shared_axes = None
+            ### Elu
+            elif layer.attrib['type'] == 'Elu':
+                alpha = float(data.attrib['alpha'])
+                tf_layers_dict[layer_id] = elu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], alpha=alpha)
 
-            if alpha_len == 4:
-                if replace_prelu_and_minmax:
-                    tf_layers_dict[layer_id] = \
-                        tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+            ### HardSigmoid
+            elif layer.attrib['type'] == 'HardSigmoid':
+                tf_layers_dict[layer_id] = hard_sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Sigmoid
+            elif layer.attrib['type'] == 'Sigmoid':
+                tf_layers_dict[layer_id] = tf.math.sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Swish
+            elif layer.attrib['type'] == 'Swish':
+                if replace_swish_and_hardswish:
+                    # Hard-Swish
+                    if not optimizing_hardswish_for_edgetpu:
+                        tf_layers_dict[layer_id] = \
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                    else:
+                        tf_layers_dict[layer_id] = \
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
                 else:
-                    tf_layers_dict[layer_id] = PReLU(
-                        alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
-                        shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                    )
-            else:
-                if replace_prelu_and_minmax:
-                    tf_layers_dict[layer_id] = \
-                        tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                else:
-                    tf_layers_dict[layer_id] = PReLU(
-                        alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
-                        shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                    )
+                    # Swish
+                    tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-        ### Clamp
-        elif layer.attrib['type'] == 'Clamp':
-            cmin = float(data.attrib['min'])
-            cmax = float(data.attrib['max'])
-            if cmin == 0.0 and cmax == 6.0:
-                # ReLU6
-                tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-            else:
-                # Other
-                tf_layers_dict[layer_id] = tf.clip_by_value(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    clip_value_min=cmin,
-                    clip_value_max=cmax
-                )
+            ### SoftPlus
+            elif layer.attrib['type'] == 'SoftPlus':
+                tf_layers_dict[layer_id] = tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-        ### Tan
-        elif layer.attrib['type'] == 'Tan':
-            tf_layers_dict[layer_id] = tf.math.tan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Tanh
-        elif layer.attrib['type'] == 'Tanh':
-            tf_layers_dict[layer_id] = tf.math.tanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Elu
-        elif layer.attrib['type'] == 'Elu':
-            alpha = float(data.attrib['alpha'])
-            tf_layers_dict[layer_id] = elu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], alpha=alpha)
-
-        ### HardSigmoid
-        elif layer.attrib['type'] == 'HardSigmoid':
-            tf_layers_dict[layer_id] = hard_sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Sigmoid
-        elif layer.attrib['type'] == 'Sigmoid':
-            tf_layers_dict[layer_id] = tf.math.sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Swish
-        elif layer.attrib['type'] == 'Swish':
-            if replace_swish_and_hardswish:
-                # Hard-Swish
-                if not optimizing_hardswish_for_edgetpu:
-                    tf_layers_dict[layer_id] = \
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
-                else:
-                    tf_layers_dict[layer_id] = \
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
-            else:
-                # Swish
-                tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### SoftPlus
-        elif layer.attrib['type'] == 'SoftPlus':
-            tf_layers_dict[layer_id] = tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### MaxPool
-        elif layer.attrib['type'] == 'MaxPool':
-            outport_size = sum([int(sdim.text) for sdim in layer.find('output')[0]])
-            kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
-            strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = 0
-            pads_end = 0
-            if not data is None and 'pads_begin' in data.attrib:
-                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            if not data is None and 'pads_end' in data.attrib:
-                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
-            padding = ''
-            if (pads_begin + pads_end) == 0:
-                if 'auto_pad' in data.attrib:
-                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
-                        padding = 'SAME'
+            ### MaxPool
+            elif layer.attrib['type'] == 'MaxPool':
+                outport_size = sum([int(sdim.text) for sdim in layer.find('output')[0]])
+                kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
+                strides = [int(s) for s in data.attrib['strides'].split(',')]
+                pads_begin = 0
+                pads_end = 0
+                if not data is None and 'pads_begin' in data.attrib:
+                    pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+                if not data is None and 'pads_end' in data.attrib:
+                    pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+                padding = ''
+                if (pads_begin + pads_end) == 0:
+                    if 'auto_pad' in data.attrib:
+                        if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                            padding = 'SAME'
+                        else:
+                            padding = 'VALID'
                     else:
                         padding = 'VALID'
                 else:
-                    padding = 'VALID'
-            else:
-                padding = 'SAME'
+                    padding = 'SAME'
 
-            tf_layers_dict[layer_id] = tf.nn.max_pool(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                ksize=kernel_size,
-                strides=strides,
-                padding=padding
-            )
-            new_layer_outport_size = sum([sdim for sdim in tf_layers_dict[layer_id].shape])
-            if outport_size != new_layer_outport_size:
-                # Caffe -> TF
                 tf_layers_dict[layer_id] = tf.nn.max_pool(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     ksize=kernel_size,
                     strides=strides,
-                    padding='SAME'
+                    padding=padding
                 )
-
-        ### AvgPool
-        elif layer.attrib['type'] == 'AvgPool':
-            kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
-            strides = [int(s) for s in data.attrib['strides'].split(',')]
-            # exclude_pad = data.attrib['exclude-pad']
-            pads_begin = 0
-            pads_end = 0
-            if not data is None and 'pads_begin' in data.attrib:
-                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            if not data is None and 'pads_end' in data.attrib:
-                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
-            padding = ''
-            if (pads_begin + pads_end) == 0:
-                if 'auto_pad' in data.attrib:
-                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
-                        padding = 'same'
-                    else:
-                        padding = 'valid'
-                else:
-                    padding = 'valid'
-            else:
-                padding = 'same'
-            tf_layers_dict[layer_id] = AveragePooling2D(
-                pool_size=kernel_size,
-                strides=strides,
-                padding=padding
-            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### GroupConvolution
-        elif layer.attrib['type'] == 'GroupConvolution':
-            port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
-            port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
-            depth_multiplier = 1
-            kernel_size = [int(port1[3]), int(port1[4])]
-            strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = 0
-            pads_end = 0
-            if not data is None and 'pads_begin' in data.attrib:
-                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            if not data is None and 'pads_end' in data.attrib:
-                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
-            padding = ''
-            if (pads_begin + pads_end) == 0:
-                if 'auto_pad' in data.attrib:
-                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
-                        padding = 'same'
-                    else:
-                        padding = 'valid'
-                else:
-                    padding = 'valid'
-            else:
-                padding = 'same'
-
-            temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            orig = None
-            if pads_begin > 0:
-                padding = 'valid'
-                # begin 0 = top
-                # begin 1 = left
-                # end 0 = bottom
-                # end 1 = right
-                begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
-                end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
-                orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
-            else:
-                orig = temp
-
-            dilations = [int(s) for s in data.attrib['dilations'].split(',')]
-
-            if int(port1[1]) > 1:
-                # Conv2D with groups
-                filters = int(port0[1])
-                groups = int(port1[0])
-
-                convs = []
-                kernel = None
-                if len(port1) == 5:
-                    try:
-                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,2,1,0)
-                    except:
-                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,2,1,0)
-
-                    for i in range(groups):
-                        convs.append(Conv2D(filters=filters // groups,
-                                            kernel_size=kernel_size,
-                                            strides=strides,
-                                            padding=padding,
-                                            dilation_rate=dilations,
-                                            use_bias=False,
-                                            kernel_initializer=Constant(kernel[:,:,:,:,i])))
-                else:
-                    try:
-                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)
-                    except:
-                        kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)
-                    for i in range(groups):
-                        convs.append(Conv2D(filters=filters // groups,
-                                            kernel_size=kernel_size,
-                                            strides=strides,
-                                            padding=padding,
-                                            dilation_rate=dilations,
-                                            use_bias=False,
-                                            kernel_initializer=Constant(kernel[:,:,:,i])))
-
-                x_splits = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], groups, -1)
-                x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
-                tf_layers_dict[layer_id] = tf.concat(x_outputs, -1)
-
-            else:
-                # DepthwiseConv2D
-                try:
-                    tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
-                                                            strides=strides,
-                                                            padding=padding,
-                                                            depth_multiplier=depth_multiplier,
-                                                            dilation_rate=dilations,
-                                                            use_bias=False,
-                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0))
-                                                        )(orig)
-                except:
-                    tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
-                                                            strides=strides,
-                                                            padding=padding,
-                                                            depth_multiplier=depth_multiplier,
-                                                            dilation_rate=dilations,
-                                                            use_bias=False,
-                                                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0))
-                                                        )(orig)
-
-        ### ConvolutionBackpropData
-        elif layer.attrib['type'] == 'ConvolutionBackpropData':
-            # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
-            port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
-            port2 = [int(sdim.text) for sdim in layer.find('output')[0]]
-            filters = int(port2[1])
-            kernel_size = [int(port1[2]), int(port1[3])]
-            strides = [int(s) for s in data.attrib['strides'].split(',')]
-            pads_begin = 0
-            pads_end = 0
-            if not data is None and 'pads_begin' in data.attrib:
-                pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
-            if not data is None and 'pads_end' in data.attrib:
-                pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
-            padding = ''
-            if (pads_begin + pads_end) == 0:
-                if 'auto_pad' in data.attrib:
-                    if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
-                        padding = 'same'
-                    else:
-                        padding = 'valid'
-                else:
-                    padding = 'valid'
-            else:
-                padding = 'same'
-            dilations = [int(s) for s in data.attrib['dilations'].split(',')]
-            tf_layers_dict[layer_id] = Conv2DTranspose(
-                filters=filters,
-                kernel_size=kernel_size,
-                strides=strides,
-                padding=padding,
-                dilation_rate=dilations,
-                use_bias=False,
-                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
-            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Concat
-        elif layer.attrib['type'] == 'Concat':
-            axis = -1
-            if 'axis' in data.attrib:
-                axis = int(data.attrib['axis'])
-            if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
-                axis = -1
-
-            length_list = []
-            for from_layer_id in get_tf_edges_from(tf_edges, layer_id):
-                length_list.append(len(tf_layers_dict[from_layer_id].shape))
-            axis_zero_count = length_list.count(0)
-            sum_of_axis = sum(length_list)
-            if axis_zero_count > 0 and sum_of_axis > 0:
-                tensor_list = []
-                for length, from_layer_id in zip(length_list, get_tf_edges_from(tf_edges, layer_id)):
-                    if length == 0:
-                        tensor_list.append([tf_layers_dict[from_layer_id]])
-                    else:
-                        tensor_list.append(tf_layers_dict[from_layer_id])
-                tf_layers_dict[layer_id] = tf.concat(tensor_list, axis=axis)
-            else:
-                tf_layers_dict[layer_id] = tf.concat(
-                    [tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)],
-                    axis=axis
-                )
-
-        ### Multiply
-        elif layer.attrib['type'] == 'Multiply':
-            if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray):
-                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].ndim == 4:
-                    # 4D - NCHW->NHWC
-                    tf_layers_dict[layer_id] = tf.math.multiply(
+                new_layer_outport_size = sum([sdim for sdim in tf_layers_dict[layer_id].shape])
+                if outport_size != new_layer_outport_size:
+                    # Caffe -> TF
+                    tf_layers_dict[layer_id] = tf.nn.max_pool(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1).astype(np.float32)
+                        ksize=kernel_size,
+                        strides=strides,
+                        padding='SAME'
                     )
-                else:
-                    # unknown
-                    try:
-                        x_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape
-                        y_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape
-                        if x_shape == y_shape:
-                            tf_layers_dict[layer_id] = tf.math.multiply(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                            )
+
+            ### AvgPool
+            elif layer.attrib['type'] == 'AvgPool':
+                kernel_size =  [int(s) for s in data.attrib['kernel'].split(',')]
+                strides = [int(s) for s in data.attrib['strides'].split(',')]
+                # exclude_pad = data.attrib['exclude-pad']
+                pads_begin = 0
+                pads_end = 0
+                if not data is None and 'pads_begin' in data.attrib:
+                    pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+                if not data is None and 'pads_end' in data.attrib:
+                    pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+                padding = ''
+                if (pads_begin + pads_end) == 0:
+                    if 'auto_pad' in data.attrib:
+                        if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                            padding = 'same'
                         else:
-                            try:
+                            padding = 'valid'
+                    else:
+                        padding = 'valid'
+                else:
+                    padding = 'same'
+                tf_layers_dict[layer_id] = AveragePooling2D(
+                    pool_size=kernel_size,
+                    strides=strides,
+                    padding=padding
+                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### GroupConvolution
+            elif layer.attrib['type'] == 'GroupConvolution':
+                port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
+                port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
+                depth_multiplier = 1
+                kernel_size = [int(port1[3]), int(port1[4])]
+                strides = [int(s) for s in data.attrib['strides'].split(',')]
+                pads_begin = 0
+                pads_end = 0
+                if not data is None and 'pads_begin' in data.attrib:
+                    pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+                if not data is None and 'pads_end' in data.attrib:
+                    pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+                padding = ''
+                if (pads_begin + pads_end) == 0:
+                    if 'auto_pad' in data.attrib:
+                        if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                            padding = 'same'
+                        else:
+                            padding = 'valid'
+                    else:
+                        padding = 'valid'
+                else:
+                    padding = 'same'
+
+                temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                orig = None
+                if pads_begin > 0:
+                    padding = 'valid'
+                    # begin 0 = top
+                    # begin 1 = left
+                    # end 0 = bottom
+                    # end 1 = right
+                    begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+                    end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+                    orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+                else:
+                    orig = temp
+
+                dilations = [int(s) for s in data.attrib['dilations'].split(',')]
+
+                if int(port1[1]) > 1:
+                    # Conv2D with groups
+                    filters = int(port0[1])
+                    groups = int(port1[0])
+
+                    convs = []
+                    kernel = None
+                    if len(port1) == 5:
+                        try:
+                            kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,2,1,0)
+                        except:
+                            kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,2,1,0)
+
+                        for i in range(groups):
+                            convs.append(Conv2D(filters=filters // groups,
+                                                kernel_size=kernel_size,
+                                                strides=strides,
+                                                padding=padding,
+                                                dilation_rate=dilations,
+                                                use_bias=False,
+                                                kernel_initializer=Constant(kernel[:,:,:,:,i])))
+                    else:
+                        try:
+                            kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)
+                        except:
+                            kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)
+                        for i in range(groups):
+                            convs.append(Conv2D(filters=filters // groups,
+                                                kernel_size=kernel_size,
+                                                strides=strides,
+                                                padding=padding,
+                                                dilation_rate=dilations,
+                                                use_bias=False,
+                                                kernel_initializer=Constant(kernel[:,:,:,i])))
+
+                    x_splits = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], groups, -1)
+                    x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
+                    tf_layers_dict[layer_id] = tf.concat(x_outputs, -1)
+
+                else:
+                    # DepthwiseConv2D
+                    try:
+                        tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
+                                                                strides=strides,
+                                                                padding=padding,
+                                                                depth_multiplier=depth_multiplier,
+                                                                dilation_rate=dilations,
+                                                                use_bias=False,
+                                                                depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0))
+                                                            )(orig)
+                    except:
+                        tf_layers_dict[layer_id] = DepthwiseConv2D(kernel_size=kernel_size,
+                                                                strides=strides,
+                                                                padding=padding,
+                                                                depth_multiplier=depth_multiplier,
+                                                                dilation_rate=dilations,
+                                                                use_bias=False,
+                                                                depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0))
+                                                            )(orig)
+
+            ### ConvolutionBackpropData
+            elif layer.attrib['type'] == 'ConvolutionBackpropData':
+                # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
+                port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
+                port2 = [int(sdim.text) for sdim in layer.find('output')[0]]
+                filters = int(port2[1])
+                kernel_size = [int(port1[2]), int(port1[3])]
+                strides = [int(s) for s in data.attrib['strides'].split(',')]
+                pads_begin = 0
+                pads_end = 0
+                if not data is None and 'pads_begin' in data.attrib:
+                    pads_begin = sum([int(s) for s in data.attrib['pads_begin'].split(',')])
+                if not data is None and 'pads_end' in data.attrib:
+                    pads_end = sum([int(s) for s in data.attrib['pads_end'].split(',')])
+                padding = ''
+                if (pads_begin + pads_end) == 0:
+                    if 'auto_pad' in data.attrib:
+                        if data.attrib['auto_pad'] == 'same_upper' or data.attrib['auto_pad'] == 'same_lower':
+                            padding = 'same'
+                        else:
+                            padding = 'valid'
+                    else:
+                        padding = 'valid'
+                else:
+                    padding = 'same'
+                dilations = [int(s) for s in data.attrib['dilations'].split(',')]
+                tf_layers_dict[layer_id] = Conv2DTranspose(
+                    filters=filters,
+                    kernel_size=kernel_size,
+                    strides=strides,
+                    padding=padding,
+                    dilation_rate=dilations,
+                    use_bias=False,
+                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Concat
+            elif layer.attrib['type'] == 'Concat':
+                axis = -1
+                if 'axis' in data.attrib:
+                    axis = int(data.attrib['axis'])
+                if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
+                    axis = -1
+
+                length_list = []
+                for from_layer_id in get_tf_edges_from(tf_edges, layer_id):
+                    length_list.append(len(tf_layers_dict[from_layer_id].shape))
+                axis_zero_count = length_list.count(0)
+                sum_of_axis = sum(length_list)
+                if axis_zero_count > 0 and sum_of_axis > 0:
+                    tensor_list = []
+                    for length, from_layer_id in zip(length_list, get_tf_edges_from(tf_edges, layer_id)):
+                        if length == 0:
+                            tensor_list.append([tf_layers_dict[from_layer_id]])
+                        else:
+                            tensor_list.append(tf_layers_dict[from_layer_id])
+                    tf_layers_dict[layer_id] = tf.concat(tensor_list, axis=axis)
+                else:
+                    tf_layers_dict[layer_id] = tf.concat(
+                        [tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)],
+                        axis=axis
+                    )
+
+            ### Multiply
+            elif layer.attrib['type'] == 'Multiply':
+                if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray):
+                    if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].ndim == 4:
+                        # 4D - NCHW->NHWC
+                        tf_layers_dict[layer_id] = tf.math.multiply(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1).astype(np.float32)
+                        )
+                    else:
+                        # unknown
+                        try:
+                            x_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape
+                            y_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape
+                            if x_shape == y_shape:
                                 tf_layers_dict[layer_id] = tf.math.multiply(
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].reshape(x_shape)
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                 )
-                            except:
+                            else:
                                 try:
                                     tf_layers_dict[layer_id] = tf.math.multiply(
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,1)
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].reshape(x_shape)
                                     )
                                 except:
-                                    tf_layers_dict[layer_id] = tf.math.multiply(
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                                    )
-                    except:
-                        tf_layers_dict[layer_id] = tf.math.multiply(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                        )
-            elif len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) == np.ndarray):
-                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].ndim == 4:
-                    # 4D - NCHW->NHWC
-                    tf_layers_dict[layer_id] = tf.math.multiply(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].transpose(0,2,3,1).astype(np.float32),
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                    )
-                else:
-                    # unknown
-                    try:
-                        x_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
-                        y_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].type_spec.shape
-                        if x_shape == y_shape:
+                                    try:
+                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,1)
+                                        )
+                                    except:
+                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                        )
+                        except:
                             tf_layers_dict[layer_id] = tf.math.multiply(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                             )
-                        else:
-                            try:
+                elif len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) == np.ndarray):
+                    if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].ndim == 4:
+                        # 4D - NCHW->NHWC
+                        tf_layers_dict[layer_id] = tf.math.multiply(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].transpose(0,2,3,1).astype(np.float32),
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                        )
+                    else:
+                        # unknown
+                        try:
+                            x_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
+                            y_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].type_spec.shape
+                            if x_shape == y_shape:
                                 tf_layers_dict[layer_id] = tf.math.multiply(
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].reshape(y_shape),
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                 )
-                            except:
+                            else:
                                 try:
                                     tf_layers_dict[layer_id] = tf.math.multiply(
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].transpose(0,2,1),
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].reshape(y_shape),
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                     )
                                 except:
-                                    tf_layers_dict[layer_id] = tf.math.multiply(
+                                    try:
+                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].transpose(0,2,1),
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                        )
+                                    except:
+                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                        )
+                        except:
+                            tf_layers_dict[layer_id] = tf.math.multiply(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                            )
+                else:
+                    # unknown
+                    tf_layers_dict[layer_id] = tf.math.multiply(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                    )
+
+            ### Interpolate
+            elif layer.attrib['type'] == 'Interpolate':
+                mode = data.attrib['mode']
+                if mode == 'linear_onnx':
+                    mode = 'linear'
+                antialias = False
+                try:
+                    antialias = False if int(data.attrib['antialias']) == 0 else True
+                except:
+                    antialias = False if data.attrib['antialias'].upper() == 'FALSE' else True
+                out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
+                out_height = int(out_port0[2])
+                out_width  = int(out_port0[3])
+
+                input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
+                input_shape_height = input_shape[1]
+                input_shape_width  = input_shape[2]
+                upsampling_factor_height = out_height // input_shape_height
+                upsampling_factor_width  = out_width // input_shape_width
+
+                def upsampling2d_bilinear(x, upsampling_factor_height, upsampling_factor_width):
+                    h = x.shape[1] * upsampling_factor_height
+                    w = x.shape[2] * upsampling_factor_width
+                    if output_edgetpu:
+                        print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                        return tf.compat.v1.image.resize_bilinear(x, (h, w))#, align_corners=True, half_pixel_centers=True)
+                    else:
+                        return tf.image.resize(x, [h, w], method='bilinear')
+
+                def upsampling2d_nearest(x, upsampling_factor_height, upsampling_factor_width):
+                    h = x.shape[1] * upsampling_factor_height
+                    w = x.shape[2] * upsampling_factor_width
+                    if output_edgetpu:
+                        print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                        return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))#, align_corners=True, half_pixel_centers=True)
+                    else:
+                        return tf.image.resize(x, [h, w], method='nearest')
+
+                if not restricted_resize_image_mode:
+
+                    if (upsampling_factor_height * input_shape_height) == out_height and \
+                        (upsampling_factor_width * input_shape_width) == out_width and \
+                            upsampling_factor_height >= 1.0 and \
+                                upsampling_factor_width >= 1.0:
+                        # Upsampling
+                        if mode == 'linear':
+                            tf_layers_dict[layer_id] = Lambda(upsampling2d_bilinear,
+                                                                arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                        'upsampling_factor_width': upsampling_factor_width}
+                                                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        elif mode == 'nearest':
+                            tf_layers_dict[layer_id] = Lambda(upsampling2d_nearest,
+                                                                arguments={'upsampling_factor_height': upsampling_factor_height,
+                                                                        'upsampling_factor_width': upsampling_factor_width}
+                                                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        else:
+                            print(f'The Interpolate - {mode} is not yet implemented.')
+                            sys.exit(-1)
+                    else:
+                        # Others
+                        if yolact:
+                            if mode == 'linear':
+                                x = Lambda(upsampling2d_bilinear,
+                                            arguments={'upsampling_factor_height': 2,
+                                                    'upsampling_factor_width':  2}
+                                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                            elif mode == 'nearest':
+                                x = Lambda(upsampling2d_nearest,
+                                        arguments={'upsampling_factor_height': 2,
+                                                    'upsampling_factor_width':  2}
+                                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                            else:
+                                print(f'The Interpolate - {mode} is not yet implemented.')
+                                sys.exit(-1)
+                        else:
+                            if mode == 'linear':
+                                if output_edgetpu:
+                                    tf_layers_dict[layer_id] = tf.compat.v1.image.resize(
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                        [out_height, out_width],
+                                        method='bilinear'
                                     )
-                    except:
-                        tf_layers_dict[layer_id] = tf.math.multiply(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                        )
-            else:
-                # unknown
-                tf_layers_dict[layer_id] = tf.math.multiply(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                )
-
-        ### Interpolate
-        elif layer.attrib['type'] == 'Interpolate':
-            mode = data.attrib['mode']
-            if mode == 'linear_onnx':
-                mode = 'linear'
-            antialias = False
-            try:
-                antialias = False if int(data.attrib['antialias']) == 0 else True
-            except:
-                antialias = False if data.attrib['antialias'].upper() == 'FALSE' else True
-            out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
-            out_height = int(out_port0[2])
-            out_width  = int(out_port0[3])
-
-            input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
-            input_shape_height = input_shape[1]
-            input_shape_width  = input_shape[2]
-            upsampling_factor_height = out_height // input_shape_height
-            upsampling_factor_width  = out_width // input_shape_width
-
-            def upsampling2d_bilinear(x, upsampling_factor_height, upsampling_factor_width):
-                h = x.shape[1] * upsampling_factor_height
-                w = x.shape[2] * upsampling_factor_width
-                if output_edgetpu:
-                    print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
-                    return tf.compat.v1.image.resize_bilinear(x, (h, w))#, align_corners=True, half_pixel_centers=True)
+                                else:
+                                    tf_layers_dict[layer_id] = tf.image.resize(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        [out_height, out_width],
+                                        method='bilinear'
+                                    )
+                            elif mode == 'nearest':
+                                if output_edgetpu:
+                                    tf_layers_dict[layer_id] = tf.compat.v1.image.resize(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        [out_height, out_width],
+                                        method='nearest'
+                                    )
+                                else:
+                                    tf_layers_dict[layer_id] = tf.image.resize(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        [out_height, out_width],
+                                        method='nearest'
+                                    )
+                            else:
+                                print(f'The Interpolate - {mode} is not yet implemented.')
+                                sys.exit(-1)
                 else:
-                    return tf.image.resize(x, [h, w], method='bilinear')
-
-            def upsampling2d_nearest(x, upsampling_factor_height, upsampling_factor_width):
-                h = x.shape[1] * upsampling_factor_height
-                w = x.shape[2] * upsampling_factor_width
-                if output_edgetpu:
-                    print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
-                    return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))#, align_corners=True, half_pixel_centers=True)
-                else:
-                    return tf.image.resize(x, [h, w], method='nearest')
-
-            if not restricted_resize_image_mode:
-
-                if (upsampling_factor_height * input_shape_height) == out_height and \
-                    (upsampling_factor_width * input_shape_width) == out_width and \
-                        upsampling_factor_height >= 1.0 and \
-                            upsampling_factor_width >= 1.0:
-                    # Upsampling
                     if mode == 'linear':
-                        tf_layers_dict[layer_id] = Lambda(upsampling2d_bilinear,
-                                                            arguments={'upsampling_factor_height': upsampling_factor_height,
-                                                                    'upsampling_factor_width': upsampling_factor_width}
-                                                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = tf.image.resize(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            [out_height, out_width],
+                            method='bilinear'
+                        )
                     elif mode == 'nearest':
-                        tf_layers_dict[layer_id] = Lambda(upsampling2d_nearest,
-                                                            arguments={'upsampling_factor_height': upsampling_factor_height,
-                                                                    'upsampling_factor_width': upsampling_factor_width}
-                                                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = tf.image.resize(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            [out_height, out_width],
+                            method='nearest'
+                        )
                     else:
                         print(f'The Interpolate - {mode} is not yet implemented.')
                         sys.exit(-1)
-                else:
-                    # Others
-                    if yolact:
-                        if mode == 'linear':
-                            x = Lambda(upsampling2d_bilinear,
-                                        arguments={'upsampling_factor_height': 2,
-                                                'upsampling_factor_width':  2}
-                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                            tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
-                        elif mode == 'nearest':
-                            x = Lambda(upsampling2d_nearest,
-                                    arguments={'upsampling_factor_height': 2,
-                                                'upsampling_factor_width':  2}
-                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                            tf_layers_dict[layer_id] = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
-                        else:
-                            print(f'The Interpolate - {mode} is not yet implemented.')
-                            sys.exit(-1)
-                    else:
-                        if mode == 'linear':
-                            if output_edgetpu:
-                                tf_layers_dict[layer_id] = tf.compat.v1.image.resize(
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                    [out_height, out_width],
-                                    method='bilinear'
-                                )
-                            else:
-                                tf_layers_dict[layer_id] = tf.image.resize(
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                    [out_height, out_width],
-                                    method='bilinear'
-                                )
-                        elif mode == 'nearest':
-                            if output_edgetpu:
-                                tf_layers_dict[layer_id] = tf.compat.v1.image.resize(
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                    [out_height, out_width],
-                                    method='nearest'
-                                )
-                            else:
-                                tf_layers_dict[layer_id] = tf.image.resize(
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                    [out_height, out_width],
-                                    method='nearest'
-                                )
-                        else:
-                            print(f'The Interpolate - {mode} is not yet implemented.')
-                            sys.exit(-1)
-            else:
-                if mode == 'linear':
-                    tf_layers_dict[layer_id] = tf.image.resize(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        [out_height, out_width],
-                        method='bilinear'
-                    )
-                elif mode == 'nearest':
-                    tf_layers_dict[layer_id] = tf.image.resize(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        [out_height, out_width],
-                        method='nearest'
-                    )
-                else:
-                    print(f'The Interpolate - {mode} is not yet implemented.')
-                    sys.exit(-1)
 
-        ### ShapeOf
-        elif layer.attrib['type'] == 'ShapeOf':
-            try:
-                tf_layers_dict[layer_id] = tf.constant(
-                    np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape),
-                    dtype=tf.int64
-                )
-            except:
-                tf_layers_dict[layer_id] = tf.shape(
+            ### ShapeOf
+            elif layer.attrib['type'] == 'ShapeOf':
+                try:
+                    tf_layers_dict[layer_id] = tf.constant(
+                        np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape),
+                        dtype=tf.int64
+                    )
+                except:
+                    tf_layers_dict[layer_id] = tf.shape(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        out_type=tf.int64
+                    )
+
+            ### Convert
+            elif layer.attrib['type'] == 'Convert':
+                # vino:    u8,    u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
+                # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
+                destination_type = data.attrib['destination_type']
+                tf_layers_dict[layer_id] = tf.cast(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    out_type=tf.int64
+                    cast_type_ov_tf[destination_type]
                 )
 
-        ### Convert
-        elif layer.attrib['type'] == 'Convert':
-            # vino:    u8,    u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
-            # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
-            destination_type = data.attrib['destination_type']
-            tf_layers_dict[layer_id] = tf.cast(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                cast_type_ov_tf[destination_type]
-            )
+            ### StridedSlice - TODO
+            elif layer.attrib['type'] == 'StridedSlice':
+                begin_mask       = data.attrib['begin_mask']
+                end_mask         = data.attrib['end_mask']
+                ellipsis_mask    = data.attrib['ellipsis_mask']
+                new_axis_mask    = data.attrib['new_axis_mask']
+                shrink_axis_mask = data.attrib['shrink_axis_mask']
 
-        ### StridedSlice - TODO
-        elif layer.attrib['type'] == 'StridedSlice':
-            begin_mask       = data.attrib['begin_mask']
-            end_mask         = data.attrib['end_mask']
-            ellipsis_mask    = data.attrib['ellipsis_mask']
-            new_axis_mask    = data.attrib['new_axis_mask']
-            shrink_axis_mask = data.attrib['shrink_axis_mask']
+                # begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask
+                begin_mask       = np.asarray([int(val) for val in begin_mask.split(',')])
+                end_mask         = np.asarray([int(val) for val in end_mask.split(',')])
+                ellipsis_mask    = np.asarray([int(val) for val in ellipsis_mask.split(',')])
+                new_axis_mask    = np.asarray([int(val) for val in new_axis_mask.split(',')])
+                shrink_axis_mask = np.asarray([int(val) for val in shrink_axis_mask.split(',')])
 
-            # begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask
-            begin_mask       = np.asarray([int(val) for val in begin_mask.split(',')])
-            end_mask         = np.asarray([int(val) for val in end_mask.split(',')])
-            ellipsis_mask    = np.asarray([int(val) for val in ellipsis_mask.split(',')])
-            new_axis_mask    = np.asarray([int(val) for val in new_axis_mask.split(',')])
-            shrink_axis_mask = np.asarray([int(val) for val in shrink_axis_mask.split(',')])
-
-            if type(begin_mask) == np.ndarray and len(begin_mask) == 4:
-                begin_mask[0], begin_mask[1], begin_mask[2], begin_mask[3] = \
-                    begin_mask[0], begin_mask[2], begin_mask[3], begin_mask[1]
-            if np.sum(begin_mask) == len(begin_mask):
-                begin_mask = -1
-            else:
-                begin_mask = np.argmin(begin_mask)
-
-            if type(end_mask) == np.ndarray and len(end_mask) == 4:
-                end_mask[0], end_mask[1], end_mask[2], end_mask[3] = \
-                    end_mask[0], end_mask[2], end_mask[3], end_mask[1]
-            if np.sum(end_mask) == len(end_mask):
-                end_mask = -1
-            else:
-                end_mask = np.argmin(end_mask)
-
-            if type(ellipsis_mask) == np.ndarray and len(ellipsis_mask) == 4:
-                ellipsis_mask[0], ellipsis_mask[1], ellipsis_mask[2], ellipsis_mask[3] = \
-                    ellipsis_mask[0], ellipsis_mask[2], ellipsis_mask[3], ellipsis_mask[1]
-            ellipsis_mask = np.argmin(ellipsis_mask)
-
-            if type(new_axis_mask) == np.ndarray and len(new_axis_mask) == 4:
-                new_axis_mask[0], new_axis_mask[1], new_axis_mask[2], new_axis_mask[3] = \
-                    new_axis_mask[0], new_axis_mask[2], new_axis_mask[3], new_axis_mask[1]
-            new_axis_mask = np.argmin(new_axis_mask)
-
-
-            if type(shrink_axis_mask) == np.ndarray and len(shrink_axis_mask) == 4:
-                shrink_axis_mask[0], shrink_axis_mask[1], shrink_axis_mask[2], shrink_axis_mask[3] = \
-                    shrink_axis_mask[0], shrink_axis_mask[2], shrink_axis_mask[3], shrink_axis_mask[1]
-            shrink_axis_mask = np.argmin(shrink_axis_mask)
-
-            # begin, end, strides
-            begin   = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]])
-            end     = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]])
-            strides = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)]])
-
-            if len(begin) == 4:
-                begin[0], begin[1], begin[2], begin[3] = begin[0], begin[2], begin[3], begin[1]
-
-            if len(end) == 4:
-                end[0], end[1], end[2], end[3] = end[0], end[2], end[3], end[1]
-
-            for idx, (b, e) in enumerate(zip(begin, end)):
-                if b == 0 and b == e:
-                    begin[idx] = 0
-                    end[idx] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx]
-
-            if len(strides) == 4:
-                strides[0], strides[1], strides[2], strides[3] = strides[0], strides[2], strides[3], strides[1]
-
-            tf_layers_dict[layer_id] = tf.strided_slice(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                begin=begin,
-                end=end,
-                strides=strides,
-                begin_mask=begin_mask,
-                end_mask=end_mask,
-                ellipsis_mask=ellipsis_mask,
-                new_axis_mask=new_axis_mask,
-                shrink_axis_mask=shrink_axis_mask
-            )
-
-        ### Pad
-        elif layer.attrib['type'] == 'Pad':
-            pad_mode = pad_type_ov_tf[data.attrib['pad_mode']]
-            pads_begin = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] # [0,0,1,1]
-            pads_end   = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)] # [0,0,1,1]
-
-            if pad_mode != 'CONSTANT':
-                if (pads_end[0] == 0 and pads_begin[0] == 0):
-                    pad_b_bottom = pad_b_top = 0
+                if type(begin_mask) == np.ndarray and len(begin_mask) == 4:
+                    begin_mask[0], begin_mask[1], begin_mask[2], begin_mask[3] = \
+                        begin_mask[0], begin_mask[2], begin_mask[3], begin_mask[1]
+                if np.sum(begin_mask) == len(begin_mask):
+                    begin_mask = -1
                 else:
-                    pad_b_top = pads_begin[0]
-                    pad_b_bottom = pads_end[0]
+                    begin_mask = np.argmin(begin_mask)
 
-                if (pads_end[1] == 0 and pads_begin[1] == 0):
-                    pad_c_bottom = pad_c_top = 0
+                if type(end_mask) == np.ndarray and len(end_mask) == 4:
+                    end_mask[0], end_mask[1], end_mask[2], end_mask[3] = \
+                        end_mask[0], end_mask[2], end_mask[3], end_mask[1]
+                if np.sum(end_mask) == len(end_mask):
+                    end_mask = -1
                 else:
-                    pad_c_top = pads_begin[1]
-                    pad_c_bottom = pads_end[1]
+                    end_mask = np.argmin(end_mask)
 
-                if (pads_end[2] == 0 and pads_begin[2] == 0):
-                    pad_bottom = pad_top = 0
-                else:
-                    pad_top = pads_begin[2]
-                    pad_bottom = pads_end[2]
+                if type(ellipsis_mask) == np.ndarray and len(ellipsis_mask) == 4:
+                    ellipsis_mask[0], ellipsis_mask[1], ellipsis_mask[2], ellipsis_mask[3] = \
+                        ellipsis_mask[0], ellipsis_mask[2], ellipsis_mask[3], ellipsis_mask[1]
+                ellipsis_mask = np.argmin(ellipsis_mask)
 
-                if (pads_end[3] == 0 and pads_begin[3] == 0):
-                    pad_right = pad_left = 0
-                else:
-                    pad_left = pads_begin[3]
-                    pad_right = pads_end[3]
-                paddings = [[pad_b_top, pad_b_bottom], [pad_top, pad_bottom], [pad_left, pad_right], [pad_c_top, pad_c_bottom]]
+                if type(new_axis_mask) == np.ndarray and len(new_axis_mask) == 4:
+                    new_axis_mask[0], new_axis_mask[1], new_axis_mask[2], new_axis_mask[3] = \
+                        new_axis_mask[0], new_axis_mask[2], new_axis_mask[3], new_axis_mask[1]
+                new_axis_mask = np.argmin(new_axis_mask)
 
-            else:
-                paddings = [pads_begin, pads_end]
 
-            pad_value  = np.float32(0.0)
-            if 'pad_value' in data.attrib:
-                pad_value = np.float32(data.attrib['pad_value'])
+                if type(shrink_axis_mask) == np.ndarray and len(shrink_axis_mask) == 4:
+                    shrink_axis_mask[0], shrink_axis_mask[1], shrink_axis_mask[2], shrink_axis_mask[3] = \
+                        shrink_axis_mask[0], shrink_axis_mask[2], shrink_axis_mask[3], shrink_axis_mask[1]
+                shrink_axis_mask = np.argmin(shrink_axis_mask)
 
-            try:
-                tf_layers_dict[layer_id] = tf.pad(
+                # begin, end, strides
+                begin   = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]])
+                end     = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]])
+                strides = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)]])
+
+                if len(begin) == 4:
+                    begin[0], begin[1], begin[2], begin[3] = begin[0], begin[2], begin[3], begin[1]
+
+                if len(end) == 4:
+                    end[0], end[1], end[2], end[3] = end[0], end[2], end[3], end[1]
+
+                for idx, (b, e) in enumerate(zip(begin, end)):
+                    if b == 0 and b == e:
+                        begin[idx] = 0
+                        end[idx] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[idx]
+
+                if len(strides) == 4:
+                    strides[0], strides[1], strides[2], strides[3] = strides[0], strides[2], strides[3], strides[1]
+
+                tf_layers_dict[layer_id] = tf.strided_slice(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    paddings,
-                    mode=pad_mode,
-                    constant_values=pad_value
-                )
-            except:
-                # workaround
-                tf_layers_dict[layer_id] = tf.identity(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                    begin=begin,
+                    end=end,
+                    strides=strides,
+                    begin_mask=begin_mask,
+                    end_mask=end_mask,
+                    ellipsis_mask=ellipsis_mask,
+                    new_axis_mask=new_axis_mask,
+                    shrink_axis_mask=shrink_axis_mask
                 )
 
-        ### TopK
-        elif layer.attrib['type'] == 'TopK':
-            # axis = int(data.attrib['axis'])
-            # index_element_type = data.attrib['index_element_type']
-            # mode = data.attrib['mode']
-            # sort = data.attrib['sort']
-            layer_id_values  = layer_id_port_dict[layer_id]['layer_id:port'][0]
-            layer_id_indices = layer_id_port_dict[layer_id]['layer_id:port'][1]
-            try:
-                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                    tf.math.top_k(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
-                        sorted=True
-                    )
-            except:
-                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                    tf.math.top_k(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
-                        sorted=True
-                    )
+            ### Pad
+            elif layer.attrib['type'] == 'Pad':
+                pad_mode = pad_type_ov_tf[data.attrib['pad_mode']]
+                pads_begin = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] # [0,0,1,1]
+                pads_end   = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)] # [0,0,1,1]
 
-        ### Transpose
-        elif layer.attrib['type'] == 'Transpose':
-            input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
-            temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            perm = []
-            if input_shape_len == 4:
-                if type(temp) == np.ndarray:
-                    if np.all(temp == [0,3,1,2]):
-                        for idx, dim in enumerate(temp):
-                            perm.append(idx)
-                    elif np.all(temp == [1,0,2,3]):
-                        perm = [3,1,2,0]
+                if pad_mode != 'CONSTANT':
+                    if (pads_end[0] == 0 and pads_begin[0] == 0):
+                        pad_b_bottom = pad_b_top = 0
                     else:
-                        for idx, dim in enumerate(temp):
+                        pad_b_top = pads_begin[0]
+                        pad_b_bottom = pads_end[0]
+
+                    if (pads_end[1] == 0 and pads_begin[1] == 0):
+                        pad_c_bottom = pad_c_top = 0
+                    else:
+                        pad_c_top = pads_begin[1]
+                        pad_c_bottom = pads_end[1]
+
+                    if (pads_end[2] == 0 and pads_begin[2] == 0):
+                        pad_bottom = pad_top = 0
+                    else:
+                        pad_top = pads_begin[2]
+                        pad_bottom = pads_end[2]
+
+                    if (pads_end[3] == 0 and pads_begin[3] == 0):
+                        pad_right = pad_left = 0
+                    else:
+                        pad_left = pads_begin[3]
+                        pad_right = pads_end[3]
+                    paddings = [[pad_b_top, pad_b_bottom], [pad_top, pad_bottom], [pad_left, pad_right], [pad_c_top, pad_c_bottom]]
+
+                else:
+                    paddings = [pads_begin, pads_end]
+
+                pad_value  = np.float32(0.0)
+                if 'pad_value' in data.attrib:
+                    pad_value = np.float32(data.attrib['pad_value'])
+
+                try:
+                    tf_layers_dict[layer_id] = tf.pad(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        paddings,
+                        mode=pad_mode,
+                        constant_values=pad_value
+                    )
+                except:
+                    # workaround
+                    tf_layers_dict[layer_id] = tf.identity(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                    )
+
+            ### TopK
+            elif layer.attrib['type'] == 'TopK':
+                # axis = int(data.attrib['axis'])
+                # index_element_type = data.attrib['index_element_type']
+                # mode = data.attrib['mode']
+                # sort = data.attrib['sort']
+                layer_id_values  = layer_id_port_dict[layer_id]['layer_id:port'][0]
+                layer_id_indices = layer_id_port_dict[layer_id]['layer_id:port'][1]
+                try:
+                    tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                        tf.math.top_k(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                            sorted=True
+                        )
+                except:
+                    tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                        tf.math.top_k(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
+                            sorted=True
+                        )
+
+            ### Transpose
+            elif layer.attrib['type'] == 'Transpose':
+                input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
+                temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                perm = []
+                if input_shape_len == 4:
+                    if type(temp) == np.ndarray:
+                        if np.all(temp == [0,3,1,2]):
+                            for idx, dim in enumerate(temp):
+                                perm.append(idx)
+                        elif np.all(temp == [1,0,2,3]):
+                            perm = [3,1,2,0]
+                        else:
+                            for idx, dim in enumerate(temp):
+                                if dim == 0:
+                                    perm.append(0)
+                                elif dim == 1:
+                                    perm.append(input_shape_len - 1)
+                                else:
+                                    perm.append(dim - 1)
+                    else:
+                        # TODO
+                        shape = tf.shape(temp)
+                        for idx, dim in enumerate(shape):
                             if dim == 0:
                                 perm.append(0)
                             elif dim == 1:
                                 perm.append(input_shape_len - 1)
                             else:
                                 perm.append(dim - 1)
+                elif input_shape_len == 5:
+                    if np.all(temp == [0,2,1,3,4]):
+                        perm.append(0)
+                        perm.append(1)
+                        perm.append(2)
+                        perm.append(4)
+                        perm.append(3)
+                    else:
+                        # TODO
+                        for idx, dim in enumerate(temp):
+                            perm.append(dim)
+                else:
+                    for idx, dim in enumerate(temp):
+                        perm.append(dim)
+
+                tf_layers_dict[layer_id] = tf.transpose(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    perm=perm
+                )
+
+            ### Squeeze
+            elif layer.attrib['type'] == 'Squeeze':
+                axis = None
+                if len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
+                    axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                    if axis == 1:
+                        axis = -1
+                    elif axis >= 2:
+                        axis -= 1
+                else:
+                    for idx, part_axis in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]):
+                        if part_axis == 1:
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] = -1
+                        elif part_axis >= 2:
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
+                    axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                try:
+                    tf_layers_dict[layer_id] = tf.squeeze(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=axis
+                    )
+                except:
+                    tf_layers_dict[layer_id] = tf.squeeze(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=-1
+                    )
+
+            ### Gather
+            elif layer.attrib['type'] == 'Gather':
+                axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
+                temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
+                batch_dims = 0
+                if not data is None and 'batch_dims' in data.attrib:
+                    batch_dims = int(data.attrib['batch_dims'])
+                    if batch_dims == 0:
+                        batch_dims = None
+                indices = []
+                if type(temp) == np.ndarray:
+                    for idx, dim in enumerate(temp):
+                        indices.append(dim)
                 else:
                     # TODO
                     shape = tf.shape(temp)
                     for idx, dim in enumerate(shape):
-                        if dim == 0:
-                            perm.append(0)
-                        elif dim == 1:
-                            perm.append(input_shape_len - 1)
+                        if idx == 0:
+                            indices.append(0)
+                        elif idx == input_shape - 1:
+                            indices.append(1)
                         else:
-                            perm.append(dim - 1)
-            elif input_shape_len == 5:
-                if np.all(temp == [0,2,1,3,4]):
-                    perm.append(0)
-                    perm.append(1)
-                    perm.append(2)
-                    perm.append(4)
-                    perm.append(3)
-                else:
-                    # TODO
-                    for idx, dim in enumerate(temp):
-                        perm.append(dim)
-            else:
-                for idx, dim in enumerate(temp):
-                    perm.append(dim)
+                            indices.append(dim + 1)
 
-            tf_layers_dict[layer_id] = tf.transpose(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                perm=perm
-            )
-
-        ### Squeeze
-        elif layer.attrib['type'] == 'Squeeze':
-            axis = None
-            if len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
-                axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-                if axis == 1:
-                    axis = -1
-                elif axis >= 2:
-                    axis -= 1
-            else:
-                for idx, part_axis in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]):
-                    if part_axis == 1:
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] = -1
-                    elif part_axis >= 2:
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
-                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            try:
-                tf_layers_dict[layer_id] = tf.squeeze(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=axis
-                )
-            except:
-                tf_layers_dict[layer_id] = tf.squeeze(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=-1
-                )
-
-        ### Gather
-        elif layer.attrib['type'] == 'Gather':
-            axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
-            temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
-            batch_dims = 0
-            if not data is None and 'batch_dims' in data.attrib:
-                batch_dims = int(data.attrib['batch_dims'])
-                if batch_dims == 0:
-                    batch_dims = None
-            indices = []
-            if type(temp) == np.ndarray:
-                for idx, dim in enumerate(temp):
-                    indices.append(dim)
-            else:
-                # TODO
-                shape = tf.shape(temp)
-                for idx, dim in enumerate(shape):
-                    if idx == 0:
-                        indices.append(0)
-                    elif idx == input_shape - 1:
-                        indices.append(1)
-                    else:
-                        indices.append(dim + 1)
-
-            if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
-                tf_layers_dict[layer_id] = tf.gather(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    indices,
-                    axis=axis,
-                    batch_dims=batch_dims
-                )
-            else:
-                if indices == [0] and axis == 0:
-                    try:
-                        tf_layers_dict[layer_id] = tf.squeeze(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            axis=axis
-                        )
-                        if tf_layers_dict[layer_id].type_spec.shape == []:
-                            tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
-                    except:
-                        tf_layers_dict[layer_id] = tf.gather(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            indices,
-                            axis=axis,
-                            batch_dims=batch_dims
-                        )
-                else:
+                if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
                     tf_layers_dict[layer_id] = tf.gather(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         indices,
                         axis=axis,
                         batch_dims=batch_dims
                     )
-
-                if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
-                    tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
-
-        ### GatherND
-        elif layer.attrib['type'] == 'GatherND':
-            batch_dims = data.attrib['batch_dims']
-            params = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            indices_tmp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            if indices_tmp.dtype is tf.float32 or indices_tmp.dtype is tf.float64:
-                indices = tf.cast(indices, tf.int64)
-            else:
-                indices = indices_tmp
-            tf_layers_dict[layer_id] = tf.gather_nd(params, indices, batch_dims=batch_dims)
-
-        ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd, ReduceL2 - TODO
-        elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
-             layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd' or layer.attrib['type'] == 'ReduceL2':
-            keep_dims = True if (data.attrib['keep_dims'] == "True" or data.attrib['keep_dims'] == "true") else False
-            axis = None
-            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
-                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].astype(np.int32)
-                if axis == 1:
-                    axis = -1
-                elif axis >= 2:
-                    axis -= 1
-            elif type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape) == 1:
-                try:
-                    if (tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy() == [1, 2]).all():
-                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
-                            axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf.int32)
-                        else:
-                            axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                else:
+                    if indices == [0] and axis == 0:
+                        try:
+                            tf_layers_dict[layer_id] = tf.squeeze(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                axis=axis
+                            )
+                            if tf_layers_dict[layer_id].type_spec.shape == []:
+                                tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
+                        except:
+                            tf_layers_dict[layer_id] = tf.gather(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                indices,
+                                axis=axis,
+                                batch_dims=batch_dims
+                            )
                     else:
+                        tf_layers_dict[layer_id] = tf.gather(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            indices,
+                            axis=axis,
+                            batch_dims=batch_dims
+                        )
+
+                    if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
+                        tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
+
+            ### GatherND
+            elif layer.attrib['type'] == 'GatherND':
+                batch_dims = data.attrib['batch_dims']
+                params = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                indices_tmp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                if indices_tmp.dtype is tf.float32 or indices_tmp.dtype is tf.float64:
+                    indices = tf.cast(indices, tf.int64)
+                else:
+                    indices = indices_tmp
+                tf_layers_dict[layer_id] = tf.gather_nd(params, indices, batch_dims=batch_dims)
+
+            ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd, ReduceL2 - TODO
+            elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
+                layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd' or layer.attrib['type'] == 'ReduceL2':
+                keep_dims = True if (data.attrib['keep_dims'] == "True" or data.attrib['keep_dims'] == "true") else False
+                axis = None
+                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
+                    axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].astype(np.int32)
+                    if axis == 1:
+                        axis = -1
+                    elif axis >= 2:
+                        axis -= 1
+                elif type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape) == 1:
+                    try:
+                        if (tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy() == [1, 2]).all():
+                            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
+                                axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf.int32)
+                            else:
+                                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                        else:
+                            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
+                                axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
+                            else:
+                                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
+                    except:
                         if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
                             axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
                         else:
                             axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
-                except:
+                else:
+                    for idx, part_axis in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]):
+                        if part_axis == 1:
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] = -1
+                        elif part_axis >= 2:
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
                     if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
-                        axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1, tf.int32)
+                        axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf.int32)
                     else:
-                        axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] - 1
-            else:
-                for idx, part_axis in enumerate(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]):
-                    if part_axis == 1:
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] = -1
-                    elif part_axis >= 2:
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
-                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]).dtype != tf.int32:
-                    axis = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], tf.int32)
-                else:
-                    axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                        axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
 
-            if layer.attrib['type'] == 'ReduceMean':
-                tf_layers_dict[layer_id] = tf.math.reduce_mean(
+                if layer.attrib['type'] == 'ReduceMean':
+                    tf_layers_dict[layer_id] = tf.math.reduce_mean(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                elif layer.attrib['type'] == 'ReduceMax':
+                    tf_layers_dict[layer_id] = tf.math.reduce_max(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                elif layer.attrib['type'] == 'ReduceMin':
+                    tf_layers_dict[layer_id] = tf.math.reduce_min(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                elif layer.attrib['type'] == 'ReduceSum':
+                    tf_layers_dict[layer_id] = tf.math.reduce_sum(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                elif layer.attrib['type'] == 'ReduceProd':
+                    tf_layers_dict[layer_id] = tf.math.reduce_prod(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                elif layer.attrib['type'] == 'ReduceL2':
+                    reduceL2_mul = tf.math.multiply(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                    )
+                    reduceL2_sum = tf.math.reduce_sum(
+                        reduceL2_mul,
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                    tf_layers_dict[layer_id] = tf.math.rsqrt(reduceL2_sum)
+
+            ### MatMul
+            elif layer.attrib['type'] == 'MatMul':
+                if not data is None and 'a' in data.attrib:
+                    transpose_a = True if int(data.attrib['a']) == 1 else False
+                if not data is None and 'b' in data.attrib:
+                    transpose_b = True if int(data.attrib['b']) == 1 else False
+                if not data is None and 'transpose_a' in data.attrib:
+                    try:
+                        transpose_a = True if int(data.attrib['transpose_a']) == 1 else False
+                    except:
+                        transpose_a = True if (data.attrib['transpose_a'] == 'True' or data.attrib['transpose_a'] == 'true') else False
+                if not data is None and 'transpose_b' in data.attrib:
+                    try:
+                        transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
+                    except:
+                        transpose_b = True if (data.attrib['transpose_b'] == 'True'or data.attrib['transpose_b'] == 'true') else False
+
+                tf_layers_dict[layer_id] = tf.linalg.matmul(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=axis,
-                    keepdims=keep_dims
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                    transpose_a,
+                    transpose_b
                 )
-            elif layer.attrib['type'] == 'ReduceMax':
-                tf_layers_dict[layer_id] = tf.math.reduce_max(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=axis,
-                    keepdims=keep_dims
-                )
-            elif layer.attrib['type'] == 'ReduceMin':
-                tf_layers_dict[layer_id] = tf.math.reduce_min(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=axis,
-                    keepdims=keep_dims
-                )
-            elif layer.attrib['type'] == 'ReduceSum':
-                tf_layers_dict[layer_id] = tf.math.reduce_sum(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=axis,
-                    keepdims=keep_dims
-                )
-            elif layer.attrib['type'] == 'ReduceProd':
-                tf_layers_dict[layer_id] = tf.math.reduce_prod(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=axis,
-                    keepdims=keep_dims
-                )
-            elif layer.attrib['type'] == 'ReduceL2':
-                reduceL2_mul = tf.math.multiply(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                )
-                reduceL2_sum = tf.math.reduce_sum(
-                    reduceL2_mul,
-                    axis=axis,
-                    keepdims=keep_dims
-                )
-                tf_layers_dict[layer_id] = tf.math.rsqrt(reduceL2_sum)
 
-        ### MatMul
-        elif layer.attrib['type'] == 'MatMul':
-            if not data is None and 'a' in data.attrib:
-                transpose_a = True if int(data.attrib['a']) == 1 else False
-            if not data is None and 'b' in data.attrib:
-                transpose_b = True if int(data.attrib['b']) == 1 else False
-            if not data is None and 'transpose_a' in data.attrib:
-                try:
-                    transpose_a = True if int(data.attrib['transpose_a']) == 1 else False
-                except:
-                    transpose_a = True if (data.attrib['transpose_a'] == 'True' or data.attrib['transpose_a'] == 'true') else False
-            if not data is None and 'transpose_b' in data.attrib:
-                try:
-                    transpose_b = True if int(data.attrib['transpose_b']) == 1 else False
-                except:
-                    transpose_b = True if (data.attrib['transpose_b'] == 'True'or data.attrib['transpose_b'] == 'true') else False
+            ### Reshape - TODO
+            elif layer.attrib['type'] == 'Reshape':
+                op1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                op2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                op_type1 = type(op1)
+                op_type2 = type(op2)
+                op_len1 = len(np.asarray(op1.shape))
+                op_len2 = len(np.asarray(op2.shape))
 
-            tf_layers_dict[layer_id] = tf.linalg.matmul(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                transpose_a,
-                transpose_b
-            )
+                shape = []
+                if op_type1 != np.ndarray and op_type2 != np.ndarray:
+                    # op and op
+                    if op_len2 > 1:
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
 
-        ### Reshape - TODO
-        elif layer.attrib['type'] == 'Reshape':
-            op1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            op2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            op_type1 = type(op1)
-            op_type2 = type(op2)
-            op_len1 = len(np.asarray(op1.shape))
-            op_len2 = len(np.asarray(op2.shape))
+                    elif op_len2 == 1 and op2.shape[0] == 2:
+                        # TODO
+                        shape = op2
 
-            shape = []
-            if op_type1 != np.ndarray and op_type2 != np.ndarray:
-                # op and op
-                if op_len2 > 1:
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    elif op_len2 == 1 and op2.shape[0] == 3:
+                        # TODO
+                        shape = op2
 
-                elif op_len2 == 1 and op2.shape[0] == 2:
-                    # TODO
-                    shape = op2
+                    elif op_len2 == 1 and op2.shape[0] == 4:
+                        # TODO
+                        shape = op2
 
-                elif op_len2 == 1 and op2.shape[0] == 3:
-                    # TODO
-                    shape = op2
+                    elif op_len2 == 1 and op2.shape[0] == 5:
+                        # TODO
+                        shape = op2
 
-                elif op_len2 == 1 and op2.shape[0] == 4:
-                    # TODO
-                    shape = op2
+                    elif op_len2 == 1 and op2.shape[0] == 6:
+                        # YoloV4
+                        shape = op2
 
-                elif op_len2 == 1 and op2.shape[0] == 5:
-                    # TODO
-                    shape = op2
+                elif op_type1 != np.ndarray and op_type2 == np.ndarray:
+                    # op and const
+                    if op_len2 == 4:
+                        op2 = op2.transpose(0,2,3,1)
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    elif op_len2 > 4:
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    elif op_len2 == 1 and op2.shape[0] == 1:
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    elif op_len2 == 1 and op2.shape[0] == 2:
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    elif op_len2 == 1 and op2.shape[0] == 3:
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                        if op_len1 > len(op2):
+                            if shape[2] == -1:
+                                shape[0], shape[1], shape[2] = shape[0], shape[2], shape[1]
 
-                elif op_len2 == 1 and op2.shape[0] == 6:
-                    # YoloV4
-                    shape = op2
+                    elif op_len2 == 1 and op2.shape[0] == 4:
+                        one_count_1 = 0
+                        for idx in op1.shape:
+                            if idx == 1:
+                                one_count_1 += 1
+                        one_count_2 = 0
+                        for idx in op2:
+                            if idx == 1:
+                                one_count_2 += 1
+                        if one_count_1 != one_count_2 and one_count_2 == 3 and op2[3] != 1:
+                            shape_tmp = []
+                            shape_tmp.append(op2[0])
+                            shape_tmp.append(op2[1])
+                            shape_tmp.append(op2[2])
+                            shape_tmp.append(op2[3])
+                            shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                        else:
+                            shape_tmp = []
+                            shape_tmp.append(op2[0])
+                            shape_tmp.append(op2[2])
+                            shape_tmp.append(op2[3])
+                            shape_tmp.append(op2[1])
+                            shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                    elif op_len2 == 1 and op2.shape[0] == 5:
+                        shape_tmp = []
+                        if op2[1] == op2[2]:
+                            shape_tmp.append(op2[0])
+                            shape_tmp.append(op2[1])
+                            shape_tmp.append(op2[2])
+                            shape_tmp.append(op2[3])
+                            shape_tmp.append(op2[4])
+                        else:
+                            shape_tmp.append(op2[0])
+                            shape_tmp.append(op2[3])
+                            shape_tmp.append(op2[4])
+                            shape_tmp.append(op2[1])
+                            shape_tmp.append(op2[2])
 
-            elif op_type1 != np.ndarray and op_type2 == np.ndarray:
-                # op and const
-                if op_len2 == 4:
-                    op2 = op2.transpose(0,2,3,1)
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                elif op_len2 > 4:
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                elif op_len2 == 1 and op2.shape[0] == 1:
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                elif op_len2 == 1 and op2.shape[0] == 2:
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                elif op_len2 == 1 and op2.shape[0] == 3:
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                    if op_len1 > len(op2):
-                        if shape[2] == -1:
-                            shape[0], shape[1], shape[2] = shape[0], shape[2], shape[1]
-
-                elif op_len2 == 1 and op2.shape[0] == 4:
-                    one_count_1 = 0
-                    for idx in op1.shape:
-                        if idx == 1:
-                            one_count_1 += 1
-                    one_count_2 = 0
-                    for idx in op2:
-                        if idx == 1:
-                            one_count_2 += 1
-                    if one_count_1 != one_count_2 and one_count_2 == 3 and op2[3] != 1:
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                    elif op_len2 == 1 and op2.shape[0] == 6:
+                        # YoloV4
                         shape_tmp = []
                         shape_tmp.append(op2[0])
-                        shape_tmp.append(op2[1])
-                        shape_tmp.append(op2[2])
-                        shape_tmp.append(op2[3])
-                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
-                    else:
-                        shape_tmp = []
-                        shape_tmp.append(op2[0])
-                        shape_tmp.append(op2[2])
-                        shape_tmp.append(op2[3])
-                        shape_tmp.append(op2[1])
-                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
-                elif op_len2 == 1 and op2.shape[0] == 5:
-                    shape_tmp = []
-                    if op2[1] == op2[2]:
-                        shape_tmp.append(op2[0])
-                        shape_tmp.append(op2[1])
                         shape_tmp.append(op2[2])
                         shape_tmp.append(op2[3])
                         shape_tmp.append(op2[4])
-                    else:
-                        shape_tmp.append(op2[0])
-                        shape_tmp.append(op2[3])
-                        shape_tmp.append(op2[4])
+                        shape_tmp.append(op2[5])
                         shape_tmp.append(op2[1])
-                        shape_tmp.append(op2[2])
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                    else:
+                        for i in range(op2.shape[0]):
+                            shape.append(op2[i])
 
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
-                elif op_len2 == 1 and op2.shape[0] == 6:
-                    # YoloV4
-                    shape_tmp = []
-                    shape_tmp.append(op2[0])
-                    shape_tmp.append(op2[2])
-                    shape_tmp.append(op2[3])
-                    shape_tmp.append(op2[4])
-                    shape_tmp.append(op2[5])
-                    shape_tmp.append(op2[1])
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(shape_tmp)]
+                elif op_type1 == np.ndarray and op_type2 != np.ndarray:
+                    # const and op
+                    if op_len1 == 4:
+                        op1 = op1.transpose(0,2,3,1)
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    elif op_len1 > 4:
+                        shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+                    else:
+                        for i in range(op2.shape[0]):
+                            shape.append(op2[i])
                 else:
-                    for i in range(op2.shape[0]):
-                        shape.append(op2[i])
-
-            elif op_type1 == np.ndarray and op_type2 != np.ndarray:
-                # const and op
-                if op_len1 == 4:
-                    op1 = op1.transpose(0,2,3,1)
+                    # const and const
+                    if op_len1 == 4:
+                        op1 = op1.transpose(0,2,3,1)
+                    if op_len2 == 4:
+                        op2 = op2.transpose(0,2,3,1)
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                elif op_len1 > 4:
-                    shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
-                else:
-                    for i in range(op2.shape[0]):
-                        shape.append(op2[i])
-            else:
-                # const and const
-                if op_len1 == 4:
-                    op1 = op1.transpose(0,2,3,1)
-                if op_len2 == 4:
-                    op2 = op2.transpose(0,2,3,1)
-                shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
 
-            tf_layers_dict[layer_id] = tf.reshape(op1, shape)
+                tf_layers_dict[layer_id] = tf.reshape(op1, shape)
 
-        ### Range - TODO
-        elif layer.attrib['type'] == 'Range':
-            dtype = cast_type_ov_tf[data.attrib['output_type']]
-            start = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
-            limit = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            try:
-                if start == 2 and 'Squeeze' in limit.name and type(limit.type_spec) == tf.TensorSpec and limit.type_spec.dtype == tf.int64:
-                    start = 1
-                    limit = tf.constant(3)
-            except:
-                if start == 2 and limit.numpy() == 4:
-                    start = 1
-                    limit = tf.constant(3)
-            tf_layers_dict[layer_id] = tf.range(
-                start,
-                limit,
-                delta=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]),
-                dtype=dtype
-            )
-
-        ### Exp
-        elif layer.attrib['type'] == 'Exp':
-            tf_layers_dict[layer_id] = tf.math.exp(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Abs
-        elif layer.attrib['type'] == 'Abs':
-            tf_layers_dict[layer_id] = tf.math.abs(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### SoftMax
-        elif layer.attrib['type'] == 'SoftMax':
-            axis = int(data.attrib['axis'])
-            if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
-                axis = -1
-            tf_layers_dict[layer_id] = tf.nn.softmax(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                axis=axis
-            )
-
-        ### Negative
-        elif layer.attrib['type'] == 'Negative':
-            tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Maximum
-        elif layer.attrib['type'] == 'Maximum':
-            # No broadcast
-            tf_layers_dict[layer_id] = tf.math.maximum(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### Minimum
-        elif layer.attrib['type'] == 'Minimum':
-            # No broadcast
-            tf_layers_dict[layer_id] = tf.math.minimum(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### Acos
-        elif layer.attrib['type'] == 'Acos':
-            tf_layers_dict[layer_id] = tf.math.acos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Acosh
-        elif layer.attrib['type'] == 'Acosh':
-            tf_layers_dict[layer_id] = tf.math.acosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Asin
-        elif layer.attrib['type'] == 'Asin':
-            tf_layers_dict[layer_id] = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Asinh
-        elif layer.attrib['type'] == 'Asinh':
-            tf_layers_dict[layer_id] = tf.math.asinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Atan
-        elif layer.attrib['type'] == 'Atan':
-            tf_layers_dict[layer_id] = tf.math.atan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Atanh
-        elif layer.attrib['type'] == 'Atanh':
-            tf_layers_dict[layer_id] = tf.math.atanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Ceiling
-        elif layer.attrib['type'] == 'Ceiling':
-            tf_layers_dict[layer_id] = tf.math.ceil(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Cos
-        elif layer.attrib['type'] == 'Cos':
-            tf_layers_dict[layer_id] = tf.math.cos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Cosh
-        elif layer.attrib['type'] == 'Cosh':
-            tf_layers_dict[layer_id] = tf.math.cosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Sin
-        elif layer.attrib['type'] == 'Sin':
-            tf_layers_dict[layer_id] = tf.math.sin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Sinh
-        elif layer.attrib['type'] == 'Sinh':
-            tf_layers_dict[layer_id] = tf.math.sinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Divide
-        elif layer.attrib['type'] == 'Divide':
-            x_np_type = None
-            y_np_type = None
-
-            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            if type(x) == np.ndarray and x.dtype == np.int:
-                x_np_type = tf.int32
-            elif type(x) == np.ndarray:
-                x_np_type = tf.float32
-            else:
-                x_np_type = x.dtype
-
-            y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            if type(y) == np.ndarray and y.dtype == np.int:
-                y_np_type = tf.int32
-            elif type(y) == np.ndarray:
-                y_np_type = tf.float32
-            else:
-                y_np_type = y.dtype
-
-            if (x_np_type in int_type_tf) and (y_np_type in int_type_tf):
-                # floordiv
-                tf_layers_dict[layer_id] = tf.math.floordiv(x, y)
-            else:
-                # divide
-                tf_layers_dict[layer_id] = tf.math.divide(x, y)
-
-        ### Erf
-        elif layer.attrib['type'] == 'Erf':
-            tf_layers_dict[layer_id] = tf.math.erf(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Floor
-        elif layer.attrib['type'] == 'Floor':
-            tf_layers_dict[layer_id] = tf.math.floor(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### FloorMod
-        elif layer.attrib['type'] == 'FloorMod':
-            tf_layers_dict[layer_id] = tf.math.floormod(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### HSwish
-        elif layer.attrib['type'] == 'HSwish':
-            if replace_swish_and_hardswish:
-                # Swish
-                tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-            else:
-                # Hard-Swish
-                if not optimizing_hardswish_for_edgetpu:
-                    tf_layers_dict[layer_id] = \
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
-                            tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
-                else:
-                    tf_layers_dict[layer_id] = \
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
-                            tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
-
-        ### Log
-        elif layer.attrib['type'] == 'Log':
-            tf_layers_dict[layer_id] = tf.math.log(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Power
-        elif layer.attrib['type'] == 'Power':
-            # No broadcast
-            tf_layers_dict[layer_id] = tf.math.pow(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### Mish
-        elif layer.attrib['type'] == 'Mish':
-            tf_layers_dict[layer_id] = \
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
-                    tf.math.tanh(tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]))
-
-        ### Selu
-        elif layer.attrib['type'] == 'Selu':
-            tf_layers_dict[layer_id] = tf.nn.selu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Subtract
-        elif layer.attrib['type'] == 'Subtract':
-            # No broadcast
-            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            if type(x) == np.ndarray:
-                x = x.astype(np.float32)
-            if type(y) == np.ndarray:
-                y = y.astype(np.float32)
-            tf_layers_dict[layer_id] = tf.math.subtract(x, y)
-
-        ### Unsqueeze - TODO
-        elif layer.attrib['type'] == 'Unsqueeze':
-            input_shape = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
-            indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-
-            if len(input_shape) == 1 and indices == [0]:
-                tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-            elif len(input_shape) > 1 and len(indices) > 1:
-                print('The multi-dimensional indices specification in Unsqueeze is not yet implemented.')
-                sys.exit(-1)
-            else:
-                tf_layers_dict[layer_id] = tf.expand_dims(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    indices[0]
+            ### Range - TODO
+            elif layer.attrib['type'] == 'Range':
+                dtype = cast_type_ov_tf[data.attrib['output_type']]
+                start = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
+                limit = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                try:
+                    if start == 2 and 'Squeeze' in limit.name and type(limit.type_spec) == tf.TensorSpec and limit.type_spec.dtype == tf.int64:
+                        start = 1
+                        limit = tf.constant(3)
+                except:
+                    if start == 2 and limit.numpy() == 4:
+                        start = 1
+                        limit = tf.constant(3)
+                tf_layers_dict[layer_id] = tf.range(
+                    start,
+                    limit,
+                    delta=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]),
+                    dtype=dtype
                 )
 
-        ### Equal
-        elif layer.attrib['type'] == 'Equal':
-            tf_layers_dict[layer_id] = tf.math.equal(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
+            ### Exp
+            elif layer.attrib['type'] == 'Exp':
+                tf_layers_dict[layer_id] = tf.math.exp(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-        ### NotEqual
-        elif layer.attrib['type'] == 'NotEqual':
-            tf_layers_dict[layer_id] = tf.math.not_equal(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
+            ### Abs
+            elif layer.attrib['type'] == 'Abs':
+                tf_layers_dict[layer_id] = tf.math.abs(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-        ### Greater
-        elif layer.attrib['type'] == 'Greater':
-            tf_layers_dict[layer_id] = tf.math.greater(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### GreaterEqual
-        elif layer.attrib['type'] == 'GreaterEqual':
-            tf_layers_dict[layer_id] = tf.math.greater_equal(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### Less
-        elif layer.attrib['type'] == 'Less':
-            tf_layers_dict[layer_id] = tf.math.less(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### LessEqual
-        elif layer.attrib['type'] == 'LessEqual':
-            tf_layers_dict[layer_id] = tf.math.less_equal(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### Select
-        elif layer.attrib['type'] == 'Select':
-            tf_layers_dict[layer_id] = tf.raw_ops.SelectV2(
-                condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
-            )
-
-        ### LogicalAnd
-        elif layer.attrib['type'] == 'LogicalAnd':
-            tf_layers_dict[layer_id] = tf.math.logical_and(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### LogicalNot
-        elif layer.attrib['type'] == 'LogicalNot':
-            tf_layers_dict[layer_id] = tf.math.logical_not(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### LogicalOr
-        elif layer.attrib['type'] == 'LogicalOr':
-            tf_layers_dict[layer_id] = tf.math.logical_or(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### LogicalXor
-        elif layer.attrib['type'] == 'LogicalXor':
-            tf_layers_dict[layer_id] = tf.math.logical_xor(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### Broadcast - TODO
-        elif layer.attrib['type'] == 'Broadcast':
-            mode = data.attrib['mode']
-            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray:
-                if mode == 'numpy':
-                    tf_layers_dict[layer_id] = tf.broadcast_to(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                    )
-                elif mode == 'bidirectional':
-                    tf_layers_dict[layer_id] = tf.math.multiply(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-                    )
-                else:
-                    print(f'The {mode} mode of broadcast is not yet implemented.')
-                    sys.exit(-1)
-            else:
-                target_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                target_shape[0], target_shape[1], target_shape[2], target_shape[3] = \
-                    target_shape[0], target_shape[2], target_shape[3], target_shape[1]
-                if mode == 'numpy':
-                    tf_layers_dict[layer_id] = tf.broadcast_to(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        target_shape
-                    )
-                elif mode == 'bidirectional':
-                    tf_layers_dict[layer_id] = tf.math.multiply(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf.ones(target_shape)
-                    )
-                else:
-                    print(f'The {mode} mode of broadcast is not yet implemented.')
-                    sys.exit(-1)
-
-        ### Split
-        elif layer.attrib['type'] == 'Split':
-            num_splits = int(data.attrib['num_splits'])
-            axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-            if axis == 1:
-                axis = 3
-            elif axis >= 2:
-                axis -= 1
-
-            def split_tensor(x, axis, num_split):
-                return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
-
-            outputs = Lambda(split_tensor,
-                            arguments={'axis': axis,
-                                        'num_split': num_splits}
-                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-            for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
-                tf_layers_dict[layer_id_port] = output
-
-        ### VariadicSplit
-        elif layer.attrib['type'] == 'VariadicSplit':
-            axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-            input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
-
-            if input_shape_len >= 4:
-                if axis == 1:
+            ### SoftMax
+            elif layer.attrib['type'] == 'SoftMax':
+                axis = int(data.attrib['axis'])
+                if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                     axis = -1
+                tf_layers_dict[layer_id] = tf.nn.softmax(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    axis=axis
+                )
+
+            ### Negative
+            elif layer.attrib['type'] == 'Negative':
+                tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Maximum
+            elif layer.attrib['type'] == 'Maximum':
+                # No broadcast
+                tf_layers_dict[layer_id] = tf.math.maximum(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Minimum
+            elif layer.attrib['type'] == 'Minimum':
+                # No broadcast
+                tf_layers_dict[layer_id] = tf.math.minimum(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Acos
+            elif layer.attrib['type'] == 'Acos':
+                tf_layers_dict[layer_id] = tf.math.acos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Acosh
+            elif layer.attrib['type'] == 'Acosh':
+                tf_layers_dict[layer_id] = tf.math.acosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Asin
+            elif layer.attrib['type'] == 'Asin':
+                tf_layers_dict[layer_id] = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Asinh
+            elif layer.attrib['type'] == 'Asinh':
+                tf_layers_dict[layer_id] = tf.math.asinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Atan
+            elif layer.attrib['type'] == 'Atan':
+                tf_layers_dict[layer_id] = tf.math.atan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Atanh
+            elif layer.attrib['type'] == 'Atanh':
+                tf_layers_dict[layer_id] = tf.math.atanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Ceiling
+            elif layer.attrib['type'] == 'Ceiling':
+                tf_layers_dict[layer_id] = tf.math.ceil(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Cos
+            elif layer.attrib['type'] == 'Cos':
+                tf_layers_dict[layer_id] = tf.math.cos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Cosh
+            elif layer.attrib['type'] == 'Cosh':
+                tf_layers_dict[layer_id] = tf.math.cosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Sin
+            elif layer.attrib['type'] == 'Sin':
+                tf_layers_dict[layer_id] = tf.math.sin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Sinh
+            elif layer.attrib['type'] == 'Sinh':
+                tf_layers_dict[layer_id] = tf.math.sinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Divide
+            elif layer.attrib['type'] == 'Divide':
+                x_np_type = None
+                y_np_type = None
+
+                x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                if type(x) == np.ndarray and x.dtype == np.int:
+                    x_np_type = tf.int32
+                elif type(x) == np.ndarray:
+                    x_np_type = tf.float32
+                else:
+                    x_np_type = x.dtype
+
+                y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                if type(y) == np.ndarray and y.dtype == np.int:
+                    y_np_type = tf.int32
+                elif type(y) == np.ndarray:
+                    y_np_type = tf.float32
+                else:
+                    y_np_type = y.dtype
+
+                if (x_np_type in int_type_tf) and (y_np_type in int_type_tf):
+                    # floordiv
+                    tf_layers_dict[layer_id] = tf.math.floordiv(x, y)
+                else:
+                    # divide
+                    tf_layers_dict[layer_id] = tf.math.divide(x, y)
+
+            ### Erf
+            elif layer.attrib['type'] == 'Erf':
+                tf_layers_dict[layer_id] = tf.math.erf(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Floor
+            elif layer.attrib['type'] == 'Floor':
+                tf_layers_dict[layer_id] = tf.math.floor(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### FloorMod
+            elif layer.attrib['type'] == 'FloorMod':
+                tf_layers_dict[layer_id] = tf.math.floormod(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### HSwish
+            elif layer.attrib['type'] == 'HSwish':
+                if replace_swish_and_hardswish:
+                    # Swish
+                    tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                else:
+                    # Hard-Swish
+                    if not optimizing_hardswish_for_edgetpu:
+                        tf_layers_dict[layer_id] = \
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
+                                tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                    else:
+                        tf_layers_dict[layer_id] = \
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
+                                tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
+
+            ### Log
+            elif layer.attrib['type'] == 'Log':
+                tf_layers_dict[layer_id] = tf.math.log(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Power
+            elif layer.attrib['type'] == 'Power':
+                # No broadcast
+                tf_layers_dict[layer_id] = tf.math.pow(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Mish
+            elif layer.attrib['type'] == 'Mish':
+                tf_layers_dict[layer_id] = \
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
+                        tf.math.tanh(tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]))
+
+            ### Selu
+            elif layer.attrib['type'] == 'Selu':
+                tf_layers_dict[layer_id] = tf.nn.selu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Subtract
+            elif layer.attrib['type'] == 'Subtract':
+                # No broadcast
+                x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                if type(x) == np.ndarray:
+                    x = x.astype(np.float32)
+                if type(y) == np.ndarray:
+                    y = y.astype(np.float32)
+                tf_layers_dict[layer_id] = tf.math.subtract(x, y)
+
+            ### Unsqueeze - TODO
+            elif layer.attrib['type'] == 'Unsqueeze':
+                input_shape = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
+                indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                if len(input_shape) == 1 and indices == [0]:
+                    tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                elif len(input_shape) > 1 and len(indices) > 1:
+                    print('The multi-dimensional indices specification in Unsqueeze is not yet implemented.')
+                    sys.exit(-1)
+                else:
+                    tf_layers_dict[layer_id] = tf.expand_dims(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        indices[0]
+                    )
+
+            ### Equal
+            elif layer.attrib['type'] == 'Equal':
+                tf_layers_dict[layer_id] = tf.math.equal(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### NotEqual
+            elif layer.attrib['type'] == 'NotEqual':
+                tf_layers_dict[layer_id] = tf.math.not_equal(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Greater
+            elif layer.attrib['type'] == 'Greater':
+                tf_layers_dict[layer_id] = tf.math.greater(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### GreaterEqual
+            elif layer.attrib['type'] == 'GreaterEqual':
+                tf_layers_dict[layer_id] = tf.math.greater_equal(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Less
+            elif layer.attrib['type'] == 'Less':
+                tf_layers_dict[layer_id] = tf.math.less(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### LessEqual
+            elif layer.attrib['type'] == 'LessEqual':
+                tf_layers_dict[layer_id] = tf.math.less_equal(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Select
+            elif layer.attrib['type'] == 'Select':
+                tf_layers_dict[layer_id] = tf.raw_ops.SelectV2(
+                    condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                    e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                )
+
+            ### LogicalAnd
+            elif layer.attrib['type'] == 'LogicalAnd':
+                tf_layers_dict[layer_id] = tf.math.logical_and(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### LogicalNot
+            elif layer.attrib['type'] == 'LogicalNot':
+                tf_layers_dict[layer_id] = tf.math.logical_not(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### LogicalOr
+            elif layer.attrib['type'] == 'LogicalOr':
+                tf_layers_dict[layer_id] = tf.math.logical_or(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### LogicalXor
+            elif layer.attrib['type'] == 'LogicalXor':
+                tf_layers_dict[layer_id] = tf.math.logical_xor(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Broadcast - TODO
+            elif layer.attrib['type'] == 'Broadcast':
+                mode = data.attrib['mode']
+                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray:
+                    if mode == 'numpy':
+                        tf_layers_dict[layer_id] = tf.broadcast_to(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                        )
+                    elif mode == 'bidirectional':
+                        tf_layers_dict[layer_id] = tf.math.multiply(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                        )
+                    else:
+                        print(f'The {mode} mode of broadcast is not yet implemented.')
+                        sys.exit(-1)
+                else:
+                    target_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                    target_shape[0], target_shape[1], target_shape[2], target_shape[3] = \
+                        target_shape[0], target_shape[2], target_shape[3], target_shape[1]
+                    if mode == 'numpy':
+                        tf_layers_dict[layer_id] = tf.broadcast_to(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            target_shape
+                        )
+                    elif mode == 'bidirectional':
+                        tf_layers_dict[layer_id] = tf.math.multiply(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf.ones(target_shape)
+                        )
+                    else:
+                        print(f'The {mode} mode of broadcast is not yet implemented.')
+                        sys.exit(-1)
+
+            ### Split
+            elif layer.attrib['type'] == 'Split':
+                num_splits = int(data.attrib['num_splits'])
+                axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                if axis == 1:
+                    axis = 3
                 elif axis >= 2:
                     axis -= 1
 
-            num_or_size_splits = None
-            if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]) == np.ndarray:
-                num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
-            else:
-                num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                def split_tensor(x, axis, num_split):
+                    return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
 
-            def split_tensor(x, axis, num_split):
-                return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
-
-            if len(num_or_size_splits) > 1 and np.average(num_or_size_splits) == num_or_size_splits[0]:
                 outputs = Lambda(split_tensor,
-                                arguments={
-                                    'axis': axis,
-                                    'num_split': len(num_or_size_splits)}
+                                arguments={'axis': axis,
+                                            'num_split': num_splits}
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-            else:
-                if len(num_or_size_splits) > 1:
-                    outputs = []
 
-                    start_idx = 0
-                    end_idx   = 0
-                    split_start_list_all = []
+                for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
+                    tf_layers_dict[layer_id_port] = output
 
-                    for split_len in num_or_size_splits:
-                        split_start_list_part = []
-                        end_idx = start_idx + split_len - 1
-                        for i in range(input_shape_len):
-                            if axis == -1 and i == (input_shape_len - 1):
-                                split_start_list_part.append(start_idx)
-                            elif axis == -1 and i != (input_shape_len - 1):
-                                split_start_list_part.append(0)
-                            elif axis != -1 and i == axis:
-                                split_start_list_part.append(start_idx)
-                            else:
-                                split_start_list_part.append(0)
-                        split_start_list_all.append(split_start_list_part)
-                        start_idx = end_idx + 1
+            ### VariadicSplit
+            elif layer.attrib['type'] == 'VariadicSplit':
+                axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
 
-                    split_size_list_all = []
+                if input_shape_len >= 4:
+                    if axis == 1:
+                        axis = -1
+                    elif axis >= 2:
+                        axis -= 1
 
-                    for split_len in num_or_size_splits:
-                        split_size_list_part = []
-                        for i in range(input_shape_len):
-                            if axis == -1 and i == (input_shape_len - 1):
-                                split_size_list_part.append(split_len)
-                            elif axis == -1 and i != (input_shape_len - 1):
-                                split_size_list_part.append(-1)
-                            elif axis != -1 and i == axis:
-                                split_size_list_part.append(split_len)
-                            else:
-                                split_size_list_part.append(-1)
-                        split_size_list_all.append(split_size_list_part)
+                num_or_size_splits = None
+                if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]) == np.ndarray:
+                    num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                else:
+                    num_or_size_splits = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
 
-                    for split_starts, split_sizes in zip(split_start_list_all, split_size_list_all):
-                        outputs.append(
-                            tf.slice(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                split_starts, split_sizes
+                def split_tensor(x, axis, num_split):
+                    return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
+
+                if len(num_or_size_splits) > 1 and np.average(num_or_size_splits) == num_or_size_splits[0]:
+                    outputs = Lambda(split_tensor,
+                                    arguments={
+                                        'axis': axis,
+                                        'num_split': len(num_or_size_splits)}
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                else:
+                    if len(num_or_size_splits) > 1:
+                        outputs = []
+
+                        start_idx = 0
+                        end_idx   = 0
+                        split_start_list_all = []
+
+                        for split_len in num_or_size_splits:
+                            split_start_list_part = []
+                            end_idx = start_idx + split_len - 1
+                            for i in range(input_shape_len):
+                                if axis == -1 and i == (input_shape_len - 1):
+                                    split_start_list_part.append(start_idx)
+                                elif axis == -1 and i != (input_shape_len - 1):
+                                    split_start_list_part.append(0)
+                                elif axis != -1 and i == axis:
+                                    split_start_list_part.append(start_idx)
+                                else:
+                                    split_start_list_part.append(0)
+                            split_start_list_all.append(split_start_list_part)
+                            start_idx = end_idx + 1
+
+                        split_size_list_all = []
+
+                        for split_len in num_or_size_splits:
+                            split_size_list_part = []
+                            for i in range(input_shape_len):
+                                if axis == -1 and i == (input_shape_len - 1):
+                                    split_size_list_part.append(split_len)
+                                elif axis == -1 and i != (input_shape_len - 1):
+                                    split_size_list_part.append(-1)
+                                elif axis != -1 and i == axis:
+                                    split_size_list_part.append(split_len)
+                                else:
+                                    split_size_list_part.append(-1)
+                            split_size_list_all.append(split_size_list_part)
+
+                        for split_starts, split_sizes in zip(split_start_list_all, split_size_list_all):
+                            outputs.append(
+                                tf.slice(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    split_starts, split_sizes
+                                )
                             )
+
+                    else:
+                        outputs = tf.split(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            num_or_size_splits=num_or_size_splits,
+                            axis=axis
                         )
 
+                for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
+                    tf_layers_dict[layer_id_port] = output
+
+            ### MVN - TODO axes
+            elif layer.attrib['type'] == 'MVN':
+                eps = float(data.attrib['eps'])
+                across_channels = None
+                if not data is None and 'across_channels' in data.attrib:
+                    across_channels = data.attrib['across_channels']
+                normalize_variance = None
+                if not data is None and 'normalize_variance' in data.attrib:
+                    normalize_variance = data.attrib['normalize_variance']
+                eps_mode = None
+                if not data is None and 'eps_mode' in data.attrib:
+                    eps_mode = data.attrib['eps_mode']
+
+                if across_channels == '0':
+                    across_channels = False
+                elif across_channels == '1':
+                    across_channels = True
+                elif across_channels == 'False' or across_channels == 'false':
+                    across_channels = False
+                elif across_channels == 'True' or across_channels == 'true':
+                    across_channels = True
+
+                if normalize_variance == '0':
+                    normalize_variance = False
+                elif normalize_variance == '1':
+                    normalize_variance = True
+                elif normalize_variance == 'False' or normalize_variance == 'false':
+                    normalize_variance = False
+                elif normalize_variance == 'True' or normalize_variance == 'true':
+                    normalize_variance = True
+
+                mean = None
+                var = None
+                axes = None
+                data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                try:
+                    axes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                except:
+                    pass
+                if across_channels:
+                    mean = tf.math.reduce_mean(data, axis=[-1], keepdims=True)
+                    var = tf.math.reduce_variance(data, axis=[-1], keepdims=True)
                 else:
-                    outputs = tf.split(
+                    mean = tf.math.reduce_mean(data, axis=axes, keepdims=True)
+                    var = tf.math.reduce_variance(data, axis=axes, keepdims=True)
+
+                if normalize_variance:
+                    if eps_mode == 'inside_sqrt':
+                        mvn = (data - mean) / tf.math.sqrt(var + eps)
+                    elif eps_mode == 'outside_sqrt':
+                        mvn = (data - mean) / (tf.math.sqrt(var) + eps)
+                    else:
+                        mvn = (data - mean) / tf.math.sqrt(var + eps)
+                else:
+                    mvn = (data - mean)
+
+                tf_layers_dict[layer_id] = mvn
+
+            ### NonMaxSuppression - TODO
+            elif layer.attrib['type'] == 'NonMaxSuppression':
+                boxes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
+                batch_size = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
+                if batch_size > 1:
+                    print('When using NonMaxSuppression, fix the batch size to 1.')
+                    sys.exit(-1)
+                total_boxes_count = boxes.shape[0]
+                scores = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]
+                class_count = scores.shape[0]
+
+                max_output_boxes_per_class = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)][0] # 25
+                if max_output_boxes_per_class == '-inf' or \
+                    max_output_boxes_per_class == 'inf' or \
+                        max_output_boxes_per_class == '-Infinity' or \
+                            max_output_boxes_per_class == 'Infinity':
+                    max_output_boxes_per_class = 0
+
+                iou_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)][0] # 0.5
+                if iou_threshold == '-inf' or \
+                    iou_threshold == 'inf' or \
+                        iou_threshold == '-Infinity' or \
+                            iou_threshold == 'Infinity':
+                    iou_threshold = np.asarray(0.0, dtype=np.float32)
+                if type(iou_threshold) is np.float64:
+                    iou_threshold = np.asarray(iou_threshold, dtype=np.float32)
+
+                score_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)][0] # -Infinity
+                if score_threshold == '-inf' or \
+                    score_threshold == 'inf' or \
+                        score_threshold == '-Infinity' or \
+                            score_threshold == 'Infinity' or \
+                                score_threshold == float('-inf'):
+                    score_threshold = np.asarray(0.0, dtype=np.float32)
+                if type(score_threshold) is np.float64:
+                    score_threshold = np.asarray(score_threshold, dtype=np.float32)
+
+                soft_nms_sigma = np.asarray(0.0, dtype=np.float32)
+                try:
+                    soft_nms_sigma = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 5) ][0] # 0.1
+                    if soft_nms_sigma == '-inf' or \
+                        soft_nms_sigma == 'inf' or \
+                            soft_nms_sigma == '-Infinity' or \
+                                soft_nms_sigma == 'Infinity':
+                        soft_nms_sigma = np.asarray(0.0, dtype=np.float32)
+                except:
+                    pass
+                if type(soft_nms_sigma) is np.float64:
+                    soft_nms_sigma = np.asarray(soft_nms_sigma, dtype=np.float32)
+                box_encoding = data.attrib['box_encoding'] # corner or center
+                output_type = data.attrib['output_type'] # i64 or i32
+                sort_result_descending_str = data.attrib['sort_result_descending'] # True/true or False/false
+                sort_result_descending = False
+                if sort_result_descending_str == 'True' or sort_result_descending_str == 'true':
+                    sort_result_descending = True
+
+                if box_encoding == 'corner':
+
+                    scores_tmp = tf.transpose(scores, perm=[1, 0])
+                    score_top_values, score_top_idxes = tf.math.top_k(input=scores_tmp, k=1, sorted=False)
+                    score_top_values_flat = tf.reshape(score_top_values, [-1])
+                    score_top_idxes_flat = tf.reshape(score_top_idxes, [-1])
+                    output_size = tf.math.minimum(total_boxes_count, max_output_boxes_per_class)
+
+                    selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
+                        boxes=boxes,
+                        scores=score_top_values_flat,
+                        max_output_size=output_size,
+                        iou_threshold=iou_threshold,
+                        score_threshold=score_threshold,
+                        soft_nms_sigma=soft_nms_sigma
+                    )
+                    selected_boxes = tf.gather(boxes, selected_indices)
+                    selected_class_idx = tf.gather(score_top_idxes_flat, selected_indices)
+
+                elif box_encoding == 'center':
+                    print(f'The NonMaxSuppression box_encoding=center mode is not yet implemented.')
+                    sys.exit(-1)
+
+                tf_layers_dict['99990'] = tf.identity(
+                    tf.reshape(selected_boxes, [batch_size, output_size, 4]),
+                    name='selected_boxes'
+                )
+                tf_layers_dict['99991'] = tf.identity(
+                    tf.reshape(selected_class_idx, [batch_size, output_size]),
+                    name='selected_class_idx'
+                )
+                tf_layers_dict['99992'] = tf.identity(
+                    tf.reshape(selected_scores, [batch_size, output_size]),
+                    name='selected_scores'
+                )
+                tf_outputs.append(tf_layers_dict['99990'])
+                tf_outputs.append(tf_layers_dict['99991'])
+                tf_outputs.append(tf_layers_dict['99992'])
+
+                tf_layers_dict[layer_id] = tf.zeros(
+                    [output_size * class_count, 3],
+                    name='dummy_non_max_suppression'
+                )
+                process_interruption_by_non_max_suppression = True
+
+            ### NonZero
+            elif layer.attrib['type'] == 'NonZero':
+                try:
+                    if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.dtype != tf.bool:
+                        mask = tf.math.not_equal(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf.constant([0])
+                        )
+                        tf_layers_dict[layer_id] = tf.expand_dims(
+                            tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
+                            axis=0
+                        )
+                    else:
+                        mask = tf.math.not_equal(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf.constant([False])
+                        )
+                        tf_layers_dict[layer_id] = tf.expand_dims(
+                            tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
+                            axis=0
+                        )
+                except:
+                    if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype != tf.bool:
+                        mask = tf.math.not_equal(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf.constant([0])
+                        )
+                        tf_layers_dict[layer_id] = tf.expand_dims(
+                            tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
+                            axis=0
+                        )
+                    else:
+                        mask = tf.math.not_equal(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf.constant([False])
+                        )
+                        tf_layers_dict[layer_id] = tf.expand_dims(
+                            tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
+                            axis=0
+                        )
+
+            ### SpaceToDepth
+            elif layer.attrib['type'] == 'SpaceToDepth':
+                block_size = int(data.attrib['block_size'])
+                mode = data.attrib['mode']
+                tf_layers_dict[layer_id] = tf.nn.space_to_depth(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    block_size=block_size
+                )
+
+            ### DepthToSpace
+            elif layer.attrib['type'] == 'DepthToSpace':
+                block_size = int(data.attrib['block_size'])
+                mode = data.attrib['mode']
+
+                def depth_to_space(x, block_size):
+                    return tf.raw_ops.DepthToSpace(input=x, block_size=block_size)
+
+                tf_layers_dict[layer_id] = Lambda(
+                    depth_to_space,
+                    arguments={'block_size': block_size}
+                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### Sqrt
+            elif layer.attrib['type'] == 'Sqrt':
+                tf_layers_dict[layer_id] = tf.math.sqrt(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### SquaredDifference
+            elif layer.attrib['type'] == 'SquaredDifference':
+                tf_layers_dict[layer_id] = tf.math.squared_difference(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### FakeQuantize
+            elif layer.attrib['type'] == 'FakeQuantize':
+                x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                x = tf.cast(x, dtype=tf.float32)
+                if isinstance(x, tf.Tensor) and len(x.shape) == 4:
+                    x = x.numpy()
+                elif type(x) == np.ndarray and len(x.shape) == 4:
+                    x = x
+
+                input_low = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                input_low = tf.cast(input_low, dtype=tf.float32)
+                if isinstance(input_low, tf.Tensor) and len(input_low.shape) == 4:
+                    input_low = input_low.numpy().transpose(0,2,3,1)
+                elif type(input_low) == np.ndarray and len(input_low.shape) == 4:
+                    input_low = input_low.transpose(0,2,3,1)
+
+                input_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                input_high = tf.cast(input_high, dtype=tf.float32)
+                if isinstance(input_high, tf.Tensor) and len(input_high.shape) == 4:
+                    input_high = input_high.numpy().transpose(0,2,3,1)
+                elif type(input_high) == np.ndarray and len(input_high.shape) == 4:
+                    input_high = input_high.transpose(0,2,3,1)
+
+                output_low = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)]
+                output_low = tf.cast(output_low, dtype=tf.float32)
+                if isinstance(output_low, tf.Tensor) and len(output_low.shape) == 4:
+                    output_low = output_low.numpy().transpose(0,2,3,1)
+                elif type(output_low) == np.ndarray and len(output_low.shape) == 4:
+                    output_low = output_low.transpose(0,2,3,1)
+
+                output_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)]
+                output_high = tf.cast(output_high, dtype=tf.float32)
+                if isinstance(output_high, tf.Tensor) and len(output_high.shape) == 4:
+                    output_high = output_high.numpy().transpose(0,2,3,1)
+                elif type(output_high) == np.ndarray and len(output_high.shape) == 4:
+                    output_high = output_high.transpose(0,2,3,1)
+
+                levels = int(data.attrib['levels'])
+
+                ### https://stackoverflow.com/questions/64111110/how-to-do-round-half-up-in-tensorflow
+                ### https://www.xspdf.com/resolution/50434452.html
+                tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
+                                                    tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
+                                                    tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
+
+            ### Tile
+            elif layer.attrib['type'] == 'Tile':
+                tf_layers_dict[layer_id] = tf.tile(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+
+            ### Gelu
+            elif layer.attrib['type'] == 'Gelu':
+                approximation_mode = None
+                if not data is None and 'approximation_mode' in data.attrib:
+                    approximation_mode = data.attrib['approximation_mode']
+                if approximation_mode == 'ERF' or approximation_mode is None:
+                    tf_layers_dict[layer_id] = tf.nn.gelu(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        num_or_size_splits=num_or_size_splits,
-                        axis=axis
+                        approximate=False
+                    )
+                elif approximation_mode == 'TANH':
+                    tf_layers_dict[layer_id] = tf.nn.gelu(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        approximate=True
                     )
 
-            for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
-                tf_layers_dict[layer_id_port] = output
-
-        ### MVN - TODO axes
-        elif layer.attrib['type'] == 'MVN':
-            eps = float(data.attrib['eps'])
-            across_channels = None
-            if not data is None and 'across_channels' in data.attrib:
-                across_channels = data.attrib['across_channels']
-            normalize_variance = None
-            if not data is None and 'normalize_variance' in data.attrib:
-                normalize_variance = data.attrib['normalize_variance']
-            eps_mode = None
-            if not data is None and 'eps_mode' in data.attrib:
-                eps_mode = data.attrib['eps_mode']
-
-            if across_channels == '0':
-                across_channels = False
-            elif across_channels == '1':
-                across_channels = True
-            elif across_channels == 'False' or across_channels == 'false':
-                across_channels = False
-            elif across_channels == 'True' or across_channels == 'true':
-                across_channels = True
-
-            if normalize_variance == '0':
-                normalize_variance = False
-            elif normalize_variance == '1':
-                normalize_variance = True
-            elif normalize_variance == 'False' or normalize_variance == 'false':
-                normalize_variance = False
-            elif normalize_variance == 'True' or normalize_variance == 'true':
-                normalize_variance = True
-
-            mean = None
-            var = None
-            axes = None
-            data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            try:
-                axes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            except:
-                pass
-            if across_channels:
-                mean = tf.math.reduce_mean(data, axis=[-1], keepdims=True)
-                var = tf.math.reduce_variance(data, axis=[-1], keepdims=True)
+            ### Result
+            elif layer.attrib['type'] == 'Result':
+                if not process_interruption_by_non_max_suppression:
+                    tf_layers_dict[layer_id] = tf.identity(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        name=layer.attrib['name'].split('/')[0]
+                    )
+                    tf_outputs.append(tf_layers_dict[layer_id])
             else:
-                mean = tf.math.reduce_mean(data, axis=axes, keepdims=True)
-                var = tf.math.reduce_variance(data, axis=axes, keepdims=True)
-
-            if normalize_variance:
-                if eps_mode == 'inside_sqrt':
-                    mvn = (data - mean) / tf.math.sqrt(var + eps)
-                elif eps_mode == 'outside_sqrt':
-                    mvn = (data - mean) / (tf.math.sqrt(var) + eps)
-                else:
-                    mvn = (data - mean) / tf.math.sqrt(var + eps)
-            else:
-                mvn = (data - mean)
-
-            tf_layers_dict[layer_id] = mvn
-
-        ### NonMaxSuppression - TODO
-        elif layer.attrib['type'] == 'NonMaxSuppression':
-            boxes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
-            batch_size = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
-            if batch_size > 1:
-                print('When using NonMaxSuppression, fix the batch size to 1.')
-                sys.exit(-1)
-            total_boxes_count = boxes.shape[0]
-            scores = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]
-            class_count = scores.shape[0]
-
-            max_output_boxes_per_class = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)][0] # 25
-            if max_output_boxes_per_class == '-inf' or \
-                max_output_boxes_per_class == 'inf' or \
-                    max_output_boxes_per_class == '-Infinity' or \
-                        max_output_boxes_per_class == 'Infinity':
-                max_output_boxes_per_class = 0
-
-            iou_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)][0] # 0.5
-            if iou_threshold == '-inf' or \
-                iou_threshold == 'inf' or \
-                    iou_threshold == '-Infinity' or \
-                        iou_threshold == 'Infinity':
-                iou_threshold = np.asarray(0.0, dtype=np.float32)
-            if type(iou_threshold) is np.float64:
-                iou_threshold = np.asarray(iou_threshold, dtype=np.float32)
-
-            score_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)][0] # -Infinity
-            if score_threshold == '-inf' or \
-                score_threshold == 'inf' or \
-                    score_threshold == '-Infinity' or \
-                        score_threshold == 'Infinity' or \
-                            score_threshold == float('-inf'):
-                score_threshold = np.asarray(0.0, dtype=np.float32)
-            if type(score_threshold) is np.float64:
-                score_threshold = np.asarray(score_threshold, dtype=np.float32)
-
-            soft_nms_sigma = np.asarray(0.0, dtype=np.float32)
-            try:
-                soft_nms_sigma = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 5) ][0] # 0.1
-                if soft_nms_sigma == '-inf' or \
-                    soft_nms_sigma == 'inf' or \
-                        soft_nms_sigma == '-Infinity' or \
-                            soft_nms_sigma == 'Infinity':
-                    soft_nms_sigma = np.asarray(0.0, dtype=np.float32)
-            except:
-                pass
-            if type(soft_nms_sigma) is np.float64:
-                soft_nms_sigma = np.asarray(soft_nms_sigma, dtype=np.float32)
-            box_encoding = data.attrib['box_encoding'] # corner or center
-            output_type = data.attrib['output_type'] # i64 or i32
-            sort_result_descending_str = data.attrib['sort_result_descending'] # True/true or False/false
-            sort_result_descending = False
-            if sort_result_descending_str == 'True' or sort_result_descending_str == 'true':
-                sort_result_descending = True
-
-            if box_encoding == 'corner':
-
-                scores_tmp = tf.transpose(scores, perm=[1, 0])
-                score_top_values, score_top_idxes = tf.math.top_k(input=scores_tmp, k=1, sorted=False)
-                score_top_values_flat = tf.reshape(score_top_values, [-1])
-                score_top_idxes_flat = tf.reshape(score_top_idxes, [-1])
-                output_size = tf.math.minimum(total_boxes_count, max_output_boxes_per_class)
-
-                selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
-                    boxes=boxes,
-                    scores=score_top_values_flat,
-                    max_output_size=output_size,
-                    iou_threshold=iou_threshold,
-                    score_threshold=score_threshold,
-                    soft_nms_sigma=soft_nms_sigma
-                )
-                selected_boxes = tf.gather(boxes, selected_indices)
-                selected_class_idx = tf.gather(score_top_idxes_flat, selected_indices)
-
-            elif box_encoding == 'center':
-                print(f'The NonMaxSuppression box_encoding=center mode is not yet implemented.')
+                print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
                 sys.exit(-1)
 
-            tf_layers_dict['99990'] = tf.identity(
-                tf.reshape(selected_boxes, [batch_size, output_size, 4]),
-                name='selected_boxes'
-            )
-            tf_layers_dict['99991'] = tf.identity(
-                tf.reshape(selected_class_idx, [batch_size, output_size]),
-                name='selected_class_idx'
-            )
-            tf_layers_dict['99992'] = tf.identity(
-                tf.reshape(selected_scores, [batch_size, output_size]),
-                name='selected_scores'
-            )
-            tf_outputs.append(tf_layers_dict['99990'])
-            tf_outputs.append(tf_layers_dict['99991'])
-            tf_outputs.append(tf_layers_dict['99992'])
-
-            tf_layers_dict[layer_id] = tf.zeros(
-                [output_size * class_count, 3],
-                name='dummy_non_max_suppression'
-            )
-            process_interruption_by_non_max_suppression = True
-
-        ### NonZero
-        elif layer.attrib['type'] == 'NonZero':
-            try:
-                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.dtype != tf.bool:
-                    mask = tf.math.not_equal(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf.constant([0])
-                    )
-                    tf_layers_dict[layer_id] = tf.expand_dims(
-                        tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
-                        axis=0
-                    )
-                else:
-                    mask = tf.math.not_equal(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf.constant([False])
-                    )
-                    tf_layers_dict[layer_id] = tf.expand_dims(
-                        tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
-                        axis=0
-                    )
-            except:
-                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype != tf.bool:
-                    mask = tf.math.not_equal(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf.constant([0])
-                    )
-                    tf_layers_dict[layer_id] = tf.expand_dims(
-                        tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
-                        axis=0
-                    )
-                else:
-                    mask = tf.math.not_equal(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf.constant([False])
-                    )
-                    tf_layers_dict[layer_id] = tf.expand_dims(
-                        tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
-                        axis=0
-                    )
-
-        ### SpaceToDepth
-        elif layer.attrib['type'] == 'SpaceToDepth':
-            block_size = int(data.attrib['block_size'])
-            mode = data.attrib['mode']
-            tf_layers_dict[layer_id] = tf.nn.space_to_depth(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                block_size=block_size
-            )
-
-        ### DepthToSpace
-        elif layer.attrib['type'] == 'DepthToSpace':
-            block_size = int(data.attrib['block_size'])
-            mode = data.attrib['mode']
-
-            def depth_to_space(x, block_size):
-                return tf.raw_ops.DepthToSpace(input=x, block_size=block_size)
-
-            tf_layers_dict[layer_id] = Lambda(
-                depth_to_space,
-                arguments={'block_size': block_size}
-            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-
-        ### Sqrt
-        elif layer.attrib['type'] == 'Sqrt':
-            tf_layers_dict[layer_id] = tf.math.sqrt(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### SquaredDifference
-        elif layer.attrib['type'] == 'SquaredDifference':
-            tf_layers_dict[layer_id] = tf.math.squared_difference(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### FakeQuantize
-        elif layer.attrib['type'] == 'FakeQuantize':
-            x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-            x = tf.cast(x, dtype=tf.float32)
-            if isinstance(x, tf.Tensor) and len(x.shape) == 4:
-                x = x.numpy()
-            elif type(x) == np.ndarray and len(x.shape) == 4:
-                x = x
-
-            input_low = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            input_low = tf.cast(input_low, dtype=tf.float32)
-            if isinstance(input_low, tf.Tensor) and len(input_low.shape) == 4:
-                input_low = input_low.numpy().transpose(0,2,3,1)
-            elif type(input_low) == np.ndarray and len(input_low.shape) == 4:
-                input_low = input_low.transpose(0,2,3,1)
-
-            input_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
-            input_high = tf.cast(input_high, dtype=tf.float32)
-            if isinstance(input_high, tf.Tensor) and len(input_high.shape) == 4:
-                input_high = input_high.numpy().transpose(0,2,3,1)
-            elif type(input_high) == np.ndarray and len(input_high.shape) == 4:
-                input_high = input_high.transpose(0,2,3,1)
-
-            output_low = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)]
-            output_low = tf.cast(output_low, dtype=tf.float32)
-            if isinstance(output_low, tf.Tensor) and len(output_low.shape) == 4:
-                output_low = output_low.numpy().transpose(0,2,3,1)
-            elif type(output_low) == np.ndarray and len(output_low.shape) == 4:
-                output_low = output_low.transpose(0,2,3,1)
-
-            output_high = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)]
-            output_high = tf.cast(output_high, dtype=tf.float32)
-            if isinstance(output_high, tf.Tensor) and len(output_high.shape) == 4:
-                output_high = output_high.numpy().transpose(0,2,3,1)
-            elif type(output_high) == np.ndarray and len(output_high.shape) == 4:
-                output_high = output_high.transpose(0,2,3,1)
-
-            levels = int(data.attrib['levels'])
-
-            ### https://stackoverflow.com/questions/64111110/how-to-do-round-half-up-in-tensorflow
-            ### https://www.xspdf.com/resolution/50434452.html
-            tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
-                                                tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
-                                                tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
-
-        ### Tile
-        elif layer.attrib['type'] == 'Tile':
-            tf_layers_dict[layer_id] = tf.tile(
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-            )
-
-        ### Gelu
-        elif layer.attrib['type'] == 'Gelu':
-            approximation_mode = None
-            if not data is None and 'approximation_mode' in data.attrib:
-                approximation_mode = data.attrib['approximation_mode']
-            if approximation_mode == 'ERF' or approximation_mode is None:
-                tf_layers_dict[layer_id] = tf.nn.gelu(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    approximate=False
-                )
-            elif approximation_mode == 'TANH':
-                tf_layers_dict[layer_id] = tf.nn.gelu(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    approximate=True
-                )
-
-        ### Result
-        elif layer.attrib['type'] == 'Result':
-            if not process_interruption_by_non_max_suppression:
-                tf_layers_dict[layer_id] = tf.identity(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    name=layer.attrib['name'].split('/')[0]
-                )
+            if debug and idx > debug_layer_number:
                 tf_outputs.append(tf_layers_dict[layer_id])
-        else:
-            print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
-            sys.exit(-1)
+                break
 
-        if debug and idx > debug_layer_number:
-            tf_outputs.append(tf_layers_dict[layer_id])
-            break
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            print(f'{Color.RED}ERROR:{Color.RESET} layer_id:', layer_id)
+            try:
+                for edge_index in range(len(tf_edges[layer_id])):
+                    if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]) != np.ndarray:
+                        print(f'{Color.RED}ERROR:{Color.RESET} input_layer{edge_index}:', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)])
+                    else:
+                        print(f'{Color.RED}ERROR:{Color.RESET} input_layer{edge_index}: Const(ndarray).shape ', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape)
+            except:
+                pass
+            print(f'{Color.RED}ERROR:{Color.RESET} The trace log is below.')
+            import traceback
+            traceback.print_exc()
+            sys.exit(-1)
 
     # pprint.pprint(tf_outputs)
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
