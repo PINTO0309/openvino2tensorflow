@@ -2315,9 +2315,9 @@ def convert(model_path,
             try:
                 for edge_index in range(len(tf_edges[layer_id])):
                     if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]) != np.ndarray:
-                        print(f'{Color.RED}ERROR:{Color.RESET} input_layer{edge_index}:', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)])
+                        print(f'{Color.RED}ERROR:{Color.RESET} input_layer{edge_index} layer_id={tf_edges[layer_id][edge_index]}:', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)])
                     else:
-                        print(f'{Color.RED}ERROR:{Color.RESET} input_layer{edge_index}: Const(ndarray).shape ', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape)
+                        print(f'{Color.RED}ERROR:{Color.RESET} input_layer{edge_index} layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape ', tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape)
                         pprint.pprint(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)])
             except:
                 pass
