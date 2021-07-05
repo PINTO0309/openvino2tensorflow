@@ -537,7 +537,7 @@ optional arguments:
 OutOfMemory may occur when converting to saved_model or h5 when the file size of the original model is large, please try the conversion to a pb file alone.
 ```
 $ openvino2tensorflow \
-  --model_path=openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
+  --model_path openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
   --output_saved_model \
   --output_pb \
   --output_weight_quant_tflite \
@@ -585,7 +585,7 @@ $ saved_model_cli show \
 If the transformation behavior of **`Reshape`**, **`Transpose`**, etc. does not go as expected, you can force the **`Const`** content to change by defining weights and constant values in a JSON file and having it read in.
 ```
 $ openvino2tensorflow \
-  --model_path=xxx.xml \
+  --model_path xxx.xml \
   --output_saved_model \
   --output_pb \
   --output_weight_quant_tflite \
