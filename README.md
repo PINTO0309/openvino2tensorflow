@@ -632,6 +632,9 @@ $ view_npy --npy_file_path sample_npy/calibration_data_img_sample.npy
 Press the **`Q`** button to display the next image. **`calibration_data_img_sample.npy`** contains 20 images extracted from the MS-COCO data set.
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/33194443/109318923-aba15480-7891-11eb-84aa-034f77125f34.gif)
 
+### 6-9. Sample image of a conversion error message
+![error_sample2](https://user-images.githubusercontent.com/33194443/124498169-e181b700-ddf6-11eb-9200-83ba44c62410.png)
+
 ## 7. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)
 
