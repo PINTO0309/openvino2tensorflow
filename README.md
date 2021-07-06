@@ -633,7 +633,7 @@ Press the **`Q`** button to display the next image. **`calibration_data_img_samp
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/33194443/109318923-aba15480-7891-11eb-84aa-034f77125f34.gif)
 
 ### 6-9. Sample image of a conversion error message
-Since it is very difficult to mechanically predict the correct behavior of **`Transpose`** and **`Reshape`**, errors like the one shown below may occur. Using the information in the figure below, try several times to force the replacement of constants and weights using the **`--weight_replacement_config`** option. This is a very patient process, but if you take the time, you should be able to convert it correctly.
+Since it is very difficult to mechanically predict the correct behavior of **`Transpose`** and **`Reshape`**, errors like the one shown below may occur. Using the information in the figure below, try several times to force the replacement of constants and weights using the **`--weight_replacement_config`** option [#6-7-replace-weights-or-constant-values-in-const-op](#6-7-replace-weights-or-constant-values-in-const-op). This is a very patient process, but if you take the time, you should be able to convert it correctly.
 ![error_sample2](https://user-images.githubusercontent.com/33194443/124498169-e181b700-ddf6-11eb-9200-83ba44c62410.png)
 
 ## 7. Output sample
