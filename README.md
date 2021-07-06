@@ -685,3 +685,4 @@ Since it is very difficult to mechanically predict the correct behavior of **`Tr
 28. MODNet
 29. Person Reidentification
 30. DeepSort
+31. DINO (Transformer)
