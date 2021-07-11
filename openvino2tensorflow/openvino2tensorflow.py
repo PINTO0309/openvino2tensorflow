@@ -632,6 +632,8 @@ def convert(model_path,
                         padding = 'valid'
                 else:
                     padding = 'same'
+                if not data is None and 'rounding_type' in data.attrib and data.attrib['rounding_type'] == 'ceil':
+                    padding = 'same'
                 tf_layers_dict[layer_id] = AveragePooling2D(
                     pool_size=kernel_size,
                     strides=strides,
