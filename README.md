@@ -187,7 +187,12 @@ $ docker pull pinto0309/openvino2tensorflow
 or
 $ docker build -t pinto0309/openvino2tensorflow:latest .
 
-# If conversion to TF-TRT is not required
+# If you don't need to access the GUI of the HostPC and the USB camera.
+$ docker run -it --rm \
+  -v `pwd`:/home/user/workdir \
+  pinto0309/openvino2tensorflow:latest
+  
+# If conversion to TF-TRT is not required. And if you need to access the HostPC GUI and USB camera.
 $ xhost +local: && \
   docker run -it --rm \
   -v `pwd`:/home/user/workdir \
@@ -200,7 +205,7 @@ $ xhost +local: && \
   pinto0309/openvino2tensorflow:latest
 $ cd workdir
 
-# If you need to convert to TF-TRT
+# If you need to convert to TF-TRT. And if you need to access the HostPC GUI and USB camera.
 $ xhost +local: && \
   docker run --gpus all -it --rm \
   -v `pwd`:/home/user/workdir \
