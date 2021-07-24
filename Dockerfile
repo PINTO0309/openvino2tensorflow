@@ -103,7 +103,7 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
     && rm -rf /var/lib/apt/lists/*
 
 # Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tensorflow-${TENSORRTVER}-cp36-none-linux_x86_64.whl \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && pip3 install --force-reinstall tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && rm tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && pip cache purge \
