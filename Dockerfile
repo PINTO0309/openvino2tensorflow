@@ -2,11 +2,11 @@ FROM nvcr.io/nvidia/tensorrt:20.11-py3
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu1804
-ARG TENSORFLOWVER=2.5.0
+ARG TENSORFLOWVER=2.6.0rc1
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
 ARG TENSORRTVER=cuda11.1-trt7.2.1.6-ga-20201007
-ARG APPVER=v1.14.7
+ARG APPVER=v1.15.0
 ARG wkdir=/home/user
 
 # dash -> bash
@@ -53,7 +53,7 @@ RUN pip3 install --upgrade pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install custom tflite_runtime, flatc, edgetpu-compiler
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tflite_runtime-2.5.0-cp36-none-linux_x86_64.whl \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tflite_runtime-${TENSORRTVER}-cp36-none-linux_x86_64.whl \
     && chmod +x tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && pip3 install --force-reinstall tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && rm tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
@@ -71,7 +71,7 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
     && rm -rf /var/lib/apt/lists/*
 
 # Install OpenVINO
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/l_openvino_toolkit_p_2021.4.582.tgz \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/l_openvino_toolkit_p_${OPENVINOVER}.tgz \
     && tar xf l_openvino_toolkit_p_${OPENVINOVER}.tgz \
     && rm l_openvino_toolkit_p_${OPENVINOVER}.tgz \
     && l_openvino_toolkit_p_${OPENVINOVER}/install_openvino_dependencies.sh -y \
@@ -93,7 +93,7 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
     && rm -rf /var/lib/apt/lists/*
 
 # Install TensorRT additional package
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/nv-tensorrt-repo-ubuntu1804-cuda11.1-trt7.2.1.6-ga-20201007_1-1_amd64.deb \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && dpkg -i nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && apt-key add /var/nv-tensorrt-repo-${TENSORRTVER}/7fa2af80.pub \
     && apt-get update \
@@ -103,9 +103,9 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
     && rm -rf /var/lib/apt/lists/*
 
 # Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tensorflow-2.5.0-cp36-cp36m-linux_x86_64.whl \
-    && pip3 install --force-reinstall tensorflow-${TENSORFLOWVER}-cp36-cp36m-linux_x86_64.whl \
-    && rm tensorflow-${TENSORFLOWVER}-cp36-cp36m-linux_x86_64.whl \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tensorflow-${TENSORRTVER}-cp36-none-linux_x86_64.whl \
+    && pip3 install --force-reinstall tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
+    && rm tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
     && pip cache purge \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*

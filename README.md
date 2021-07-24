@@ -17,7 +17,7 @@ Work in progress now.
 ![ezgif com-gif-maker (3)](https://user-images.githubusercontent.com/33194443/103456348-8d5b2480-4d38-11eb-8a58-9b7c7203b18c.gif)
 
 ## 1. Environment
-- TensorFlow v2.5.0+ **`pip3 install --upgrade tensorflow`** or **`pip3 install --upgrade tf-nightly`**
+- TensorFlow v2.6.0+
 - OpenVINO 2021.4.582+
 - Python 3.6+
 - tensorflowjs **`pip3 install --upgrade tensorflowjs`**
@@ -191,7 +191,7 @@ $ docker build -t pinto0309/openvino2tensorflow:latest .
 $ docker run -it --rm \
   -v `pwd`:/home/user/workdir \
   pinto0309/openvino2tensorflow:latest
-  
+
 # If conversion to TF-TRT is not required. And if you need to access the HostPC GUI and USB camera.
 $ xhost +local: && \
   docker run -it --rm \
@@ -222,13 +222,13 @@ $ cd workdir
 To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
 
 ```bash
-$ pip3 install openvino2tensorflow --upgrade
+$ pip3 install --user --upgrade openvino2tensorflow
 ```
 
 To install with the latest source code of the main branch, use the following command.
 
 ```bash
-$ pip3 install git+https://github.com/PINTO0309/openvino2tensorflow --upgrade
+$ pip3 install --user --upgrade git+https://github.com/PINTO0309/openvino2tensorflow
 ```
 
 ## 5. Usage
