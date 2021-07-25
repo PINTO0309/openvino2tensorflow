@@ -6,6 +6,8 @@
 
 This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5, tfjs, tftrt(TensorRT), CoreML, EdgeTPU, ONNX and pb. PyTorch (NCHW) -> ONNX (NCHW) -> OpenVINO (NCHW) -> openvino2tensorflow -> Tensorflow/Keras (NHWC) -> TFLite (NHWC). And the conversion from .pb to saved_model and from saved_model to .pb and from .pb to .tflite and saved_model to .tflite and saved_model to onnx. Support for building environments with Docker. It is possible to directly access the host PC GUI and the camera to verify the operation. NVIDIA GPU (dGPU) support.
 
+[Special custom TensorFlow binaries](https://github.com/PINTO0309/Tensorflow-bin) and [special custom TensorFLow Lite binaries](https://github.com/PINTO0309/TensorflowLite-bin) are used.
+
 Work in progress now.
 
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
