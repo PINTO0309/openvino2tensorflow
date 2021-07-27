@@ -1,11 +1,11 @@
-FROM nvcr.io/nvidia/tensorrt:20.11-py3
+FROM nvcr.io/nvidia/tensorrt:21.07-py3
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG OSVER=ubuntu1804
+ARG OSVER=ubuntu2004
 ARG TENSORFLOWVER=2.6.0rc1
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
-ARG TENSORRTVER=cuda11.1-trt7.2.1.6-ga-20201007
+ARG TENSORRTVER=cuda11.3-trt8.0.1.6-ga-20210626
 ARG APPVER=v1.15.0
 ARG wkdir=/home/user
 
