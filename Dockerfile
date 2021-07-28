@@ -128,3 +128,18 @@ RUN echo "root:root" | chpasswd \
     && chmod 0440 /etc/sudoers.d/${username}
 USER ${username}
 RUN sudo chown ${username}:${username} ${wkdir}
+
+# OpenCL settings - https://github.com/intel/compute-runtime/releases
+RUN cd ${OPENVINOROOTDIR}/install_dependencies/ \
+    && yes | sudo -E ./install_NEO_OCL_driver.sh \
+    && cd ${wkdir} \
+    && wget https://github.com/intel/compute-runtime/releases/download/21.29.20389/intel-gmmlib_21.2.1_amd64.deb \
+    && wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.7862/intel-igc-core_1.0.7862_amd64.deb \
+    && wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.7862/intel-igc-opencl_1.0.7862_amd64.deb \
+    && wget https://github.com/intel/compute-runtime/releases/download/21.29.20389/intel-opencl_21.29.20389_amd64.deb \
+    && wget https://github.com/intel/compute-runtime/releases/download/21.29.20389/intel-ocloc_21.29.20389_amd64.deb \
+    && wget https://github.com/intel/compute-runtime/releases/download/21.29.20389/intel-level-zero-gpu_1.1.20389_amd64.deb \
+    && sudo dpkg -i *.deb \
+    && rm *.deb \
+    && sudo apt clean \
+    && sudo rm -rf /var/lib/apt/lists/*
