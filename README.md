@@ -29,6 +29,8 @@ Work in progress now.
 - tf2onnx **`pip3 install --upgrade tf2onnx`**
 - tensorflow-datasets **`pip3 install --upgrade tensorflow-datasets`**
 - **[edgetpu_compiler](https://coral.ai/docs/edgetpu/compiler/#system-requirements)**
+- Intel-Media-SDK
+- Intel iHD GPU (iGPU) support
 - Docker
 
 ## 2. Use case
