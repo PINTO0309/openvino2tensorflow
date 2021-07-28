@@ -4,7 +4,7 @@
   <img src="https://user-images.githubusercontent.com/33194443/104584047-4e688f80-56a5-11eb-8dc2-5816487239d0.png" />
 </p>
 
-This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5, tfjs, tftrt(TensorRT), CoreML, EdgeTPU, ONNX and pb. PyTorch (NCHW) -> ONNX (NCHW) -> OpenVINO (NCHW) -> openvino2tensorflow -> Tensorflow/Keras (NHWC) -> TFLite (NHWC). And the conversion from .pb to saved_model and from saved_model to .pb and from .pb to .tflite and saved_model to .tflite and saved_model to onnx. Support for building environments with Docker. It is possible to directly access the host PC GUI and the camera to verify the operation. NVIDIA GPU (dGPU) support.
+This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5, tfjs, tftrt(TensorRT), CoreML, EdgeTPU, ONNX and pb. PyTorch (NCHW) -> ONNX (NCHW) -> OpenVINO (NCHW) -> openvino2tensorflow -> Tensorflow/Keras (NHWC) -> TFLite (NHWC). And the conversion from .pb to saved_model and from saved_model to .pb and from .pb to .tflite and saved_model to .tflite and saved_model to onnx. Support for building environments with Docker. It is possible to directly access the host PC GUI and the camera to verify the operation. NVIDIA GPU (dGPU) support. Intel iHD GPU (iGPU) support.
 
 [Special custom TensorFlow binaries](https://github.com/PINTO0309/Tensorflow-bin) and [special custom TensorFLow Lite binaries](https://github.com/PINTO0309/TensorflowLite-bin) are used.
 
