@@ -96,7 +96,7 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
 # Install TensorRT additional package
 RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && dpkg -i nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
-    && apt-key add /var/nv-tensorrt-repo-${TENSORRTVER}/7fa2af80.pub \
+    && apt-key add /var/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}/7fa2af80.pub \
     && apt-get update \
     && apt-get install uff-converter-tf graphsurgeon-tf \
     && rm nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
