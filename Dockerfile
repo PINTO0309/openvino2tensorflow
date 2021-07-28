@@ -3,6 +3,7 @@ FROM nvcr.io/nvidia/tensorrt:21.07-py3
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu2004
 ARG TENSORFLOWVER=2.6.0rc1
+ARG CPVER=cp38
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
 ARG TENSORRTVER=cuda11.3-trt8.0.1.6-ga-20210626
@@ -53,10 +54,10 @@ RUN pip3 install --upgrade pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install custom tflite_runtime, flatc, edgetpu-compiler
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
-    && chmod +x tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
-    && pip3 install --force-reinstall tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
-    && rm tflite_runtime-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
+    && chmod +x tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
+    && pip3 install --force-reinstall tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
+    && rm tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
     && wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/flatc.tar.gz \
     && tar -zxvf flatc.tar.gz \
     && chmod +x flatc \
@@ -103,9 +104,9 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
     && rm -rf /var/lib/apt/lists/*
 
 # Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
-    && pip3 install --force-reinstall tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
-    && rm tensorflow-${TENSORFLOWVER}-cp36-none-linux_x86_64.whl \
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tensorflow-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
+    && pip3 install --force-reinstall tensorflow-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
+    && rm tensorflow-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
     && pip cache purge \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
