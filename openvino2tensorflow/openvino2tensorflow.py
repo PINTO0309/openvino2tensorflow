@@ -108,46 +108,54 @@ def convert(model_path,
     import pprint
 
     # for unpacking binary buffer
-    format_config = { 'FP32' : ['f', 4],
-                      'FP16' : ['e', 2],
-                      'I64'  : ['q', 8],
-                      'I32'  : ['i', 4],
-                      'I16'  : ['h', 2],
-                      'I8'   : ['b', 1],
-                      'U8'   : ['B', 1],
-                      'BOOL' : ['?', 1]}
+    format_config = {
+        'FP32' : ['f', 4],
+        'FP16' : ['e', 2],
+        'I64'  : ['q', 8],
+        'I32'  : ['i', 4],
+        'I16'  : ['h', 2],
+        'I8'   : ['b', 1],
+        'U8'   : ['B', 1],
+        'BOOL' : ['?', 1]
+    }
 
     # vino:    u8,    u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
     # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
 
     # type conversion table
-    cast_type_ov_tf = { 'u8'  : tf.uint8,
-                        'u16' : tf.uint16,
-                        'u32' : tf.uint32,
-                        'u64' : tf.uint64,
-                        'i8'  : tf.int8,
-                        'i16' : tf.int16,
-                        'i32' : tf.int32,
-                        'i64' : tf.int64,
-                        'f16' : tf.float16,
-                        'f32' : tf.float32,
-                        'bf16': tf.bfloat16}
+    cast_type_ov_tf = {
+        'u8'  : tf.uint8,
+        'u16' : tf.uint16,
+        'u32' : tf.uint32,
+        'u64' : tf.uint64,
+        'i8'  : tf.int8,
+        'i16' : tf.int16,
+        'i32' : tf.int32,
+        'i64' : tf.int64,
+        'f16' : tf.float16,
+        'f32' : tf.float32,
+        'bf16': tf.bfloat16
+    }
 
     # integer type table
-    int_type_tf = [tf.uint8,
-                   tf.uint16,
-                   tf.uint32,
-                   tf.uint64,
-                   tf.int8,
-                   tf.int16,
-                   tf.int32,
-                   tf.int64]
+    int_type_tf = [
+        tf.uint8,
+        tf.uint16,
+        tf.uint32,
+        tf.uint64,
+        tf.int8,
+        tf.int16,
+        tf.int32,
+        tf.int64
+    ]
 
     # pad type conversion table
-    pad_type_ov_tf = { 'constant' : 'CONSTANT',
-                       'reflect'  : 'REFLECT',
-                       'symmetric': 'SYMMETRIC',
-                       'edge'     : 'REFLECT'}
+    pad_type_ov_tf = {
+        'constant' : 'CONSTANT',
+        'reflect'  : 'REFLECT',
+        'symmetric': 'SYMMETRIC',
+        'edge'     : 'REFLECT'
+    }
 
     # Read IR weight data
     with open(model_path+'.bin', 'rb') as f:
@@ -273,8 +281,10 @@ def convert(model_path,
 
     # edges
     added_key_list = []
+    concat_port_list = {}
     for edge in edges:
         to_layer = edge.attrib['to-layer']
+        to_layer_port = edge.attrib['to-port']
         from_layer = edge.attrib['from-layer']
         from_layer_port = edge.attrib['from-port']
 
@@ -287,6 +297,8 @@ def convert(model_path,
                     added_key_list.append(to_layer)
                 else:
                     tf_edges.setdefault(to_layer, [])
+                    if layer.attrib['type'] == 'Concat':
+                        concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
             if layer.attrib['id'] == from_layer:
@@ -308,14 +320,21 @@ def convert(model_path,
                         if flg == 'not_found':
                             tf_edges.setdefault(to_layer, []).append(from_layer)
                 break
+
+    # The following loop sorts tf_edges in ascending order by port
+    # However, only the Concat layer is implemented.
+    for to_layer, from_layer_ports in concat_port_list.items():
+        temp_sorted_tf_edge = []
+        # from_layer_ports = [from_layer_id:port, from_layer_id:port, from_layer_id:port, ...]
+        ports = [p.split(':')[1] for p in from_layer_ports]
+        for idx, port in enumerate(ports):
+            temp_sorted_tf_edge.append(tf_edges[to_layer][ports.index(str(idx))])
+        tf_edges[to_layer] = temp_sorted_tf_edge
+
     del added_key_list
+    del concat_port_list
 
     layer_id_port_dict = get_num_of_outputs_per_layer_id(tf_edges)
-
-    # for i in tf_edges.items():
-    #     print(i)
-    # sys.exit(0)
-
 
     process_interruption_by_non_max_suppression = False
 
@@ -799,6 +818,7 @@ def convert(model_path,
                             tensor_list.append(tf_layers_dict[from_layer_id])
                     tf_layers_dict[layer_id] = tf.concat(tensor_list, axis=axis)
                 else:
+                    temp = get_tf_edges_from(tf_edges, layer_id)
                     tf_layers_dict[layer_id] = tf.concat(
                         [tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)],
                         axis=axis
