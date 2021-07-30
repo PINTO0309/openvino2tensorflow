@@ -818,7 +818,6 @@ def convert(model_path,
                             tensor_list.append(tf_layers_dict[from_layer_id])
                     tf_layers_dict[layer_id] = tf.concat(tensor_list, axis=axis)
                 else:
-                    temp = get_tf_edges_from(tf_edges, layer_id)
                     tf_layers_dict[layer_id] = tf.concat(
                         [tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)],
                         axis=axis
