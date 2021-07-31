@@ -493,8 +493,12 @@ def convert(model_path,
                             tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
                             tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
                         except:
-                            tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
-                            tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+                            try:
+                                tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+                            except:
+                                tmp_layers = [tf_layers_dict[from_layer_id] if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
                     else:
                         tf_layers_dict[layer_id] = tf.math.add_n(
                             [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
@@ -818,6 +822,7 @@ def convert(model_path,
                             tensor_list.append(tf_layers_dict[from_layer_id])
                     tf_layers_dict[layer_id] = tf.concat(tensor_list, axis=axis)
                 else:
+                    temp = get_tf_edges_from(tf_edges, layer_id)
                     tf_layers_dict[layer_id] = tf.concat(
                         [tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)],
                         axis=axis
