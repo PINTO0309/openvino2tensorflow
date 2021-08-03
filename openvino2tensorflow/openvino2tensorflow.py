@@ -542,8 +542,21 @@ def convert(model_path,
 
             ### Clamp
             elif layer.attrib['type'] == 'Clamp':
-                cmin = float(data.attrib['min'])
-                cmax = float(data.attrib['max'])
+                cmin = None
+                cmax = None
+                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype == np.int64:
+                    cmin = np.asarray(data.attrib['min']).astype(np.int64)
+                    cmax = np.asarray(data.attrib['max']).astype(np.int64)
+                elif tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype == np.int32:
+                    cmin = np.asarray(data.attrib['min']).astype(np.int32)
+                    cmax = np.asarray(data.attrib['max']).astype(np.int32)
+                elif tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype == np.float32:
+                    cmin = np.asarray(data.attrib['min']).astype(np.float32)
+                    cmax = np.asarray(data.attrib['max']).astype(np.float32)
+                else:
+                    cmin = np.asarray(data.attrib['min']).astype(np.float32)
+                    cmax = np.asarray(data.attrib['max']).astype(np.float32)
+
                 if cmin == 0.0 and cmax == 6.0:
                     # ReLU6
                     tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
