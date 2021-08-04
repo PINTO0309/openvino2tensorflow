@@ -659,10 +659,50 @@ Structure of JSON sample
 ![Screenshot 2021-08-05 00:08:50](https://user-images.githubusercontent.com/33194443/128205851-c4effc4a-8033-49a4-887f-4af0829824b9.png)
   3. Search for **`to-layer="660"`** (Transpose) in the IDE. In the figure below, Layer ID **`658`** and Layer ID **`659`** are represented as input values connected to Layer ID **`660`**.  
 ![Screenshot 2021-08-05 00:17:31](https://user-images.githubusercontent.com/33194443/128207323-400f5145-46fd-4734-b186-408d4a8cc7d0.png)  
-In the figure below, one of them is **`658`** and one of them is **`659`**. It is difficult to determine exactly what it is from the image alone. You must again note that **`658:3`** in the image is only a name, not a layer ID.  
-![Screenshot 2021-08-05 00:26:29](https://user-images.githubusercontent.com/33194443/128208774-1dd27e57-e453-4942-8708-c118d5cec10c.png)
-
-
+In the figure below, one of them is **`658`** and one of them is **`659`**. It is difficult to determine exactly what it is from the image alone. You must again note that **`658:3`** in the image is only a name, not a layer ID. It is worth noting here that the type of value you want to replace is **`Const`**.  
+![Screenshot 2021-08-05 00:26:29](https://user-images.githubusercontent.com/33194443/128208774-1dd27e57-e453-4942-8708-c118d5cec10c.png)  
+  4. Now you will search for layer ID **`"658"`** in the IDE. The type is **`"Concat"`**, so the desired layer was not this one. What you are looking for is **`"Const"`**.  
+![Screenshot 2021-08-05 01:02:00](https://user-images.githubusercontent.com/33194443/128214658-ec28bbc5-685b-4f92-b0ca-ca6e5389194c.png)  
+  5. Now, search for layer ID **`659`** in the IDE. type is **`"Const"`**. Now you can finally identify that the layer ID of the layer you want to replace is **`659`**.  
+![Screenshot 2021-08-05 01:05:33](https://user-images.githubusercontent.com/33194443/128215161-9631100f-0bff-4c49-ad57-9f3a3e8ad7be.png)  
+  6. Create a JSON file to replace the constants **`[0, 2, 1]`** with **`[0, 1, 2]`**, and you can use any name for the JSON file. Suppose you save the file with the name **`replace.json`**. If you want to replace it with a numpy matrix, specify **`"npy"`** for **`"replace_mode":`** and the path to the **`.npy`** file for **`"values":`**.  
+  ```json
+  {
+    "format_version": 1,
+    "layers": [
+        {
+            "layer_id": "659",
+            "replace_mode": "direct",
+            "values": [
+                0,
+                1,
+                2
+            ]
+        }
+    ]
+  }
+  ```
+  ```json
+  {
+    "format_version": 1,
+    "layers": [
+        {
+            "layer_id": "659",
+            "replace_mode": "npy",
+            "values": "path/to/your/xxx.npy"
+        }
+    ]
+  }
+  ```
+  7. Specify the created JSON file as the argument of the **`--weight_replacement_config`** parameter of the conversion command and execute it. This is the end of the explanation of how to replace weights and constants.   
+  ```
+  $ openvino2tensorflow \
+  --model_path yolox_nano_320x320.xml \
+  --output_saved_model \
+  --output_pb \
+  --output_no_quant_float32_tflite \
+  --weight_replacement_config replace.json
+  ```
 
 
 ### 6-8. Check the contents of the .npy file, which is a binary version of the image file
