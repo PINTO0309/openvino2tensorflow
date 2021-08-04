@@ -648,6 +648,17 @@ Structure of JSON sample
 |2-2|replace_mode|"direct" or "npy".<br>"direct": Specify the values of the Numpy matrix directly in the "values" attribute. Ignores the values recorded in the .bin file and replaces them with the values specified in "values".<br>![Screenshot 2021-02-08 01:12:06](https://user-images.githubusercontent.com/33194443/107152361-cc6d3d00-69aa-11eb-8302-5e18a723ec34.png)<br>"npy": Load a Numpy binary file with the matrix output by np.save('xyz', a). The "values" attribute specifies the path to the Numpy binary file.<br>![Screenshot 2021-02-08 01:12:23](https://user-images.githubusercontent.com/33194443/107152376-dc851c80-69aa-11eb-9b3f-469b91af1d19.png)|
 |2-3|values|Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin. The way to specify is as described in the description of 'replace_mode'.|
 
+#### 6-7-1. Example
+  - YOLOX Nano 320x320 (NCHW format)
+  - yolox_nano_320x320.xml
+  - yolox_nano_320x320.bin
+  1. Let's assume that we don't need **`Transpose`** in the final layer of the model. Here we have **`[1, 85, 2100]`** as input, and the original OpenVINO model transposes **`[0, 2, 1]`** in that order to obtain the tensor **`[1, 2100, 85]`**. This figure shows the visualization of a **`yolox_nano_320x320.xml`** file using **[Netron](https://netron.app/)**. The number shown in the **`OUTPUTS`** - **`output`** - **`name:`** is the layer ID of **`Transpose`**. The layer ID 660 is the number in the part before the colon. The number in the part after the colon is called the port number 2.
+![Screenshot 2021-08-04 23:45:15](https://user-images.githubusercontent.com/33194443/128202697-1e9a5110-3482-424c-8c03-202023478571.png)
+  2. Check the model structure as recorded in .xml. First, open **`yolox_nano_320x320.xml`** in your favorite IDE. 
+![Screenshot 2021-08-05 00:00:38](https://user-images.githubusercontent.com/33194443/128204779-3a446618-c3f4-4968-ab3d-50648652da53.png)
+
+
+
 ### 6-8. Check the contents of the .npy file, which is a binary version of the image file
 ```
 $ view_npy --npy_file_path sample_npy/calibration_data_img_sample.npy
