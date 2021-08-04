@@ -652,10 +652,16 @@ Structure of JSON sample
   - YOLOX Nano 320x320 (NCHW format)
   - yolox_nano_320x320.xml
   - yolox_nano_320x320.bin
-  1. Let's assume that we don't need **`Transpose`** in the final layer of the model. Here we have **`[1, 85, 2100]`** as input, and the original OpenVINO model transposes **`[0, 2, 1]`** in that order to obtain the tensor **`[1, 2100, 85]`**. This figure shows the visualization of a **`yolox_nano_320x320.xml`** file using **[Netron](https://netron.app/)**. The number shown in the **`OUTPUTS`** - **`output`** - **`name:`** is the layer ID of **`Transpose`**. The layer ID 660 is the number in the part before the colon. The number in the part after the colon is called the port number 2.
+  1. Let's assume that you don't need **`Transpose`** in the final layer of the model. Here you have **`[1, 85, 2100]`** as input, and the original OpenVINO model transposes **`[0, 2, 1]`** in that order to obtain the tensor **`[1, 2100, 85]`**. This figure shows the visualization of a **`yolox_nano_320x320.xml`** file using **[Netron](https://netron.app/)**. The number shown in the **`OUTPUTS`** - **`output`** - **`name:`** is the layer ID of **`Transpose`**. The layer ID 660 is the number in the part before the colon. The number in the part after the colon is called the port number 2. However, what you are trying to change is the transposition parameter of the **`INPUTS`** - **`custom`** - **`name:`** part. The name of the parameter you are trying to change is **`625`**. Note that **`625`** is not a layer ID, just a name.  
 ![Screenshot 2021-08-04 23:45:15](https://user-images.githubusercontent.com/33194443/128202697-1e9a5110-3482-424c-8c03-202023478571.png)
-  2. Check the model structure as recorded in .xml. First, open **`yolox_nano_320x320.xml`** in your favorite IDE. 
+  2. Check the model structure as recorded in .xml. First, open **`yolox_nano_320x320.xml`** in your favorite IDE.  
 ![Screenshot 2021-08-05 00:00:38](https://user-images.githubusercontent.com/33194443/128204779-3a446618-c3f4-4968-ab3d-50648652da53.png)
+![Screenshot 2021-08-05 00:08:50](https://user-images.githubusercontent.com/33194443/128205851-c4effc4a-8033-49a4-887f-4af0829824b9.png)
+  3. Search for **`to-layer="660"`** (Transpose) in the IDE. In the figure below, Layer ID **`658`** and Layer ID **`659`** are represented as input values connected to Layer ID **`660`**.  
+![Screenshot 2021-08-05 00:17:31](https://user-images.githubusercontent.com/33194443/128207323-400f5145-46fd-4734-b186-408d4a8cc7d0.png)  
+In the figure below, one of them is **`658`** and one of them is **`659`**. It is difficult to determine exactly what it is from the image alone. You must again note that **`658:3`** in the image is only a name, not a layer ID.  
+![Screenshot 2021-08-05 00:26:29](https://user-images.githubusercontent.com/33194443/128208774-1dd27e57-e453-4942-8708-c118d5cec10c.png)
+
 
 
 
