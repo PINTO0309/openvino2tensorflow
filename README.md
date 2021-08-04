@@ -663,7 +663,7 @@ In the figure below, one of them is **`658`** and one of them is **`659`**. It i
 ![Screenshot 2021-08-05 00:26:29](https://user-images.githubusercontent.com/33194443/128208774-1dd27e57-e453-4942-8708-c118d5cec10c.png)  
   4. Now you will search for layer ID **`"658"`** in the IDE. The type is **`"Concat"`**, so the desired layer was not this one. What you are looking for is **`"Const"`**.  
 ![Screenshot 2021-08-05 01:02:00](https://user-images.githubusercontent.com/33194443/128214658-ec28bbc5-685b-4f92-b0ca-ca6e5389194c.png)  
-  5. Now, search for layer ID **`659`** in the IDE. type is **`"Const"`**. Now you can finally identify that the layer ID of the layer you want to replace is **`659`**.  
+  5. Now, search for layer ID **`659`** in the IDE. The type is **`"Const"`**. Now you can finally identify that the layer ID of the layer you want to replace is **`659`**.  
 ![Screenshot 2021-08-05 01:05:33](https://user-images.githubusercontent.com/33194443/128215161-9631100f-0bff-4c49-ad57-9f3a3e8ad7be.png)  
   6. Create a JSON file to replace the constants **`[0, 2, 1]`** with **`[0, 1, 2]`**, and you can use any name for the JSON file. Suppose you save the file with the name **`replace.json`**. If you want to replace it with a numpy matrix, specify **`"npy"`** for **`"replace_mode":`** and the path to the **`.npy`** file for **`"values":`**.  
   ```json
