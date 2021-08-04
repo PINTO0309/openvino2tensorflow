@@ -605,6 +605,7 @@ $ saved_model_cli show \
 ```
 
 ### 6-7. Replace weights or constant values in **`Const`** OP
+#### 6-7-1. Overview
 If the transformation behavior of **`Reshape`**, **`Transpose`**, etc. does not go as expected, you can force the **`Const`** content to change by defining weights and constant values in a JSON file and having it read in.
 ```
 $ openvino2tensorflow \
@@ -648,7 +649,7 @@ Structure of JSON sample
 |2-2|replace_mode|"direct" or "npy".<br>"direct": Specify the values of the Numpy matrix directly in the "values" attribute. Ignores the values recorded in the .bin file and replaces them with the values specified in "values".<br>![Screenshot 2021-02-08 01:12:06](https://user-images.githubusercontent.com/33194443/107152361-cc6d3d00-69aa-11eb-8302-5e18a723ec34.png)<br>"npy": Load a Numpy binary file with the matrix output by np.save('xyz', a). The "values" attribute specifies the path to the Numpy binary file.<br>![Screenshot 2021-02-08 01:12:23](https://user-images.githubusercontent.com/33194443/107152376-dc851c80-69aa-11eb-9b3f-469b91af1d19.png)|
 |2-3|values|Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin. The way to specify is as described in the description of 'replace_mode'.|
 
-#### 6-7-1. Example
+#### 6-7-2. Example
   - YOLOX Nano 320x320 (NCHW format)
   - yolox_nano_320x320.xml
   - yolox_nano_320x320.bin
