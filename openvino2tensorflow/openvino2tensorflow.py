@@ -2095,31 +2095,45 @@ def convert(model_path,
                 scores = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]
                 class_count = scores.shape[0]
 
-                max_output_boxes_per_class = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)][0] # 25
-                if max_output_boxes_per_class == '-inf' or \
-                    max_output_boxes_per_class == 'inf' or \
-                        max_output_boxes_per_class == '-Infinity' or \
-                            max_output_boxes_per_class == 'Infinity':
-                    max_output_boxes_per_class = 0
+                max_output_boxes_per_class = 0
+                try:
+                    max_output_boxes_per_class = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)][0] # 25
+                    if max_output_boxes_per_class == '-inf' or \
+                        max_output_boxes_per_class == 'inf' or \
+                            max_output_boxes_per_class == '-Infinity' or \
+                                max_output_boxes_per_class == 'Infinity':
+                        max_output_boxes_per_class = 0
+                    elif max_output_boxes_per_class == 9223372036854775807:
+                        max_output_boxes_per_class = total_boxes_count
+                except:
+                    pass
 
-                iou_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)][0] # 0.5
-                if iou_threshold == '-inf' or \
-                    iou_threshold == 'inf' or \
-                        iou_threshold == '-Infinity' or \
-                            iou_threshold == 'Infinity':
-                    iou_threshold = np.asarray(0.0, dtype=np.float32)
-                if type(iou_threshold) is np.float64:
-                    iou_threshold = np.asarray(iou_threshold, dtype=np.float32)
+                iou_threshold = np.asarray(0.0, dtype=np.float32)
+                try:
+                    iou_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)][0] # 0.5
+                    if iou_threshold == '-inf' or \
+                        iou_threshold == 'inf' or \
+                            iou_threshold == '-Infinity' or \
+                                iou_threshold == 'Infinity':
+                        iou_threshold = np.asarray(0.0, dtype=np.float32)
+                    if type(iou_threshold) is np.float64:
+                        iou_threshold = np.asarray(iou_threshold, dtype=np.float32)
+                except:
+                    pass
 
-                score_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)][0] # -Infinity
-                if score_threshold == '-inf' or \
-                    score_threshold == 'inf' or \
-                        score_threshold == '-Infinity' or \
-                            score_threshold == 'Infinity' or \
-                                score_threshold == float('-inf'):
-                    score_threshold = np.asarray(0.0, dtype=np.float32)
-                if type(score_threshold) is np.float64:
-                    score_threshold = np.asarray(score_threshold, dtype=np.float32)
+                score_threshold = np.asarray(0.0, dtype=np.float32)
+                try:
+                    score_threshold = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 4)][0] # -Infinity
+                    if score_threshold == '-inf' or \
+                        score_threshold == 'inf' or \
+                            score_threshold == '-Infinity' or \
+                                score_threshold == 'Infinity' or \
+                                    score_threshold == float('-inf'):
+                        score_threshold = np.asarray(0.0, dtype=np.float32)
+                    if type(score_threshold) is np.float64:
+                        score_threshold = np.asarray(score_threshold, dtype=np.float32)
+                except:
+                    pass
 
                 soft_nms_sigma = np.asarray(0.0, dtype=np.float32)
                 try:
@@ -2187,42 +2201,52 @@ def convert(model_path,
 
             ### NonZero
             elif layer.attrib['type'] == 'NonZero':
+                output_type = tf.int64
+                if not data is None and 'output_type' in data.attrib:
+                    output_type = cast_type_ov_tf[data.attrib['output_type']]
+
                 try:
+                    # type_spec.dtype
                     if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.dtype != tf.bool:
+                        input_type = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.dtype
                         mask = tf.math.not_equal(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.constant([0])
+                            tf.constant([0], dtype=input_type)
                         )
                         tf_layers_dict[layer_id] = tf.expand_dims(
                             tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
                             axis=0
                         )
                     else:
+                        temp_op = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], output_type)
                         mask = tf.math.not_equal(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.constant([False])
+                            temp_op,
+                            tf.constant([0], dtype=output_type)
                         )
                         tf_layers_dict[layer_id] = tf.expand_dims(
-                            tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
+                            tf.boolean_mask(temp_op, mask),
                             axis=0
                         )
                 except:
+                    # dtype
                     if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype != tf.bool:
+                        input_type = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype
                         mask = tf.math.not_equal(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.constant([0])
+                            tf.constant([0], dtype=input_type)
                         )
                         tf_layers_dict[layer_id] = tf.expand_dims(
                             tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
                             axis=0
                         )
                     else:
+                        temp_op = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], output_type)
                         mask = tf.math.not_equal(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.constant([False])
+                            temp_op,
+                            tf.constant([0], dtype=output_type)
                         )
                         tf_layers_dict[layer_id] = tf.expand_dims(
-                            tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
+                            tf.boolean_mask(temp_op, mask),
                             axis=0
                         )
 
