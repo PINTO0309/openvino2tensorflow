@@ -661,7 +661,7 @@ Structure of JSON sample
 ![Screenshot 2021-08-05 00:08:50](https://user-images.githubusercontent.com/33194443/128205851-c4effc4a-8033-49a4-887f-4af0829824b9.png)
   3. Search for **`to-layer="660"`** (Transpose) in the IDE. In the figure below, Layer ID **`658`** and Layer ID **`659`** are represented as input values connected to Layer ID **`660`**.
 ![Screenshot 2021-08-05 00:17:31](https://user-images.githubusercontent.com/33194443/128207323-400f5145-46fd-4734-b186-408d4a8cc7d0.png)
-In the figure below, one of them is **`658`** and one of them is **`659`**. It is difficult to determine exactly what it is from the image alone. You must again note that **`658:3`** in the image is only a name, not a layer ID. It is worth noting here that the type of value you want to replace is **`Const`**.
+In the figure below, one of them is **`658`** and one of them is **`659`**. It is difficult to determine exactly what it is from the image alone. You must again note that **`658:3`** in the image is only a name, not a layer ID. It is worth noting here that the type of value you want to replace is **`Const`**.  
 ![Screenshot 2021-08-05 00:26:29](https://user-images.githubusercontent.com/33194443/128208774-1dd27e57-e453-4942-8708-c118d5cec10c.png)
   4. Now you will search for layer ID **`"658"`** in the IDE. The type is **`"Concat"`**, so the desired layer was not this one. What you are looking for is **`"Const"`**.  
 ![Screenshot 2021-08-05 01:02:00](https://user-images.githubusercontent.com/33194443/128214658-ec28bbc5-685b-4f92-b0ca-ca6e5389194c.png)
