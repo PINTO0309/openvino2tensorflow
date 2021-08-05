@@ -2354,6 +2354,28 @@ def convert(model_path,
                         approximate=True
                     )
 
+            ### NormalizeL2
+            elif layer.attrib['type'] == 'NormalizeL2':
+                eps = 1e-12 #None
+                if not data is None and 'eps' in data.attrib:
+                    eps = np.array(data.attrib['eps'], dtype=np.float32)
+                eps_mode = None
+                if not data is None and 'eps_mode' in data.attrib:
+                    eps_mode = data.attrib['eps_mode']
+
+                if eps_mode == 'add':
+                    tf_layers_dict[layer_id] = tf.math.l2_normalize(
+                        tf.math.add(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], eps),
+                        axis=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                        epsilon=0.0
+                    )
+                elif eps_mode == 'max':
+                    tf_layers_dict[layer_id] = tf.math.l2_normalize(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                        epsilon=eps
+                    )
+
             ### Result
             elif layer.attrib['type'] == 'Result':
                 if not process_interruption_by_non_max_suppression:
