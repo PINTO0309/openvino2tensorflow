@@ -380,7 +380,7 @@ optional arguments:
                         in json. Specify the path to the json file.
                         'weight_replacement_config.json'
   --use_experimental_new_quantizer
-                        Use MLIR\'s new quantization feature during INT8 quantization
+                        Use MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
   --debug
                         debug mode switch
@@ -481,7 +481,7 @@ optional arguments:
   --onnx_opset ONNX_OPSET
                         onnx opset version number
   --use_experimental_new_quantizer
-                        Use MLIR\'s new quantization feature during INT8 quantization
+                        Use MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
 ```
 ### 5-3. pb to saved_model convert
