@@ -84,6 +84,7 @@ def convert(model_path,
             yolact,
             restricted_resize_image_mode,
             weight_replacement_config,
+            use_experimental_new_quantizer,
             debug,
             debug_layer_number):
 
@@ -2640,6 +2641,7 @@ def convert(model_path,
         try:
             print(f'{Color.REVERCE}Integer Quantization started{Color.RESET}', '=' * 56)
             converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
+            converter.experimental_new_quantizer = use_experimental_new_quantizer
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             converter.representative_dataset = representative_dataset_gen
@@ -2657,6 +2659,7 @@ def convert(model_path,
         try:
             print(f'{Color.REVERCE}Full Integer Quantization started{Color.RESET}', '=' * 51)
             converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
+            converter.experimental_new_quantizer = use_experimental_new_quantizer
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             inf_type = None
@@ -2770,7 +2773,7 @@ def convert(model_path,
                 [
                     'edgetpu_compiler',
                     '-o', model_output_path,
-                    '-sa',
+                    '-sad',
                     f'{model_output_path}/model_full_integer_quant.tflite'
                 ],
                 stderr=subprocess.PIPE
@@ -2868,6 +2871,7 @@ def main():
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
     parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
+    parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
     parser.add_argument('--debug', action='store_true', help='debug mode switch')
     parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True')
     args = parser.parse_args()
@@ -2908,6 +2912,7 @@ def main():
     yolact = args.yolact
     restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
+    use_experimental_new_quantizer = args.use_experimental_new_quantizer
     debug = args.debug
     debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
@@ -2993,7 +2998,7 @@ def main():
             output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, restricted_resize_image_mode, weight_replacement_config, debug, debug_layer_number)
+            yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer, debug, debug_layer_number)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":

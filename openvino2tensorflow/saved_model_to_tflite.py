@@ -61,7 +61,8 @@ def convert(
     output_coreml,
     output_edgetpu,
     output_onnx,
-    onnx_opset
+    onnx_opset,
+    use_experimental_new_quantizer
     ):
 
     print(f'{Color.REVERCE}Start conversion process from saved_model to tflite{Color.RESET}', '=' * 38)
@@ -214,6 +215,7 @@ def convert(
         try:
             print(f'{Color.REVERCE}Integer Quantization started{Color.RESET}', '=' * 56)
             converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
+            converter.experimental_new_quantizer = use_experimental_new_quantizer
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             converter.representative_dataset = representative_dataset_gen
@@ -231,6 +233,7 @@ def convert(
         try:
             print(f'{Color.REVERCE}Full Integer Quantization started{Color.RESET}', '=' * 51)
             converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
+            converter.experimental_new_quantizer = use_experimental_new_quantizer
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             inf_type = None
@@ -260,7 +263,7 @@ def convert(
                 [
                     'edgetpu_compiler',
                     '-o', model_output_dir_path,
-                    '-sa',
+                    '-sad',
                     f'{model_output_dir_path}/model_full_integer_quant.tflite'
                 ],
                 stderr=subprocess.PIPE
@@ -409,6 +412,7 @@ def main():
     parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
+    parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
 
     args = parser.parse_args()
     saved_model_dir_path = args.saved_model_dir_path
@@ -444,6 +448,7 @@ def main():
     output_edgetpu = args.output_edgetpu
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
+    use_experimental_new_quantizer = args.use_experimental_new_quantizer
 
     if not output_no_quant_float32_tflite and \
         not output_weight_quant_tflite and \
@@ -532,7 +537,8 @@ def main():
         output_coreml,
         output_edgetpu,
         output_onnx,
-        onnx_opset
+        onnx_opset,
+        use_experimental_new_quantizer
     )
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
