@@ -158,14 +158,6 @@ def convert(model_path,
         'edge'     : 'REFLECT'
     }
 
-    # Elements for each version of weights_replacement_config
-    # key   = config version
-    # value = Allowed elements for each version
-    weights_replacement_config_version_elements = {
-        1 : ['layer_id', 'replace_mode', 'values'],
-        2 : ['layer_id', 'type', 'replace_mode', 'values']
-    }
-
     # Read IR weight data
     with open(model_path+'.bin', 'rb') as f:
         binWeight = f.read()
@@ -273,6 +265,14 @@ def convert(model_path,
     values : Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin.
              The way to specify is as described in the description of 'replace_mode'.
     """
+    # Elements for each version of weights_replacement_config
+    # key   = config version
+    # value = Allowed elements for each version
+    weights_replacement_config_version_elements = {
+        1 : ['layer_id', 'replace_mode', 'values'],
+        2 : ['layer_id', 'type', 'replace_mode', 'values']
+    }
+
     def parse_json(jsonfile_path):
         j = json.load(open(jsonfile_path))
         format_version = j['format_version']
