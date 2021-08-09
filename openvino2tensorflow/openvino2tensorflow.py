@@ -281,12 +281,7 @@ def convert(model_path,
         'Reshape': ['insert_before', 'insert_after']
     }
 
-    """
-    memo
-        Const values    : Tensors
-        Transpose values: Perm
-        Reshape valued  : Shape
-    """
+
     def parse_json(jsonfile_path):
         j = json.load(open(jsonfile_path))
         format_version = j['format_version']
@@ -456,6 +451,10 @@ def convert(model_path,
                     else:
                         tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
                     tf_inputs.append(tf_layers_dict[layer_id])
+
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Parameter" is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
 
             ### Const
             elif layer.attrib['type'] == 'Const':
@@ -2512,6 +2511,11 @@ def convert(model_path,
                         name=layer.attrib['name'].split('/')[0]
                     )
                     tf_outputs.append(tf_layers_dict[layer_id])
+
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Result" is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
             else:
                 print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
                 sys.exit(-1)
