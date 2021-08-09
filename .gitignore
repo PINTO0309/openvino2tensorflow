@@ -1,3 +1,4 @@
 build/
 dist/
 openvino2tensorflow.egg-info/
+openvino2tensorflow/debug/

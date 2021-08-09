@@ -271,6 +271,7 @@ def convert(model_path,
         layers = {}
         for v in j['layers']:
             layers[v['layer_id']] = v
+            print('@@@@@@@@@@ check', v)
         print(f'{Color.GREEN}weight_replacement_config format_version:{Color.RESET} {format_version}')
         print(f'{Color.GREEN}Replace the value of Const for each layer_id with the value below.{Color.RESET}')
         pprint.pprint(layers)
