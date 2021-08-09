@@ -228,42 +228,42 @@ def convert(model_path,
     """
     format_version : Format version of weight_replacement_config.
     layer_id : ID of the Const layer whose weight/constant parameter is to be swapped.
-               For example, specify "1123" for layer id="1123" for type="Const" in .xml.
+                For example, specify "1123" for layer id="1123" for type="Const" in .xml.
 
-               <layer id="1123" name="Decoder/softmax/Reshape_1/Cast_123722_const657_const" type="Const" version="opset1">
-                   <data element_type="i64" offset="7632604" shape="4" size="32"/>
-                   <output>
-                       <port id="1" precision="I64">
-                           <dim>4</dim>
-                       </port>
-                   </output>
-               </layer>
+                <layer id="1123" name="Decoder/softmax/Reshape_1/Cast_123722_const657_const" type="Const" version="opset1">
+                    <data element_type="i64" offset="7632604" shape="4" size="32"/>
+                    <output>
+                        <port id="1" precision="I64">
+                            <dim>4</dim>
+                        </port>
+                    </output>
+                </layer>
 
     replace_mode : "direct" or "npy"
-                   "direct": Specify the values of the Numpy matrix directly in the "values" attribute.
-                             Ignores the values recorded in the .bin file and replaces them with the values specified in "values".
+                    "direct": Specify the values of the Numpy matrix directly in the "values" attribute.
+                            Ignores the values recorded in the .bin file and replaces them with the values specified in "values".
 
-                   {
-                       "layer_id": "1123",
-                       "replace_mode": "direct",
-                       "values": [
-                           1,
-                           2,
-                           513,
-                           513
-                       ]
-                   }
+                    {
+                        "layer_id": "1123",
+                        "replace_mode": "direct",
+                        "values": [
+                            1,
+                            2,
+                            513,
+                            513
+                        ]
+                    }
 
-                   "npy": Load a Numpy binary file with the matrix output by np.save('xyz', a).
-                          The "values" attribute specifies the path to the Numpy binary file.
-                   {
-                       "layer_id": "1125",
-                       "replace_mode": "npy",
-                       "values": "weights/xyz.npy"
-                   }
+                    "npy": Load a Numpy binary file with the matrix output by np.save('xyz', a).
+                        The "values" attribute specifies the path to the Numpy binary file.
+                    {
+                        "layer_id": "1125",
+                        "replace_mode": "npy",
+                        "values": "weights/xyz.npy"
+                    }
 
     values : Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin.
-             The way to specify is as described in the description of 'replace_mode'.
+            The way to specify is as described in the description of 'replace_mode'.
     """
     # Elements for each version of weights_replacement_config
     # key = config version
@@ -334,6 +334,50 @@ def convert(model_path,
     wr_config = None
     if weight_replacement_config:
         format_version, wr_config = parse_json(weight_replacement_config)
+
+
+    def extrapolation_of_layers(
+        setting_up_layers_to_be_extrapolated,
+        input
+    ):
+        """Processing of input operations based on weights_replacement_config settings
+
+        Args:
+        ----------
+            setting_up_layers_to_be_extrapolated : dict
+                wr_config[layer_id]
+
+                {
+                    "layer_id": "659",
+                    "type": "Transpose",
+                    "replace_mode": "insert_before",
+                    "values": [0,2,1]
+                }
+
+            input : INPUT operation
+                INPUT layer to be input to TF operations
+
+        Returns:
+        ----------
+            Processed input operations
+        """
+        tf_layer = None
+        layer_type = setting_up_layers_to_be_extrapolated['type']
+        param = setting_up_layers_to_be_extrapolated['values']
+
+        if layer_type == 'Transpose':
+            tf_layer = tf.transpose(
+                input,
+                perm=param
+            )
+        elif layer_type == 'Reshape':
+            tf_layer = tf.reshape(
+                input,
+                shape=param
+            )
+
+        return tf_layer
+
 
     # edges
     added_key_list = []
@@ -1334,10 +1378,32 @@ def convert(model_path,
                     for idx, dim in enumerate(temp):
                         perm.append(dim)
 
-                tf_layers_dict[layer_id] = tf.transpose(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    perm=perm
-                )
+                # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.transpose(
+                            inp,
+                            perm=perm
+                        )
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tmp = tf.transpose(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            perm=perm
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tmp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.transpose(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        perm=perm
+                    )
+                # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
             ### Squeeze
             elif layer.attrib['type'] == 'Squeeze':
