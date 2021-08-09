@@ -158,6 +158,14 @@ def convert(model_path,
         'edge'     : 'REFLECT'
     }
 
+    # Elements for each version of weights_replacement_config
+    # key   = config version
+    # value = Allowed elements for each version
+    weights_replacement_config_version_elements = {
+        1 : ['layer_id', 'replace_mode', 'values'],
+        2 : ['layer_id', 'type', 'replace_mode', 'values']
+    }
+
     # Read IR weight data
     with open(model_path+'.bin', 'rb') as f:
         binWeight = f.read()
@@ -271,7 +279,18 @@ def convert(model_path,
         layers = {}
         for v in j['layers']:
             layers[v['layer_id']] = v
-            print('@@@@@@@@@@ check', v)
+            # Elements check
+            for k in v.keys():
+                if not k in weights_replacement_config_version_elements[format_version]:
+                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config with format_version: {format_version}. key: "{k}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of keys to allow in format_version: {format_version}. {weights_replacement_config_version_elements[format_version]}')
+                    sys.exit(-1)
+            for k in weights_replacement_config_version_elements[format_version]:
+                if not k in v.keys():
+                    print(f'{Color.RED}ERROR:{Color.RESET} Missing elements that must be included in the config for format_version: {format_version}. key: "{k}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of elements that must be included in the config for format_version: {format_version}. {weights_replacement_config_version_elements[format_version]}')
+                    sys.exit(-1)
+
         print(f'{Color.GREEN}weight_replacement_config format_version:{Color.RESET} {format_version}')
         print(f'{Color.GREEN}Replace the value of Const for each layer_id with the value below.{Color.RESET}')
         pprint.pprint(layers)
