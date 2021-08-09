@@ -266,39 +266,74 @@ def convert(model_path,
              The way to specify is as described in the description of 'replace_mode'.
     """
     # Elements for each version of weights_replacement_config
-    # key   = config version
+    # key = config version
     # value = Allowed elements for each version
     weights_replacement_config_version_elements = {
         1 : ['layer_id', 'replace_mode', 'values'],
         2 : ['layer_id', 'type', 'replace_mode', 'values']
     }
+    # Combinations of possible values for type key and replace_mode in weights_replacement_config.
+    # key = Type name
+    # value = List of replace_mode
+    weights_replacement_config_types = {
+        'Const': ['direct', 'npy'],
+        'Transpose': ['insert_before', 'insert_after'],
+        'Reshape': ['insert_before', 'insert_after']
+    }
 
+    """
+    memo
+        Const values    : Tensors
+        Transpose values: Perm
+        Reshape valued  : Shape
+    """
     def parse_json(jsonfile_path):
         j = json.load(open(jsonfile_path))
         format_version = j['format_version']
         layers = {}
         for v in j['layers']:
-            layers[v['layer_id']] = v
             # Elements check
             for k in v.keys():
                 if not k in weights_replacement_config_version_elements[format_version]:
-                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config with format_version: {format_version}. key: "{k}"')
+                    key_name1 = 'layer_id'
+                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config with format_version: {format_version}. layer_id: {v[key_name1]}, key: "{k}"')
                     print(f'{Color.RED}ERROR:{Color.RESET} List of keys to allow in format_version: {format_version}. {weights_replacement_config_version_elements[format_version]}')
                     sys.exit(-1)
             for k in weights_replacement_config_version_elements[format_version]:
                 if not k in v.keys():
-                    print(f'{Color.RED}ERROR:{Color.RESET} Missing elements that must be included in the config for format_version: {format_version}. key: "{k}"')
+                    key_name1 = 'layer_id'
+                    print(f'{Color.RED}ERROR:{Color.RESET} Missing elements that must be included in the config for format_version: {format_version}. layer_id: {v[key_name1]}, key: "{k}"')
                     print(f'{Color.RED}ERROR:{Color.RESET} List of elements that must be included in the config for format_version: {format_version}. {weights_replacement_config_version_elements[format_version]}')
                     sys.exit(-1)
+            # weights_replacement_config_types check (Only when format_version is 2 or higher)
+            if format_version >= 2:
+                # Type check
+                if not v['type'] in weights_replacement_config_types.keys():
+                    key_name1 = 'layer_id'
+                    key_name2 = 'type'
+                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config. layer_id: {v[key_name1]}, type: "{v[key_name2]}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of keys to allow. {weights_replacement_config_types.keys()}')
+                    sys.exit(-1)
+                # Replace Mode check
+                if not v['replace_mode'] in weights_replacement_config_types[v['type']]:
+                    key_name1 = 'layer_id'
+                    key_name2 = 'replace_mode'
+                    key_name3 = 'type'
+                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config. layer_id: {v[key_name1]}, replace_mode: "{v[key_name2]}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of keys to allow. {weights_replacement_config_types[v[key_name3]]}')
+                    sys.exit(-1)
+
+            layers[v['layer_id']] = v
 
         print(f'{Color.GREEN}weight_replacement_config format_version:{Color.RESET} {format_version}')
         print(f'{Color.GREEN}Replace the value of Const for each layer_id with the value below.{Color.RESET}')
         pprint.pprint(layers)
-        return layers
+        return format_version, layers
 
+    format_version = None
     wr_config = None
     if weight_replacement_config:
-        wr_config = parse_json(weight_replacement_config)
+        format_version, wr_config = parse_json(weight_replacement_config)
 
     # edges
     added_key_list = []
@@ -397,7 +432,7 @@ def convert(model_path,
                             else:
                                 tf_layers_dict[layer_id] = decodedwgt
                         else:
-                            if layer_id in wr_config:
+                            if layer_id in wr_config and format_version == 1:
                                 if wr_config[layer_id]['replace_mode'] == 'direct':
                                     try:
                                         tf_layers_dict[layer_id] = np.array(wr_config[layer_id]['values'])
@@ -405,10 +440,16 @@ def convert(model_path,
                                         tf_layers_dict[layer_id] = wr_config[layer_id]['values']
                                 elif wr_config[layer_id]['replace_mode'] == 'npy':
                                     tf_layers_dict[layer_id] = np.load(wr_config[layer_id]['values'])
-                                else:
-                                    mode_str = wr_config[layer_id]['replace_mode']
-                                    print(f'replace_mode = {mode_str} is not supported. Please review the weight_replacement_config json.')
-                                    sys.exit(-1)
+
+                            elif layer_id in wr_config and format_version >= 2 and wr_config[layer_id]['type'] == 'Const':
+                                if wr_config[layer_id]['replace_mode'] == 'direct':
+                                    try:
+                                        tf_layers_dict[layer_id] = np.array(wr_config[layer_id]['values'])
+                                    except:
+                                        tf_layers_dict[layer_id] = wr_config[layer_id]['values']
+                                elif wr_config[layer_id]['replace_mode'] == 'npy':
+                                    tf_layers_dict[layer_id] = np.load(wr_config[layer_id]['values'])
+
                             else:
                                 if type(decodedwgt) == np.ndarray and decodedwgt.dtype == np.float64:
                                     tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
