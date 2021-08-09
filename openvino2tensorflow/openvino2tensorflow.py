@@ -3,12 +3,19 @@
 tensorflow==2.5.0+
 
 python3 openvino2tensorflow.py \
-  --model_path openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
-  --output_saved_model \
-  --output_pb \
-  --output_weight_quant_tflite \
-  --output_float16_quant_tflit \
-  --output_no_quant_float32_tflite
+--model_path openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
+--output_saved_model \
+--output_pb \
+--output_weight_quant_tflite \
+--output_float16_quant_tflit \
+--output_no_quant_float32_tflite
+
+python3 openvino2tensorflow.py \
+--model_path debug/openvino/yolox_nano/320x320/FP32/yolox_nano_320x320.xml \
+--output_saved_model \
+--output_pb \
+--output_no_quant_float32_tflite \
+--weight_replacement_config debug/weight_replacement_config_yolox_nano.json
 '''
 import os
 import sys
@@ -282,7 +289,22 @@ def convert(model_path,
     }
 
 
-    def parse_json(jsonfile_path):
+    def parse_json(jsonfile_path: str):
+        """Parsing weights_replacement_config
+
+        Args:
+        ----------
+            jsonfile_path : str
+                Path to the weights_replacement_config file
+
+        Returns:
+        ----------
+            format_version : int
+                Format version number of weights_replacement_config
+
+            layers : dict
+                Result of parsing weights_replacement_config into dict format
+        """
         j = json.load(open(jsonfile_path))
         format_version = j['format_version']
         layers = {}
@@ -331,10 +353,7 @@ def convert(model_path,
         format_version, wr_config = parse_json(weight_replacement_config)
 
 
-    def extrapolation_of_layers(
-        setting_up_layers_to_be_extrapolated,
-        input
-    ):
+    def extrapolation_of_layers(setting_up_layers_to_be_extrapolated: dict, input):
         """Processing of input operations based on weights_replacement_config settings
 
         Args:
@@ -1377,7 +1396,6 @@ def convert(model_path,
                     for idx, dim in enumerate(temp):
                         perm.append(dim)
 
-                # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         inp = extrapolation_of_layers(
@@ -1402,7 +1420,6 @@ def convert(model_path,
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         perm=perm
                     )
-                # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
             ### Squeeze
             elif layer.attrib['type'] == 'Squeeze':
