@@ -3,12 +3,19 @@
 tensorflow==2.5.0+
 
 python3 openvino2tensorflow.py \
-  --model_path openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
-  --output_saved_model \
-  --output_pb \
-  --output_weight_quant_tflite \
-  --output_float16_quant_tflit \
-  --output_no_quant_float32_tflite
+--model_path openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
+--output_saved_model \
+--output_pb \
+--output_weight_quant_tflite \
+--output_float16_quant_tflit \
+--output_no_quant_float32_tflite
+
+python3 openvino2tensorflow.py \
+--model_path debug/openvino/yolox_nano/320x320/FP32/yolox_nano_320x320.xml \
+--output_saved_model \
+--output_pb \
+--output_no_quant_float32_tflite \
+--weight_replacement_config debug/weight_replacement_config_yolox_nano.json
 '''
 import os
 import sys
@@ -228,57 +235,163 @@ def convert(model_path,
     """
     format_version : Format version of weight_replacement_config.
     layer_id : ID of the Const layer whose weight/constant parameter is to be swapped.
-               For example, specify "1123" for layer id="1123" for type="Const" in .xml.
+                For example, specify "1123" for layer id="1123" for type="Const" in .xml.
 
-               <layer id="1123" name="Decoder/softmax/Reshape_1/Cast_123722_const657_const" type="Const" version="opset1">
-                   <data element_type="i64" offset="7632604" shape="4" size="32"/>
-                   <output>
-                       <port id="1" precision="I64">
-                           <dim>4</dim>
-                       </port>
-                   </output>
-               </layer>
+                <layer id="1123" name="Decoder/softmax/Reshape_1/Cast_123722_const657_const" type="Const" version="opset1">
+                    <data element_type="i64" offset="7632604" shape="4" size="32"/>
+                    <output>
+                        <port id="1" precision="I64">
+                            <dim>4</dim>
+                        </port>
+                    </output>
+                </layer>
 
     replace_mode : "direct" or "npy"
-                   "direct": Specify the values of the Numpy matrix directly in the "values" attribute.
-                             Ignores the values recorded in the .bin file and replaces them with the values specified in "values".
+                    "direct": Specify the values of the Numpy matrix directly in the "values" attribute.
+                            Ignores the values recorded in the .bin file and replaces them with the values specified in "values".
 
-                   {
-                       "layer_id": "1123",
-                       "replace_mode": "direct",
-                       "values": [
-                           1,
-                           2,
-                           513,
-                           513
-                       ]
-                   }
+                    {
+                        "layer_id": "1123",
+                        "replace_mode": "direct",
+                        "values": [
+                            1,
+                            2,
+                            513,
+                            513
+                        ]
+                    }
 
-                   "npy": Load a Numpy binary file with the matrix output by np.save('xyz', a).
-                          The "values" attribute specifies the path to the Numpy binary file.
-                   {
-                       "layer_id": "1125",
-                       "replace_mode": "npy",
-                       "values": "weights/xyz.npy"
-                   }
+                    "npy": Load a Numpy binary file with the matrix output by np.save('xyz', a).
+                        The "values" attribute specifies the path to the Numpy binary file.
+                    {
+                        "layer_id": "1125",
+                        "replace_mode": "npy",
+                        "values": "weights/xyz.npy"
+                    }
 
     values : Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin.
-             The way to specify is as described in the description of 'replace_mode'.
+            The way to specify is as described in the description of 'replace_mode'.
     """
-    def parse_json(jsonfile_path):
+    # Elements for each version of weights_replacement_config
+    # key = config version
+    # value = Allowed elements for each version
+    weights_replacement_config_version_elements = {
+        1 : ['layer_id', 'replace_mode', 'values'],
+        2 : ['layer_id', 'type', 'replace_mode', 'values']
+    }
+    # Combinations of possible values for type key and replace_mode in weights_replacement_config.
+    # key = Type name
+    # value = List of replace_mode
+    weights_replacement_config_types = {
+        'Const': ['direct', 'npy'],
+        'Transpose': ['insert_before', 'insert_after'],
+        'Reshape': ['insert_before', 'insert_after']
+    }
+
+
+    def parse_json(jsonfile_path: str):
+        """Parsing weights_replacement_config
+
+        Args:
+        ----------
+            jsonfile_path : str
+                Path to the weights_replacement_config file
+
+        Returns:
+        ----------
+            format_version : int
+                Format version number of weights_replacement_config
+
+            layers : dict
+                Result of parsing weights_replacement_config into dict format
+        """
         j = json.load(open(jsonfile_path))
         format_version = j['format_version']
         layers = {}
         for v in j['layers']:
+            # Elements check
+            for k in v.keys():
+                if not k in weights_replacement_config_version_elements[format_version]:
+                    key_name1 = 'layer_id'
+                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config with format_version: {format_version}. layer_id: {v[key_name1]}, key: "{k}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of keys to allow in format_version: {format_version}. {weights_replacement_config_version_elements[format_version]}')
+                    sys.exit(-1)
+            for k in weights_replacement_config_version_elements[format_version]:
+                if not k in v.keys():
+                    key_name1 = 'layer_id'
+                    print(f'{Color.RED}ERROR:{Color.RESET} Missing elements that must be included in the config for format_version: {format_version}. layer_id: {v[key_name1]}, key: "{k}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of elements that must be included in the config for format_version: {format_version}. {weights_replacement_config_version_elements[format_version]}')
+                    sys.exit(-1)
+            # weights_replacement_config_types check (Only when format_version is 2 or higher)
+            if format_version >= 2:
+                # Type check
+                if not v['type'] in weights_replacement_config_types.keys():
+                    key_name1 = 'layer_id'
+                    key_name2 = 'type'
+                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config. layer_id: {v[key_name1]}, type: "{v[key_name2]}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of keys to allow. {weights_replacement_config_types.keys()}')
+                    sys.exit(-1)
+                # Replace Mode check
+                if not v['replace_mode'] in weights_replacement_config_types[v['type']]:
+                    key_name1 = 'layer_id'
+                    key_name2 = 'replace_mode'
+                    key_name3 = 'type'
+                    print(f'{Color.RED}ERROR:{Color.RESET} It contains a key that cannot be included in the config. layer_id: {v[key_name1]}, replace_mode: "{v[key_name2]}"')
+                    print(f'{Color.RED}ERROR:{Color.RESET} List of keys to allow. {weights_replacement_config_types[v[key_name3]]}')
+                    sys.exit(-1)
+
             layers[v['layer_id']] = v
+
         print(f'{Color.GREEN}weight_replacement_config format_version:{Color.RESET} {format_version}')
         print(f'{Color.GREEN}Replace the value of Const for each layer_id with the value below.{Color.RESET}')
         pprint.pprint(layers)
-        return layers
+        return format_version, layers
 
+    format_version = None
     wr_config = None
     if weight_replacement_config:
-        wr_config = parse_json(weight_replacement_config)
+        format_version, wr_config = parse_json(weight_replacement_config)
+
+
+    def extrapolation_of_layers(setting_up_layers_to_be_extrapolated: dict, input):
+        """Processing of input operations based on weights_replacement_config settings
+
+        Args:
+        ----------
+            setting_up_layers_to_be_extrapolated : dict
+                wr_config[layer_id]
+
+                {
+                    "layer_id": "659",
+                    "type": "Transpose",
+                    "replace_mode": "insert_before",
+                    "values": [0,2,1]
+                }
+
+            input : INPUT operation
+                INPUT layer to be input to TF operations
+
+        Returns:
+        ----------
+            Processed input operations
+        """
+        tf_layer = None
+        layer_type = setting_up_layers_to_be_extrapolated['type']
+        param = setting_up_layers_to_be_extrapolated['values']
+
+        if layer_type == 'Transpose':
+            tf_layer = tf.transpose(
+                input,
+                perm=param
+            )
+        elif layer_type == 'Reshape':
+            tf_layer = tf.reshape(
+                input,
+                shape=param
+            )
+
+        return tf_layer
+
 
     # edges
     added_key_list = []
@@ -358,6 +471,10 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
                     tf_inputs.append(tf_layers_dict[layer_id])
 
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Parameter" is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
             ### Const
             elif layer.attrib['type'] == 'Const':
                 if not data is None:
@@ -377,7 +494,7 @@ def convert(model_path,
                             else:
                                 tf_layers_dict[layer_id] = decodedwgt
                         else:
-                            if layer_id in wr_config:
+                            if layer_id in wr_config and format_version == 1:
                                 if wr_config[layer_id]['replace_mode'] == 'direct':
                                     try:
                                         tf_layers_dict[layer_id] = np.array(wr_config[layer_id]['values'])
@@ -385,10 +502,16 @@ def convert(model_path,
                                         tf_layers_dict[layer_id] = wr_config[layer_id]['values']
                                 elif wr_config[layer_id]['replace_mode'] == 'npy':
                                     tf_layers_dict[layer_id] = np.load(wr_config[layer_id]['values'])
-                                else:
-                                    mode_str = wr_config[layer_id]['replace_mode']
-                                    print(f'replace_mode = {mode_str} is not supported. Please review the weight_replacement_config json.')
-                                    sys.exit(-1)
+
+                            elif layer_id in wr_config and format_version >= 2 and wr_config[layer_id]['type'] == 'Const':
+                                if wr_config[layer_id]['replace_mode'] == 'direct':
+                                    try:
+                                        tf_layers_dict[layer_id] = np.array(wr_config[layer_id]['values'])
+                                    except:
+                                        tf_layers_dict[layer_id] = wr_config[layer_id]['values']
+                                elif wr_config[layer_id]['replace_mode'] == 'npy':
+                                    tf_layers_dict[layer_id] = np.load(wr_config[layer_id]['values'])
+
                             else:
                                 if type(decodedwgt) == np.ndarray and decodedwgt.dtype == np.float64:
                                     tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
@@ -438,17 +561,38 @@ def convert(model_path,
                         orig = temp
 
                 dilations = [int(s) for s in data.attrib['dilations'].split(',')]
+
                 try:
-                    tf_layers_dict[layer_id] = Conv2D(
-                        filters=filters,
-                        kernel_size=kernel_size,
-                        strides=strides,
-                        padding=padding,
-                        dilation_rate=dilations,
-                        use_bias=False,
-                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
-                except:
-                    try:
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                orig
+                            )
+                            tf_layers_dict[layer_id] = Conv2D(
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                strides=strides,
+                                padding=padding,
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(inp)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = Conv2D(
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                strides=strides,
+                                padding=padding,
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+
+                    else:
                         tf_layers_dict[layer_id] = Conv2D(
                             filters=filters,
                             kernel_size=kernel_size,
@@ -456,16 +600,83 @@ def convert(model_path,
                             padding=padding,
                             dilation_rate=dilations,
                             use_bias=False,
-                            kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                            kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
+
+                except:
+                    try:
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    orig
+                                )
+                                tf_layers_dict[layer_id] = Conv2D(
+                                    filters=filters,
+                                    kernel_size=kernel_size,
+                                    strides=strides,
+                                    padding=padding,
+                                    dilation_rate=dilations,
+                                    use_bias=False,
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(inp)
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = Conv2D(
+                                    filters=filters,
+                                    kernel_size=kernel_size,
+                                    strides=strides,
+                                    padding=padding,
+                                    dilation_rate=dilations,
+                                    use_bias=False,
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                        else:
+                            tf_layers_dict[layer_id] = Conv2D(
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                strides=strides,
+                                padding=padding,
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+
                     except:
                         # Weights from OP that are not fixed values
-                        tf_layers_dict[layer_id] = tf.nn.conv2d(
-                            input=orig,
-                            filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                            strides=strides,
-                            padding=padding.upper(),
-                            dilations=dilations
-                        )
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    orig
+                                )
+                                tf_layers_dict[layer_id] = tf.nn.conv2d(
+                                    input=inp,
+                                    filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                    strides=strides,
+                                    padding=padding.upper(),
+                                    dilations=dilations
+                                )
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = tf.nn.conv2d(
+                                    input=orig,
+                                    filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                    strides=strides,
+                                    padding=padding.upper(),
+                                    dilations=dilations
+                                )
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                        else:
+                            tf_layers_dict[layer_id] = tf.nn.conv2d(
+                                input=orig,
+                                filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                strides=strides,
+                                padding=padding.upper(),
+                                dilations=dilations
+                            )
 
             ### Add
             elif layer.attrib['type'] == 'Add':
@@ -505,9 +716,28 @@ def convert(model_path,
                             [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
                         )
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Add" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### ReLU
             elif layer.attrib['type'] == 'ReLU':
-                tf_layers_dict[layer_id] = tf.nn.relu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.nn.relu(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.nn.relu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.nn.relu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### PReLU
             elif layer.attrib['type'] == 'PReLU':
@@ -522,24 +752,105 @@ def convert(model_path,
 
                 if alpha_len == 4:
                     if replace_prelu_and_minmax:
-                        tf_layers_dict[layer_id] = \
-                            tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                )
+                                tf_layers_dict[layer_id] = \
+                                    tf.maximum(0.0, inp) + \
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, inp)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                            else:
+                                tf_layers_dict[layer_id] = \
+                                    tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
                     else:
-                        tf_layers_dict[layer_id] = PReLU(
-                            alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
-                            shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                        )
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                )
+                                tf_layers_dict[layer_id] = PReLU(
+                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
+                                    shared_axes=shared_axes
+                                )(inp)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = PReLU(
+                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
+                                    shared_axes=shared_axes
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                            else:
+                                tf_layers_dict[layer_id] = PReLU(
+                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
+                                    shared_axes=shared_axes
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
                 else:
                     if replace_prelu_and_minmax:
-                        tf_layers_dict[layer_id] = \
-                            tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                )
+                                tf_layers_dict[layer_id] = \
+                                    tf.maximum(0.0, inp) + \
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, inp)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                            else:
+                                tf_layers_dict[layer_id] = \
+                                    tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
                     else:
-                        tf_layers_dict[layer_id] = PReLU(
-                            alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
-                            shared_axes=shared_axes)(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                        )
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                )
+                                tf_layers_dict[layer_id] = PReLU(
+                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    shared_axes=shared_axes
+                                )(inp)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = PReLU(
+                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    shared_axes=shared_axes
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                            else:
+                                tf_layers_dict[layer_id] = PReLU(
+                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    shared_axes=shared_axes
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Clamp
             elif layer.attrib['type'] == 'Clamp':
@@ -560,53 +871,217 @@ def convert(model_path,
 
                 if cmin == 0.0 and cmax == 6.0:
                     # ReLU6
-                    tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.nn.relu6(inp)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
                 else:
                     # Other
-                    tf_layers_dict[layer_id] = tf.clip_by_value(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        clip_value_min=cmin,
-                        clip_value_max=cmax
-                    )
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.clip_by_value(
+                                inp,
+                                clip_value_min=cmin,
+                                clip_value_max=cmax
+                            )
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.clip_by_value(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                clip_value_min=cmin,
+                                clip_value_max=cmax
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.clip_by_value(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            clip_value_min=cmin,
+                            clip_value_max=cmax
+                        )
 
             ### Tan
             elif layer.attrib['type'] == 'Tan':
-                tf_layers_dict[layer_id] = tf.math.tan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.tan(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.tan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.tan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Tanh
             elif layer.attrib['type'] == 'Tanh':
-                tf_layers_dict[layer_id] = tf.math.tanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.tanh(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.tanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.tanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Elu
             elif layer.attrib['type'] == 'Elu':
                 alpha = float(data.attrib['alpha'])
-                tf_layers_dict[layer_id] = elu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], alpha=alpha)
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = elu(inp, alpha=alpha)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = elu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], alpha=alpha)
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = elu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], alpha=alpha)
 
             ### HardSigmoid
             elif layer.attrib['type'] == 'HardSigmoid':
-                tf_layers_dict[layer_id] = hard_sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = hard_sigmoid(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = hard_sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = hard_sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Sigmoid
             elif layer.attrib['type'] == 'Sigmoid':
-                tf_layers_dict[layer_id] = tf.math.sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.sigmoid(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Swish
             elif layer.attrib['type'] == 'Swish':
                 if replace_swish_and_hardswish:
                     # Hard-Swish
+                    multiplier = 0.0
                     if not optimizing_hardswish_for_edgetpu:
-                        tf_layers_dict[layer_id] = \
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                        multiplier = 0.16666667
+                    else:
+                        multiplier = 0.16666666
+
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = inp * tf.nn.relu6(inp + 3) * multiplier
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = \
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * multiplier
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
                     else:
                         tf_layers_dict[layer_id] = \
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * multiplier
+
                 else:
                     # Swish
-                    tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.nn.swish(inp)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
 
             ### SoftPlus
             elif layer.attrib['type'] == 'SoftPlus':
-                tf_layers_dict[layer_id] = tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.softplus(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### MaxPool
             elif layer.attrib['type'] == 'MaxPool':
@@ -631,21 +1106,74 @@ def convert(model_path,
                 else:
                     padding = 'SAME'
 
-                tf_layers_dict[layer_id] = tf.nn.max_pool(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    ksize=kernel_size,
-                    strides=strides,
-                    padding=padding
-                )
-                new_layer_outport_size = sum([sdim for sdim in tf_layers_dict[layer_id].shape])
-                if outport_size != new_layer_outport_size:
-                    # Caffe -> TF
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.nn.max_pool(
+                            inp,
+                            ksize=kernel_size,
+                            strides=strides,
+                            padding=padding
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.nn.max_pool(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            ksize=kernel_size,
+                            strides=strides,
+                            padding=padding
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
                     tf_layers_dict[layer_id] = tf.nn.max_pool(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         ksize=kernel_size,
                         strides=strides,
-                        padding='SAME'
+                        padding=padding
                     )
+
+                new_layer_outport_size = sum([sdim for sdim in tf_layers_dict[layer_id].shape])
+                if outport_size != new_layer_outport_size:
+                    # Caffe -> TF
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.nn.max_pool(
+                                inp,
+                                ksize=kernel_size,
+                                strides=strides,
+                                padding='SAME'
+                            )
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.nn.max_pool(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                ksize=kernel_size,
+                                strides=strides,
+                                padding='SAME'
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.max_pool(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            ksize=kernel_size,
+                            strides=strides,
+                            padding='SAME'
+                        )
 
             ### AvgPool
             elif layer.attrib['type'] == 'AvgPool':
@@ -671,11 +1199,36 @@ def convert(model_path,
                     padding = 'same'
                 if not data is None and 'rounding_type' in data.attrib and data.attrib['rounding_type'] == 'ceil':
                     padding = 'same'
-                tf_layers_dict[layer_id] = AveragePooling2D(
-                    pool_size=kernel_size,
-                    strides=strides,
-                    padding=padding
-                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = AveragePooling2D(
+                            pool_size=kernel_size,
+                            strides=strides,
+                            padding=padding
+                        )(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = AveragePooling2D(
+                            pool_size=kernel_size,
+                            strides=strides,
+                            padding=padding
+                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    tf_layers_dict[layer_id] = AveragePooling2D(
+                        pool_size=kernel_size,
+                        strides=strides,
+                        padding=padding
+                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### GroupConvolution
             elif layer.attrib['type'] == 'GroupConvolution':
@@ -778,6 +1331,10 @@ def convert(model_path,
                                                                 depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0))
                                                             )(orig)
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "GroupConvolution" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### ConvolutionBackpropData
             elif layer.attrib['type'] == 'ConvolutionBackpropData':
                 # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
@@ -804,6 +1361,7 @@ def convert(model_path,
                 else:
                     padding = 'same'
                 dilations = [int(s) for s in data.attrib['dilations'].split(',')]
+
                 tf_layers_dict[layer_id] = Conv2DTranspose(
                     filters=filters,
                     kernel_size=kernel_size,
@@ -813,6 +1371,49 @@ def convert(model_path,
                     use_bias=False,
                     kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = Conv2DTranspose(
+                            filters=filters,
+                            kernel_size=kernel_size,
+                            strides=strides,
+                            padding=padding,
+                            dilation_rate=dilations,
+                            use_bias=False,
+                            kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                        )(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = Conv2DTranspose(
+                            filters=filters,
+                            kernel_size=kernel_size,
+                            strides=strides,
+                            padding=padding,
+                            dilation_rate=dilations,
+                            use_bias=False,
+                            kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    tf_layers_dict[layer_id] = Conv2DTranspose(
+                        filters=filters,
+                        kernel_size=kernel_size,
+                        strides=strides,
+                        padding=padding,
+                        dilation_rate=dilations,
+                        use_bias=False,
+                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Concat
             elif layer.attrib['type'] == 'Concat':
@@ -841,6 +1442,10 @@ def convert(model_path,
                         [tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)],
                         axis=axis
                     )
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Concat" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Multiply
             elif layer.attrib['type'] == 'Multiply':
@@ -928,6 +1533,10 @@ def convert(model_path,
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                     )
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Multiply" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Interpolate
             elif layer.attrib['type'] == 'Interpolate':
@@ -1052,28 +1661,101 @@ def convert(model_path,
                         print(f'The Interpolate - {mode} is not yet implemented.')
                         sys.exit(-1)
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Interpolate" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
+
             ### ShapeOf
             elif layer.attrib['type'] == 'ShapeOf':
                 try:
-                    tf_layers_dict[layer_id] = tf.constant(
-                        np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape),
-                        dtype=tf.int64
-                    )
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.constant(
+                                np.asarray(inp.type_spec.shape),
+                                dtype=tf.int64
+                            )
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.constant(
+                                np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape),
+                                dtype=tf.int64
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+
+                    else:
+                        tf_layers_dict[layer_id] = tf.constant(
+                            np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape),
+                            dtype=tf.int64
+                        )
+
                 except:
-                    tf_layers_dict[layer_id] = tf.shape(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        out_type=tf.int64
-                    )
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.shape(
+                                inp,
+                                out_type=tf.int64
+                            )
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.shape(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                out_type=tf.int64
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+
+                    else:
+                        tf_layers_dict[layer_id] = tf.shape(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            out_type=tf.int64
+                        )
 
             ### Convert
             elif layer.attrib['type'] == 'Convert':
                 # vino:    u8,    u16,    u32,    u64,   i8,   i16,   i32,   i64,     f16,     f32,              bf16, boolean
                 # tf  : uint8, uint16, uint32, uint64, int8, int16, int32, int64, float16, float32, float64, bfloat16
                 destination_type = data.attrib['destination_type']
-                tf_layers_dict[layer_id] = tf.cast(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    cast_type_ov_tf[destination_type]
-                )
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.cast(
+                            inp,
+                            cast_type_ov_tf[destination_type]
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.cast(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            cast_type_ov_tf[destination_type]
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    tf_layers_dict[layer_id] = tf.cast(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        cast_type_ov_tf[destination_type]
+                    )
 
             ### StridedSlice - TODO
             elif layer.attrib['type'] == 'StridedSlice':
@@ -1141,17 +1823,53 @@ def convert(model_path,
                 if len(strides) == 4:
                     strides[0], strides[1], strides[2], strides[3] = strides[0], strides[2], strides[3], strides[1]
 
-                tf_layers_dict[layer_id] = tf.strided_slice(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    begin=begin,
-                    end=end,
-                    strides=strides,
-                    begin_mask=begin_mask,
-                    end_mask=end_mask,
-                    ellipsis_mask=ellipsis_mask,
-                    new_axis_mask=new_axis_mask,
-                    shrink_axis_mask=shrink_axis_mask
-                )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.strided_slice(
+                            inp,
+                            begin=begin,
+                            end=end,
+                            strides=strides,
+                            begin_mask=begin_mask,
+                            end_mask=end_mask,
+                            ellipsis_mask=ellipsis_mask,
+                            new_axis_mask=new_axis_mask,
+                            shrink_axis_mask=shrink_axis_mask
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.strided_slice(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            begin=begin,
+                            end=end,
+                            strides=strides,
+                            begin_mask=begin_mask,
+                            end_mask=end_mask,
+                            ellipsis_mask=ellipsis_mask,
+                            new_axis_mask=new_axis_mask,
+                            shrink_axis_mask=shrink_axis_mask
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    tf_layers_dict[layer_id] = tf.strided_slice(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        begin=begin,
+                        end=end,
+                        strides=strides,
+                        begin_mask=begin_mask,
+                        end_mask=end_mask,
+                        ellipsis_mask=ellipsis_mask,
+                        new_axis_mask=new_axis_mask,
+                        shrink_axis_mask=shrink_axis_mask
+                    )
 
             ### Pad
             elif layer.attrib['type'] == 'Pad':
@@ -1205,6 +1923,10 @@ def convert(model_path,
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                     )
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Pad" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### TopK
             elif layer.attrib['type'] == 'TopK':
                 # axis = int(data.attrib['axis'])
@@ -1227,6 +1949,10 @@ def convert(model_path,
                             k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
                             sorted=True
                         )
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "TopK" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Transpose
             elif layer.attrib['type'] == 'Transpose':
@@ -1273,10 +1999,30 @@ def convert(model_path,
                     for idx, dim in enumerate(temp):
                         perm.append(dim)
 
-                tf_layers_dict[layer_id] = tf.transpose(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    perm=perm
-                )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.transpose(
+                            inp,
+                            perm=perm
+                        )
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.transpose(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            perm=perm
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.transpose(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        perm=perm
+                    )
 
             ### Squeeze
             elif layer.attrib['type'] == 'Squeeze':
@@ -1294,16 +2040,59 @@ def convert(model_path,
                         elif part_axis >= 2:
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
                     axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
                 try:
-                    tf_layers_dict[layer_id] = tf.squeeze(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        axis=axis
-                    )
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.squeeze(
+                                inp,
+                                axis=axis
+                            )
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.squeeze(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                axis=axis
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.squeeze(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            axis=axis
+                        )
+
                 except:
-                    tf_layers_dict[layer_id] = tf.squeeze(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        axis=-1
-                    )
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.squeeze(
+                                inp,
+                                axis=-1
+                            )
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.squeeze(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                axis=-1
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.squeeze(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            axis=-1
+                        )
 
             ### Gather
             elif layer.attrib['type'] == 'Gather':
@@ -1364,6 +2153,10 @@ def convert(model_path,
                     if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
                         tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Gather" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### GatherND
             elif layer.attrib['type'] == 'GatherND':
                 batch_dims = data.attrib['batch_dims']
@@ -1373,7 +2166,23 @@ def convert(model_path,
                     indices = tf.cast(indices, tf.int64)
                 else:
                     indices = indices_tmp
-                tf_layers_dict[layer_id] = tf.gather_nd(params, indices, batch_dims=batch_dims)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.gather_nd(inp, indices, batch_dims=batch_dims)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.gather_nd(params, indices, batch_dims=batch_dims)
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.gather_nd(params, indices, batch_dims=batch_dims)
 
             ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd, ReduceL2 - TODO
             elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
@@ -1456,6 +2265,10 @@ def convert(model_path,
                     )
                     tf_layers_dict[layer_id] = tf.math.rsqrt(reduceL2_sum)
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "ReduceX" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### MatMul
             elif layer.attrib['type'] == 'MatMul':
                 if not data is None and 'a' in data.attrib:
@@ -1473,12 +2286,37 @@ def convert(model_path,
                     except:
                         transpose_b = True if (data.attrib['transpose_b'] == 'True'or data.attrib['transpose_b'] == 'true') else False
 
-                tf_layers_dict[layer_id] = tf.linalg.matmul(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                    transpose_a,
-                    transpose_b
-                )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.linalg.matmul(
+                            inp,
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                            transpose_a,
+                            transpose_b
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.linalg.matmul(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                            transpose_a,
+                            transpose_b
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.linalg.matmul(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                        transpose_a,
+                        transpose_b
+                    )
 
             ### Reshape - TODO
             elif layer.attrib['type'] == 'Reshape':
@@ -1603,7 +2441,22 @@ def convert(model_path,
                         op2 = op2.transpose(0,2,3,1)
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
 
-                tf_layers_dict[layer_id] = tf.reshape(op1, shape)
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            op1
+                        )
+                        tf_layers_dict[layer_id] = tf.reshape(inp, shape=shape)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.reshape(op1, shape=shape)
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.reshape(op1, shape)
 
             ### Range - TODO
             elif layer.attrib['type'] == 'Range':
@@ -1618,6 +2471,7 @@ def convert(model_path,
                     if start == 2 and limit.numpy() == 4:
                         start = 1
                         limit = tf.constant(3)
+
                 tf_layers_dict[layer_id] = tf.range(
                     start,
                     limit,
@@ -1625,27 +2479,98 @@ def convert(model_path,
                     dtype=dtype
                 )
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Range" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### Exp
             elif layer.attrib['type'] == 'Exp':
-                tf_layers_dict[layer_id] = tf.math.exp(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.exp(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.exp(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.exp(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Abs
             elif layer.attrib['type'] == 'Abs':
-                tf_layers_dict[layer_id] = tf.math.abs(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.abs(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.abs(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.abs(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### SoftMax
             elif layer.attrib['type'] == 'SoftMax':
                 axis = int(data.attrib['axis'])
                 if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                     axis = -1
-                tf_layers_dict[layer_id] = tf.nn.softmax(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    axis=axis
-                )
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.nn.softmax(
+                            inp,
+                            axis=axis
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.nn.softmax(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            axis=axis
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.nn.softmax(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        axis=axis
+                    )
 
             ### Negative
             elif layer.attrib['type'] == 'Negative':
-                tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.negative(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Maximum
             elif layer.attrib['type'] == 'Maximum':
@@ -1654,6 +2579,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Maximum" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Minimum
             elif layer.attrib['type'] == 'Minimum':
@@ -1662,50 +2590,218 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Minimum" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Acos
             elif layer.attrib['type'] == 'Acos':
-                tf_layers_dict[layer_id] = tf.math.acos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.acos(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.acos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.acos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Acosh
             elif layer.attrib['type'] == 'Acosh':
-                tf_layers_dict[layer_id] = tf.math.acosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.acosh(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.acosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.acosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Asin
             elif layer.attrib['type'] == 'Asin':
-                tf_layers_dict[layer_id] = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.asin(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Asinh
             elif layer.attrib['type'] == 'Asinh':
-                tf_layers_dict[layer_id] = tf.math.asinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.asinh(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.asinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.asinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Atan
             elif layer.attrib['type'] == 'Atan':
-                tf_layers_dict[layer_id] = tf.math.atan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.atan(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.atan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.atan(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Atanh
             elif layer.attrib['type'] == 'Atanh':
-                tf_layers_dict[layer_id] = tf.math.atanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.atanh(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.atanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.atanh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Ceiling
             elif layer.attrib['type'] == 'Ceiling':
-                tf_layers_dict[layer_id] = tf.math.ceil(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.ceil(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.ceil(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.ceil(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Cos
             elif layer.attrib['type'] == 'Cos':
-                tf_layers_dict[layer_id] = tf.math.cos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.cos(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.cos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.cos(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Cosh
             elif layer.attrib['type'] == 'Cosh':
-                tf_layers_dict[layer_id] = tf.math.cosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.cosh(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.cosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.cosh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Sin
             elif layer.attrib['type'] == 'Sin':
-                tf_layers_dict[layer_id] = tf.math.sin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.sin(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.sin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.sin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Sinh
             elif layer.attrib['type'] == 'Sinh':
-                tf_layers_dict[layer_id] = tf.math.sinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.sinh(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.sinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.sinh(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Divide
             elif layer.attrib['type'] == 'Divide':
@@ -1735,13 +2831,47 @@ def convert(model_path,
                     # divide
                     tf_layers_dict[layer_id] = tf.math.divide(x, y)
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Divide" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### Erf
             elif layer.attrib['type'] == 'Erf':
-                tf_layers_dict[layer_id] = tf.math.erf(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.erf(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.erf(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.erf(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Floor
             elif layer.attrib['type'] == 'Floor':
-                tf_layers_dict[layer_id] = tf.math.floor(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.floor(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.floor(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.floor(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### FloorMod
             elif layer.attrib['type'] == 'FloorMod':
@@ -1750,25 +2880,77 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "FloorMod" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### HSwish
             elif layer.attrib['type'] == 'HSwish':
                 if replace_swish_and_hardswish:
                     # Swish
-                    tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.nn.swish(inp)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.swish(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
                 else:
-                    # Hard-Swish
+                    multiplier = 0.0
                     if not optimizing_hardswish_for_edgetpu:
-                        tf_layers_dict[layer_id] = \
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
-                                tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666667
+                        multiplier = 0.16666667
+                    else:
+                        multiplier = 0.16666666
+
+                    # Hard-Swish
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = inp * tf.nn.relu6(inp + 3) * multiplier
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
+                                tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * multiplier
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
                     else:
                         tf_layers_dict[layer_id] = \
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
-                                tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * 0.16666666
+                                tf.nn.relu6(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] + 3) * multiplier
 
             ### Log
             elif layer.attrib['type'] == 'Log':
-                tf_layers_dict[layer_id] = tf.math.log(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.math.log(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.log(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.math.log(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Power
             elif layer.attrib['type'] == 'Power':
@@ -1778,15 +2960,51 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Power" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### Mish
             elif layer.attrib['type'] == 'Mish':
-                tf_layers_dict[layer_id] = \
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
-                        tf.math.tanh(tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]))
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = inp * tf.math.tanh(tf.math.softplus(inp))
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = \
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
+                                tf.math.tanh(tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]))
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = \
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] * \
+                            tf.math.tanh(tf.math.softplus(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]))
 
             ### Selu
             elif layer.attrib['type'] == 'Selu':
-                tf_layers_dict[layer_id] = tf.nn.selu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.nn.selu(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.nn.selu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.nn.selu(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Subtract
             elif layer.attrib['type'] == 'Subtract':
@@ -1798,6 +3016,11 @@ def convert(model_path,
                 if type(y) == np.ndarray:
                     y = y.astype(np.float32)
                 tf_layers_dict[layer_id] = tf.math.subtract(x, y)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Subtract" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
 
             ### Unsqueeze - TODO
             elif layer.attrib['type'] == 'Unsqueeze':
@@ -1814,6 +3037,9 @@ def convert(model_path,
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         indices[0]
                     )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Unsqueeze" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Equal
             elif layer.attrib['type'] == 'Equal':
@@ -1821,6 +3047,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Equal" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### NotEqual
             elif layer.attrib['type'] == 'NotEqual':
@@ -1828,6 +3057,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NotEqual" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Greater
             elif layer.attrib['type'] == 'Greater':
@@ -1835,6 +3067,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Greater" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### GreaterEqual
             elif layer.attrib['type'] == 'GreaterEqual':
@@ -1842,6 +3077,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "GreaterEqual" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Less
             elif layer.attrib['type'] == 'Less':
@@ -1849,6 +3087,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Less" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### LessEqual
             elif layer.attrib['type'] == 'LessEqual':
@@ -1856,6 +3097,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LessEqual" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Select
             elif layer.attrib['type'] == 'Select':
@@ -1864,6 +3108,9 @@ def convert(model_path,
                     t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                     e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Select" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### LogicalAnd
             elif layer.attrib['type'] == 'LogicalAnd':
@@ -1871,10 +3118,16 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalAnd" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### LogicalNot
             elif layer.attrib['type'] == 'LogicalNot':
                 tf_layers_dict[layer_id] = tf.math.logical_not(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalNot" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### LogicalOr
             elif layer.attrib['type'] == 'LogicalOr':
@@ -1882,6 +3135,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalOr" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### LogicalXor
             elif layer.attrib['type'] == 'LogicalXor':
@@ -1889,6 +3145,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalXor" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Broadcast - TODO
             elif layer.attrib['type'] == 'Broadcast':
@@ -1925,6 +3184,10 @@ def convert(model_path,
                         print(f'The {mode} mode of broadcast is not yet implemented.')
                         sys.exit(-1)
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Broadcast" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### Split
             elif layer.attrib['type'] == 'Split':
                 num_splits = int(data.attrib['num_splits'])
@@ -1944,6 +3207,10 @@ def convert(model_path,
 
                 for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                     tf_layers_dict[layer_id_port] = output
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Split" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### VariadicSplit
             elif layer.attrib['type'] == 'VariadicSplit':
@@ -2027,6 +3294,10 @@ def convert(model_path,
                 for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                     tf_layers_dict[layer_id_port] = output
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "VariadicSplit" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### MVN - TODO axes
             elif layer.attrib['type'] == 'MVN':
                 eps = float(data.attrib['eps'])
@@ -2084,6 +3355,10 @@ def convert(model_path,
                     mvn = (data - mean)
 
                 tf_layers_dict[layer_id] = mvn
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "MVN" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### NonMaxSuppression - TODO
             elif layer.attrib['type'] == 'NonMaxSuppression':
@@ -2200,6 +3475,10 @@ def convert(model_path,
                 )
                 process_interruption_by_non_max_suppression = True
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NonMaxSuppression" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### NonZero
             elif layer.attrib['type'] == 'NonZero':
                 output_type = tf.int64
@@ -2251,14 +3530,40 @@ def convert(model_path,
                             axis=0
                         )
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NonZero" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### SpaceToDepth
             elif layer.attrib['type'] == 'SpaceToDepth':
                 block_size = int(data.attrib['block_size'])
                 mode = data.attrib['mode']
-                tf_layers_dict[layer_id] = tf.nn.space_to_depth(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    block_size=block_size
-                )
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = tf.nn.space_to_depth(
+                            inp,
+                            block_size=block_size
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.nn.space_to_depth(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            block_size=block_size
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.nn.space_to_depth(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        block_size=block_size
+                    )
 
             ### DepthToSpace
             elif layer.attrib['type'] == 'DepthToSpace':
@@ -2268,10 +3573,31 @@ def convert(model_path,
                 def depth_to_space(x, block_size):
                     return tf.raw_ops.DepthToSpace(input=x, block_size=block_size)
 
-                tf_layers_dict[layer_id] = Lambda(
-                    depth_to_space,
-                    arguments={'block_size': block_size}
-                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        tf_layers_dict[layer_id] = Lambda(
+                            depth_to_space,
+                            arguments={'block_size': block_size}
+                        )(inp)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = Lambda(
+                            depth_to_space,
+                            arguments={'block_size': block_size}
+                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = Lambda(
+                        depth_to_space,
+                        arguments={'block_size': block_size}
+                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Sqrt
             elif layer.attrib['type'] == 'Sqrt':
@@ -2279,6 +3605,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Sqrt" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### SquaredDifference
             elif layer.attrib['type'] == 'SquaredDifference':
@@ -2286,6 +3615,9 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "SquaredDifference" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### FakeQuantize
             elif layer.attrib['type'] == 'FakeQuantize':
@@ -2332,12 +3664,19 @@ def convert(model_path,
                                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
                                                     tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "FakeQuantize" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
+
             ### Tile
             elif layer.attrib['type'] == 'Tile':
                 tf_layers_dict[layer_id] = tf.tile(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Tile" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Gelu
             elif layer.attrib['type'] == 'Gelu':
@@ -2354,6 +3693,9 @@ def convert(model_path,
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         approximate=True
                     )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Gelu" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### NormalizeL2
             elif layer.attrib['type'] == 'NormalizeL2':
@@ -2376,6 +3718,9 @@ def convert(model_path,
                         axis=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                         epsilon=eps
                     )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NormalizeL2" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Result
             elif layer.attrib['type'] == 'Result':
@@ -2385,6 +3730,11 @@ def convert(model_path,
                         name=layer.attrib['name'].split('/')[0]
                     )
                     tf_outputs.append(tf_layers_dict[layer_id])
+
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Result" is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
             else:
                 print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
                 sys.exit(-1)

@@ -1,20 +1,24 @@
 {
-    "format_version": 1,
+    "format_version": 2,
     "layers": [
         {
-            "layer_id": "1123",
+            "layer_id": "659",
+            "type": "Const",
             "replace_mode": "direct",
             "values": [
+                0,
                 1,
-                2,
-                513,
-                513
+                2
             ]
         },
         {
-            "layer_id": "1125",
-            "replace_mode": "npy",
-            "values": "weights_sample/1125.npy"
+            "layer_id": "660",
+            "type": "Reshape",
+            "replace_mode": "insert_after",
+            "values": [
+                2100,
+                85
+            ]
         }
     ]
 }
