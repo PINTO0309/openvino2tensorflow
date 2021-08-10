@@ -629,22 +629,26 @@ $ openvino2tensorflow \
 Structure of JSON sample
 ```json
 {
-    "format_version": 1,
+    "format_version": 2,
     "layers": [
         {
-            "layer_id": "1123",
+            "layer_id": "659",
+            "type": "Const",
             "replace_mode": "direct",
             "values": [
+                0,
                 1,
-                2,
-                513,
-                513
+                2
             ]
         },
         {
-            "layer_id": "1125",
-            "replace_mode": "npy",
-            "values": "weights_sample/1125.npy"
+            "layer_id": "660",
+            "type": "Reshape",
+            "replace_mode": "insert_after",
+            "values": [
+                2100,
+                85
+            ]
         }
     ]
 }
@@ -652,11 +656,12 @@ Structure of JSON sample
 
 |No.|Elements|Description|
 |:--|:--|:--|
-|1|format_version|Format version of weight_replacement_config. Only 1 so far.|
+|1|format_version|Format version of weight_replacement_config. Values less than or equal to 2.|
 |2|layers|A list of layers. Enclose it with "[ ]" to define multiple layers to child elements.|
 |2-1|layer_id|ID of the Const layer whose weight/constant parameter is to be swapped. For example, specify "1123" for layer id="1123" for type="Const" in .xml.<br>![Screenshot 2021-02-08 01:06:30](https://user-images.githubusercontent.com/33194443/107152221-068a0f00-69aa-11eb-9d9e-f48bb1c3f781.png)|
-|2-2|replace_mode|"direct" or "npy".<br>"direct": Specify the values of the Numpy matrix directly in the "values" attribute. Ignores the values recorded in the .bin file and replaces them with the values specified in "values".<br>![Screenshot 2021-02-08 01:12:06](https://user-images.githubusercontent.com/33194443/107152361-cc6d3d00-69aa-11eb-8302-5e18a723ec34.png)<br>"npy": Load a Numpy binary file with the matrix output by **`np.save('xyz', a)`**. The "values" attribute specifies the path to the Numpy binary file.<br>![Screenshot 2021-02-08 01:12:23](https://user-images.githubusercontent.com/33194443/107152376-dc851c80-69aa-11eb-9b3f-469b91af1d19.png)|
-|2-3|values|Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin. The way to specify is as described in the description of 'replace_mode'.|
+|2-2|type|Fixed value replacement or type of operation to be added. "Const" or "Transpose" or "Reshape"|
+|2-3|replace_mode|"direct" or "npy" or "insert_before" or "insert_after".<br>"direct": Specify the values of the Numpy matrix directly in the "values" attribute. Ignores the values recorded in the .bin file and replaces them with the values specified in "values".<br>![Screenshot 2021-08-10 23:16:05](https://user-images.githubusercontent.com/33194443/128883404-256e4872-0f1e-4dea-948d-4f5818e6da96.png)<br>"npy": Load a Numpy binary file with the matrix output by **`np.save('xyz', a)`**. The "values" attribute specifies the path to the Numpy binary file.<br>![Screenshot 2021-08-10 23:17:22](https://user-images.githubusercontent.com/33194443/128883417-8a159a64-bb39-4c6d-92c2-d4da1c67ed2a.png)<br>"insert_before": Add **`Transpose`** or **`Reshape`** just before the operation specified by layer_id.<br>![Screenshot 2021-08-10 23:13:06](https://user-images.githubusercontent.com/33194443/128882853-cb78c2e4-3c80-4733-a768-a84bbc8b33a5.png)<br>"insert_after": Add **`Transpose`** or **`Reshape`** just after the operation specified by layer_id.<br>![Screenshot 2021-08-10 23:12:52](https://user-images.githubusercontent.com/33194443/128882909-780567c7-970a-483f-960b-571f33437cb5.png)|
+|2-4|values|Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin. The way to specify is as described in the description of 'replace_mode'.|
 
 #### 6-7-2. Example
   - YOLOX Nano 320x320 (NCHW format)
