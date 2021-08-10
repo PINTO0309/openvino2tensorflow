@@ -683,10 +683,11 @@ In the figure below, one of them is **`658`** and one of them is **`659`**. It i
   6. Create a JSON file to replace the constants **`[0, 2, 1]`** with **`[0, 1, 2]`**, and you can use any name for the JSON file. Suppose you save the file with the name **`replace.json`**. If you want to replace it with a numpy matrix, specify **`"npy"`** for **`"replace_mode":`** and the path to the **`.npy`** file for **`"values":`**.
   ```json
   {
-    "format_version": 1,
+    "format_version": 2,
     "layers": [
         {
             "layer_id": "659",
+            "type": "Const",
             "replace_mode": "direct",
             "values": [
                 0,
@@ -699,10 +700,11 @@ In the figure below, one of them is **`658`** and one of them is **`659`**. It i
   ```
   ```json
   {
-    "format_version": 1,
+    "format_version": 2,
     "layers": [
         {
             "layer_id": "659",
+            "type": "Const",
             "replace_mode": "npy",
             "values": "path/to/your/xxx.npy"
         }
