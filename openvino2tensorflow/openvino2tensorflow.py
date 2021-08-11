@@ -820,10 +820,10 @@ def convert(model_path,
                                     wr_config[layer_id],
                                     inp
                                 )
-                            else:
-                                tf_layers_dict[layer_id] = \
-                                    tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        else:
+                            tf_layers_dict[layer_id] = \
+                                tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -846,11 +846,11 @@ def convert(model_path,
                                     wr_config[layer_id],
                                     inp
                                 )
-                            else:
-                                tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
-                                    shared_axes=shared_axes
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        else:
+                            tf_layers_dict[layer_id] = PReLU(
+                                alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                shared_axes=shared_axes
+                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Clamp
             elif layer.attrib['type'] == 'Clamp':
