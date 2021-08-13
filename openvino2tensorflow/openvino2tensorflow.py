@@ -3168,21 +3168,36 @@ def convert(model_path,
                         sys.exit(-1)
                 else:
                     target_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                    target_shape[0], target_shape[1], target_shape[2], target_shape[3] = \
-                        target_shape[0], target_shape[2], target_shape[3], target_shape[1]
-                    if mode == 'numpy':
-                        tf_layers_dict[layer_id] = tf.broadcast_to(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            target_shape
-                        )
-                    elif mode == 'bidirectional':
-                        tf_layers_dict[layer_id] = tf.math.multiply(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.ones(target_shape)
-                        )
+                    if len(target_shape) == 4:
+                        target_shape[0], target_shape[1], target_shape[2], target_shape[3] = \
+                            target_shape[0], target_shape[2], target_shape[3], target_shape[1]
+                        if mode == 'numpy':
+                            tf_layers_dict[layer_id] = tf.broadcast_to(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                target_shape
+                            )
+                        elif mode == 'bidirectional':
+                            tf_layers_dict[layer_id] = tf.math.multiply(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                tf.ones(target_shape)
+                            )
+                        else:
+                            print(f'{Color.RED}ERROR:{Color.RESET} Broadcast lyaer {mode} mode of broadcast is not yet implemented. layer_id: {layer_id}')
+                            sys.exit(-1)
                     else:
-                        print(f'The {mode} mode of broadcast is not yet implemented.')
-                        sys.exit(-1)
+                        if mode == 'numpy':
+                            tf_layers_dict[layer_id] = tf.broadcast_to(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                target_shape
+                            )
+                        elif mode == 'bidirectional':
+                            tf_layers_dict[layer_id] = tf.math.multiply(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                tf.ones(target_shape)
+                            )
+                        else:
+                            print(f'{Color.RED}ERROR:{Color.RESET} Broadcast lyaer {mode} mode of broadcast is not yet implemented. layer_id: {layer_id}')
+                            sys.exit(-1)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Broadcast" is not supported. layer_id: {layer_id}')
