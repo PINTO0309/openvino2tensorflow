@@ -979,22 +979,26 @@ def convert(model_path,
 
             ### HardSigmoid
             elif layer.attrib['type'] == 'HardSigmoid':
+                x     = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                alpha = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                beta  = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         inp = extrapolation_of_layers(
                             wr_config[layer_id],
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            x
                         )
-                        tf_layers_dict[layer_id] = hard_sigmoid(inp)
+                        tf_layers_dict[layer_id] = tf.maximum([0.0], tf.minimum([1.0], tf.math.add(tf.math.multiply(alpha, inp), beta)))
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = hard_sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        inp = tf.maximum([0.0], tf.minimum([1.0], tf.math.add(tf.math.multiply(alpha, x), beta)))
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
                             inp
                         )
                 else:
-                    tf_layers_dict[layer_id] = hard_sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    print(f'layer_id: {layer_id}, x: {x}, alpha: {alpha}, beta: {beta}')
+                    tf_layers_dict[layer_id] = tf.maximum([0.0], tf.minimum([1.0], tf.math.add(tf.math.multiply(alpha, x), beta)))
 
             ### Sigmoid
             elif layer.attrib['type'] == 'Sigmoid':
@@ -1014,6 +1018,28 @@ def convert(model_path,
                         )
                 else:
                     tf_layers_dict[layer_id] = tf.math.sigmoid(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+            ### HSigmoid
+            elif layer.attrib['type'] == 'HSigmoid':
+                x = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            x
+                        )
+                        tf_layers_dict[layer_id] = \
+                            tf.math.divide(tf.minimum(tf.maximum(tf.math.add(inp, [3.0]), [0.0]), [6.0]), [6.0])
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.divide(tf.minimum(tf.maximum(tf.math.add(x, [3.0]), [0.0]), [6.0]), [6.0])
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = \
+                        tf.math.divide(tf.minimum(tf.maximum(tf.math.add(x, [3.0]), [0.0]), [6.0]), [6.0])
 
             ### Swish
             elif layer.attrib['type'] == 'Swish':
