@@ -997,7 +997,6 @@ def convert(model_path,
                             inp
                         )
                 else:
-                    print(f'layer_id: {layer_id}, x: {x}, alpha: {alpha}, beta: {beta}')
                     tf_layers_dict[layer_id] = tf.maximum([0.0], tf.minimum([1.0], tf.math.add(tf.math.multiply(alpha, x), beta)))
 
             ### Sigmoid
