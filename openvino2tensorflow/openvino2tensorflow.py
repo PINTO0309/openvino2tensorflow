@@ -2279,16 +2279,22 @@ def convert(model_path,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceL2':
-                    reduceL2_mul = tf.math.multiply(
+                    inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                    axis = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], dtype=np.int32)
+                    reduceL2_mean = tf.math.reduce_mean(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                    )
-                    reduceL2_sum = tf.math.reduce_sum(
-                        reduceL2_mul,
                         axis=axis,
                         keepdims=keep_dims
                     )
-                    tf_layers_dict[layer_id] = tf.math.rsqrt(reduceL2_sum)
+
+                    reduceL2_square = tf.math.square(inp - reduceL2_mean)
+
+                    reduceL2_sum = tf.math.reduce_sum(
+                        reduceL2_square,
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                    tf_layers_dict[layer_id] = tf.math.sqrt(reduceL2_sum)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "ReduceX" is not supported. layer_id: {layer_id}')
