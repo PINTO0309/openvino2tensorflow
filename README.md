@@ -171,7 +171,7 @@ Work in progress now.
 |79|VariadicSplit|Split, Slice, SplitV||
 |80|MVN|reduce_mean, sqrt, reduce_variance|(x-reduce_mean(x))/sqrt(reduce_variance(x)+eps)|
 |81|NonZero|not_equal, boolean_mask||
-|82|ReduceL2|Multiply, reduce_sum, rsqrt||
+|82|ReduceL2|reduce_mean, square, reduce_sum, sqrt||
 |83|SpaceToDepth|SpaceToDepth||
 |84|DepthToSpace|DepthToSpace||
 |85|Sqrt|sqrt||
