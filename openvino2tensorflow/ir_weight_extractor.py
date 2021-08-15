@@ -5,11 +5,9 @@ import os
 import sys
 import argparse
 import struct
+import shutil
 import numpy as np
-
 import xml.etree.ElementTree as et
-
-from openvino.inference_engine import IECore
 
 def dumpWeight(model, output_path):
     # for unpacking binary buffer
@@ -68,6 +66,8 @@ def main():
     if ext != '.xml':
         print('The specified model is not \'.xml\' file')
         sys.exit(-1)
+    shutil.rmtree(output_path, ignore_errors=True)
+    os.makedirs(output_path, exist_ok=True)
     dumpWeight(model, output_path)
 
 if __name__ == "__main__":
