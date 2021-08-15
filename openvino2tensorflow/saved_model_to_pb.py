@@ -42,7 +42,7 @@ def convert_saved_model_to_graph_def(saved_model_dir_path, model_output_dir_path
                         logdir=model_output_dir_path,
                         name='model_v2.pb',
                         as_text=False)
-    
+
     print(f'Output model_v2.pb to {model_output_dir_path}/model_v2.pb')
 
 def main():
