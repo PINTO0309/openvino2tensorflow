@@ -58,6 +58,7 @@ def convert(
     load_dest_file_path_for_the_calib_npy,
     output_tfjs,
     output_tftrt,
+    tftrt_maximum_cached_engines,
     output_coreml,
     output_edgetpu,
     output_onnx,
@@ -331,19 +332,21 @@ def convert(
                 yield input_shapes_tmp
 
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float32 convertion started{Color.RESET}', '=' * 40)
-            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP32', maximum_cached_engines=10000)
-            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=saved_model_dir_path, conversion_params=params)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP32', maximum_cached_engines=tftrt_maximum_cached_engines)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_dir_path, conversion_params=params)
             converter.convert()
             converter.build(input_fn=input_fn)
             converter.save(f'{model_output_dir_path}/tensorrt_saved_model_float32')
             print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_dir_path}/tensorrt_saved_model_float32')
+
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float16 convertion started{Color.RESET}', '=' * 40)
-            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=10000)
-            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=saved_model_dir_path, conversion_params=params)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=tftrt_maximum_cached_engines)
+            converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_dir_path, conversion_params=params)
             converter.convert()
             converter.build(input_fn=input_fn)
             converter.save(f'{model_output_dir_path}/tensorrt_saved_model_float16')
             print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_dir_path}/tensorrt_saved_model_float16')
+
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
             import traceback
@@ -408,6 +411,7 @@ def main():
     parser.add_argument('--load_dest_file_path_for_the_calib_npy', type=str, default=npy_load_default_path, help='The path from which to load the .npy file containing the numpy binary version of the calibration data. Default: sample_npy/calibration_data_img_sample.npy')
     parser.add_argument('--output_tfjs', action='store_true', help='tfjs model output switch')
     parser.add_argument('--output_tftrt', action='store_true', help='tftrt model output switch')
+    parser.add_argument('--tftrt_maximum_cached_engines', type=int, default=10000, help='Specifies the quantity of tftrt_maximum_cached_engines for TFTRT. Default: 10000')
     parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
     parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
@@ -444,6 +448,7 @@ def main():
     load_dest_file_path_for_the_calib_npy = args.load_dest_file_path_for_the_calib_npy
     output_tfjs = args.output_tfjs
     output_tftrt = args.output_tftrt
+    tftrt_maximum_cached_engines = args.tftrt_maximum_cached_engines
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
     output_onnx = args.output_onnx
@@ -534,6 +539,7 @@ def main():
         load_dest_file_path_for_the_calib_npy,
         output_tfjs,
         output_tftrt,
+        tftrt_maximum_cached_engines,
         output_coreml,
         output_edgetpu,
         output_onnx,

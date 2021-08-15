@@ -78,6 +78,7 @@ def convert(model_path,
             load_dest_file_path_for_the_calib_npy,
             output_tfjs,
             output_tftrt,
+            tftrt_maximum_cached_engines,
             output_coreml,
             output_edgetpu,
             output_onnx,
@@ -4130,24 +4131,28 @@ def convert(model_path,
                 yield input_shapes
 
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float32 convertion started{Color.RESET}', '=' * 40)
-            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP32', maximum_cached_engines=10000)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP32', maximum_cached_engines=tftrt_maximum_cached_engines)
             converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_path, conversion_params=params)
             converter.convert()
             converter.build(input_fn=input_fn)
             converter.save(f'{model_output_path}/tensorrt_saved_model_float32')
             print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_path}/tensorrt_saved_model_float32')
+
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float16 convertion started{Color.RESET}', '=' * 40)
-            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=10000)
+            params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=tftrt_maximum_cached_engines)
             converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_path, conversion_params=params)
             converter.convert()
             converter.build(input_fn=input_fn)
             converter.save(f'{model_output_path}/tensorrt_saved_model_float16')
             print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_path}/tensorrt_saved_model_float16')
+
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
             import traceback
             traceback.print_exc()
             print(f'{Color.RED}The binary versions of TensorFlow and TensorRT may not be compatible. Please check the version compatibility of each package.{Color.RESET}')
+            print(f'{Color.RED}--tftrt_maximum_cached_engines should be less than 10000 and try to convert again. It is very likely that the GPU memory has been exhausted.{Color.RESET}')
+            print(f'{Color.RED}Try using the nvidia-smi command during the conversion process to see how much GPU RAM is consumed.{Color.RESET}')
 
     # CoreML convert
     if output_coreml:
@@ -4254,6 +4259,7 @@ def main():
     parser.add_argument('--load_dest_file_path_for_the_calib_npy', type=str, default=npy_load_default_path, help='The path from which to load the .npy file containing the numpy binary version of the calibration data. Default: sample_npy/calibration_data_img_sample.npy')
     parser.add_argument('--output_tfjs', action='store_true', help='tfjs model output switch')
     parser.add_argument('--output_tftrt', action='store_true', help='tftrt model output switch')
+    parser.add_argument('--tftrt_maximum_cached_engines', type=int, default=10000, help='Specifies the quantity of tftrt_maximum_cached_engines for TFTRT. Default: 10000')
     parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
     parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
@@ -4295,6 +4301,7 @@ def main():
     load_dest_file_path_for_the_calib_npy = args.load_dest_file_path_for_the_calib_npy
     output_tfjs = args.output_tfjs
     output_tftrt = args.output_tftrt
+    tftrt_maximum_cached_engines = args.tftrt_maximum_cached_engines
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
     output_onnx = args.output_onnx
@@ -4391,7 +4398,7 @@ def main():
             string_formulas_for_normalization,
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg, npy_load_default_path, load_dest_file_path_for_the_calib_npy,
-            output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
+            output_tfjs, output_tftrt, tftrt_maximum_cached_engines, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer, debug, debug_layer_number)
