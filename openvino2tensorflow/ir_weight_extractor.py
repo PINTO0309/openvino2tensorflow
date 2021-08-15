@@ -4,7 +4,6 @@
 import os
 import sys
 import argparse
-import pickle
 import struct
 import numpy as np
 
@@ -14,19 +13,21 @@ from openvino.inference_engine import IECore
 
 def dumpWeight(model, output_path):
     # for unpacking binary buffer
-    format_config = { 'FP32': ['f', 4], 
-                      'FP16': ['e', 2],
-                      'I64' : ['q', 8],
-                      'I32' : ['i', 4],
-                      'I16' : ['h', 2],
-                      'I8'  : ['b', 1],
-                      'U8'  : ['B', 1]}
+    format_config = {
+        'FP32': ['f', 4],
+        'FP16': ['e', 2],
+        'I64' : ['q', 8],
+        'I32' : ['i', 4],
+        'I16' : ['h', 2],
+        'I8'  : ['b', 1],
+        'U8'  : ['B', 1]
+    }
 
     # Read IR weight data
     with open(model+'.bin', 'rb') as f:
         binWeight = f.read()
 
-    # Parse IR XML file, find 'Const' node, extract weight, and generate npy file 
+    # Parse IR XML file, find 'Const' node, extract weight, and generate npy file
     tree = et.parse(model+'.xml')
     root = tree.getroot()
     layers = root.find('layers')
@@ -37,20 +38,20 @@ def dumpWeight(model, output_path):
             data = layer.find('data')
             if not data is None:
                 if 'offset' in data.attrib and 'size' in data.attrib:
+                    print(f'@@@@@ {layer.attrib["name"].replace("/", "_")}')
                     offset = int(data.attrib['offset'])
                     size   = int(data.attrib['size'])
-                    shape_str  = data.attrib['shape'].split(',')
+                    shape_str = '1' if data.attrib['shape'] == '' else data.attrib['shape'].split(',')
                     shape = [int(s) for s in shape_str]
-                    blobBin = binWeight[offset:offset+size]                     # cut out the weight for this blob from the weight buffer
+                    blobBin = binWeight[offset:offset+size]
                     prec = layer.find('output').find('port').attrib['precision']
                     formatstring = '<' + format_config[prec][0] * (len(blobBin)//format_config[prec][1])
-                    decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)           # decode the buffer
-                    weight[layer.attrib['name']] = [ prec, decodedwgt ]         # { blobName : [ precStr, weightBuf ]}
-                    print('{} : {}'.format(len(blobBin), layer.attrib['name']))
-
-                    print(layer.attrib['name'].replace('/', '_'), shape)
-                    print('decodedwgt.shape:', decodedwgt.shape)
-                    print(decodedwgt)
+                    decodedwgt = np.array(list(struct.unpack(formatstring, blobBin))).reshape(shape)
+                    weight[layer.attrib['name']] = [ prec, decodedwgt ]
+                    print(f'layer.attrib["name"]: {layer.attrib["name"]}, len(blobBin): {len(blobBin)}')
+                    print(f'layer.shape: {shape}')
+                    print(f'decodedwgt.shape: {decodedwgt.shape}')
+                    print(f'decodedwgt: {decodedwgt}')
 
                     np.save('{}/{}'.format(output_path, layer.attrib['name'].replace('/', '_')), decodedwgt)
 
