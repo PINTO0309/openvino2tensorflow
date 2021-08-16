@@ -2329,15 +2329,9 @@ def convert(model_path,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceL2':
-                    inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                    reduceL2_mean = tf.math.reduce_mean(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        axis=axis,
-                        keepdims=keep_dims
+                    reduceL2_square = tf.math.square(
+                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                     )
-
-                    reduceL2_square = tf.math.square(inp - reduceL2_mean)
-
                     reduceL2_sum = tf.math.reduce_sum(
                         reduceL2_square,
                         axis=axis,
