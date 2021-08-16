@@ -105,7 +105,7 @@ def convert(model_path,
     tf.get_logger().setLevel(logging.ERROR)
     import tensorflow_datasets as tfds
     from tensorflow.keras import Model, Input
-    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda, LeakyReLU
     from tensorflow.keras.initializers import Constant
     from tensorflow.keras.activations import elu, hard_sigmoid
     from typing import Union
@@ -802,7 +802,7 @@ def convert(model_path,
                                 shared_axes=shared_axes
                             )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-                else:
+                elif alpha_len >= 2:
                     if replace_prelu_and_minmax:
                         if wr_config and layer_id in wr_config and format_version >= 2:
                             if wr_config[layer_id]['replace_mode'] == 'insert_before':
@@ -852,6 +852,55 @@ def convert(model_path,
                                 alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
                                 shared_axes=shared_axes
                             )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+                else:
+                    # alpha_len == 1 (LeakyReLU)
+                    if replace_prelu_and_minmax:
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                )
+                                tf_layers_dict[layer_id] = \
+                                    tf.maximum(0.0, inp) + \
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, inp)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                        else:
+                            tf_layers_dict[layer_id] = \
+                                tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+                    else:
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                )
+                                tf_layers_dict[layer_id] = LeakyReLU(
+                                    alpha=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                )(inp)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = LeakyReLU(
+                                    alpha=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                        else:
+                            tf_layers_dict[layer_id] = LeakyReLU(
+                                    alpha=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Clamp
             elif layer.attrib['type'] == 'Clamp':
@@ -2281,7 +2330,6 @@ def convert(model_path,
                     )
                 elif layer.attrib['type'] == 'ReduceL2':
                     inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                    axis = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], dtype=np.int32)
                     reduceL2_mean = tf.math.reduce_mean(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         axis=axis,
