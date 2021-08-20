@@ -291,9 +291,6 @@ usage: openvino2tensorflow
   [--restricted_resize_image_mode]
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
   [--use_experimental_new_quantizer]
-  [--debug]
-  [--debug_layer_number DEBUG_LAYER_NUMBER]
-
 
 optional arguments:
   -h, --help
@@ -386,11 +383,6 @@ optional arguments:
   --use_experimental_new_quantizer
                         Use MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
-  --debug
-                        debug mode switch
-  --debug_layer_number DEBUG_LAYER_NUMBER
-                        The last layer number to output when debugging. Used
-                        only when --debug=True
 ```
 ### 5-2. saved_model to tflite convert
 ```bash
