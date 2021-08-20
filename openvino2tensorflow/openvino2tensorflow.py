@@ -698,21 +698,6 @@ def convert(model_path,
                                 dilations=dilations
                             )
 
-                try:
-                    layer_structure = {
-                        'layer_type': layer.attrib['type'],
-                        'layer_id': layer_id,
-                        'tf_layers_dict': tf_layers_dict[layer_id],
-                    }
-                    for edge_index in range(len(tf_edges[layer_id])):
-                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]) != np.ndarray:
-                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
-                        else:
-                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
-                except:
-                    pass
-                layer_structure_print(layer_structure)
-
             ### Add
             elif layer.attrib['type'] == 'Add':
                 # 'Fused_Add_' == BiasAdd
@@ -750,14 +735,6 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = tf.math.add_n(
                             [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
                         )
-
-                layer_structure_print(
-                    {
-                        'layer_type': layer.attrib['type'],
-                        'layer_id': layer_id,
-                        'tf_layers_dict': tf_layers_dict[layer_id],
-                    }
-                )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Add" is not supported. layer_id: {layer_id}')
