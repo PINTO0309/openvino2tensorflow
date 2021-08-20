@@ -464,6 +464,10 @@ def convert(model_path,
         data = layer.find('data')
 
         try:
+            outputs = None
+            layer_id_values = None
+            layer_id_indices = None
+
             ### Parameter
             if layer.attrib['type'] == 'Parameter':
                 if not data is None and 'shape' in data.attrib:
@@ -3847,6 +3851,8 @@ def convert(model_path,
                 print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
                 sys.exit(-1)
 
+
+            # Layer structure print
             if layer.attrib['type'] != 'Parameter' and layer.attrib['type'] != 'Const':
                 try:
                     layer_structure = {
@@ -3860,7 +3866,23 @@ def convert(model_path,
                             layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
                 except:
                     pass
-                layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
+                try:
+                    layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
+                except:
+                    try:
+                        # Split, VariadicSplit
+                        for idx, (output, layer_id_port) in enumerate(zip(outputs, layer_id_port_dict[layer_id]['layer_id:port'])):
+                            layer_structure[f'tf_layers_dict{idx}'] = output
+                    except:
+                        try:
+                            # TopK
+                            layer_structure['tf_layers_dict0'] = tf_layers_dict[layer_id_values]
+                            layer_structure['tf_layers_dict1'] = tf_layers_dict[layer_id_indices]
+                        except:
+                            # NonMaxSuppression
+                            layer_structure['tf_layers_dict0'] = tf_layers_dict['99990']
+                            layer_structure['tf_layers_dict1'] = tf_layers_dict['99991']
+                            layer_structure['tf_layers_dict2'] = tf_layers_dict['99992']
                 layer_structure_print(layer_structure)
 
 
