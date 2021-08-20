@@ -92,9 +92,7 @@ def convert(model_path,
             yolact,
             restricted_resize_image_mode,
             weight_replacement_config,
-            use_experimental_new_quantizer,
-            debug,
-            debug_layer_number):
+            use_experimental_new_quantizer):
 
     print(f'{Color.REVERCE}TensorFlow/Keras model building process starts{Color.RESET}', '=' * 38)
 
@@ -107,8 +105,7 @@ def convert(model_path,
     from tensorflow.keras import Model, Input
     from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda, LeakyReLU
     from tensorflow.keras.initializers import Constant
-    from tensorflow.keras.activations import elu, hard_sigmoid
-    from typing import Union
+    from tensorflow.keras.activations import elu
     from tensorflow.python.keras.engine.keras_tensor import KerasTensor
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
     if output_coreml:
@@ -394,6 +391,12 @@ def convert(model_path,
         return tf_layer
 
 
+    print(f'{Color.REVERCE}Layer structure{Color.RESET}', '=' * 69)
+    def layer_structure_print(info: dict) -> None:
+        for key, value in info.items():
+            print(f'{Color.GREEN}{key}{Color.RESET}: {value}')
+        print('=' * 84)
+
     # edges
     added_key_list = []
     concat_port_list = {}
@@ -472,6 +475,14 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
                     tf_inputs.append(tf_layers_dict[layer_id])
 
+                    layer_structure_print(
+                        {
+                            'layer_type': 'Input',
+                            'layer_id': layer_id,
+                            'tf_layers_dict': tf_layers_dict[layer_id]
+                        }
+                    )
+
                     if wr_config and layer_id in wr_config and format_version >= 2:
                         print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Parameter" is not supported. layer_id: {layer_id}')
                         sys.exit(-1)
@@ -518,6 +529,14 @@ def convert(model_path,
                                     tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
                                 else:
                                     tf_layers_dict[layer_id] = decodedwgt
+
+                        layer_structure_print(
+                            {
+                                'layer_type': layer.attrib['type'],
+                                'layer_id': layer_id,
+                                'tf_layers_dict': tf_layers_dict[layer_id].shape
+                            }
+                        )
 
             ### Convolution
             elif layer.attrib['type'] == 'Convolution':
@@ -3828,9 +3847,22 @@ def convert(model_path,
                 print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
                 sys.exit(-1)
 
-            if debug and idx > debug_layer_number:
-                tf_outputs.append(tf_layers_dict[layer_id])
-                break
+            if layer.attrib['type'] != 'Parameter' and layer.attrib['type'] != 'Const':
+                try:
+                    layer_structure = {
+                        'layer_type': layer.attrib['type'],
+                        'layer_id': layer_id,
+                    }
+                    for edge_index in range(len(tf_edges[layer_id])):
+                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]) != np.ndarray:
+                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
+                        else:
+                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
+                except:
+                    pass
+                layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
+                layer_structure_print(layer_structure)
+
 
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
@@ -4316,8 +4348,6 @@ def main():
     parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
-    parser.add_argument('--debug', action='store_true', help='debug mode switch')
-    parser.add_argument('--debug_layer_number', type=int, default=0, help='The last layer number to output when debugging. Used only when --debug=True')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
     model_output_path = args.model_output_path.rstrip('/')
@@ -4358,8 +4388,6 @@ def main():
     restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
     use_experimental_new_quantizer = args.use_experimental_new_quantizer
-    debug = args.debug
-    debug_layer_number = args.debug_layer_number
     if not output_saved_model and \
         not output_h5 and \
         not output_weight_and_json and \
@@ -4443,7 +4471,7 @@ def main():
             output_tfjs, output_tftrt, tftrt_maximum_cached_engines, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer, debug, debug_layer_number)
+            yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
