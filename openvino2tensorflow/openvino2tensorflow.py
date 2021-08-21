@@ -2710,7 +2710,7 @@ def convert(model_path,
                         start = 1
                         limit = tf.constant(3)
 
-                tf_layers_dict[layer_id] = tf.range(
+                inp = tf.range(
                     start,
                     limit,
                     delta=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]),
@@ -2718,8 +2718,17 @@ def convert(model_path,
                 )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Range" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Exp
             elif layer.attrib['type'] == 'Exp':
@@ -3064,14 +3073,23 @@ def convert(model_path,
 
                 if (x_np_type in int_type_tf) and (y_np_type in int_type_tf):
                     # floordiv
-                    tf_layers_dict[layer_id] = tf.math.floordiv(x, y)
+                    inp = tf.math.floordiv(x, y)
                 else:
                     # divide
-                    tf_layers_dict[layer_id] = tf.math.divide(x, y)
+                    inp = tf.math.divide(x, y)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Divide" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Erf
             elif layer.attrib['type'] == 'Erf':
@@ -3113,14 +3131,23 @@ def convert(model_path,
 
             ### FloorMod
             elif layer.attrib['type'] == 'FloorMod':
-                tf_layers_dict[layer_id] = tf.math.floormod(
+                inp = tf.math.floormod(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "FloorMod" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### HSwish
             elif layer.attrib['type'] == 'HSwish':
@@ -3193,14 +3220,23 @@ def convert(model_path,
             ### Power
             elif layer.attrib['type'] == 'Power':
                 # No broadcast
-                tf_layers_dict[layer_id] = tf.math.pow(
+                inp = tf.math.pow(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Power" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Mish
             elif layer.attrib['type'] == 'Mish':
@@ -3253,11 +3289,20 @@ def convert(model_path,
                     x = x.astype(np.float32)
                 if type(y) == np.ndarray:
                     y = y.astype(np.float32)
-                tf_layers_dict[layer_id] = tf.math.subtract(x, y)
+                inp = tf.math.subtract(x, y)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Subtract" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
 
             ### Unsqueeze - TODO
