@@ -3448,63 +3448,108 @@ def convert(model_path,
 
             ### Select
             elif layer.attrib['type'] == 'Select':
-                tf_layers_dict[layer_id] = tf.raw_ops.SelectV2(
+                inp = tf.raw_ops.SelectV2(
                     condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                     e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Select" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### LogicalAnd
             elif layer.attrib['type'] == 'LogicalAnd':
-                tf_layers_dict[layer_id] = tf.math.logical_and(
+                inp = tf.math.logical_and(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalAnd" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### LogicalNot
             elif layer.attrib['type'] == 'LogicalNot':
-                tf_layers_dict[layer_id] = tf.math.logical_not(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                inp = tf.math.logical_not(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalNot" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### LogicalOr
             elif layer.attrib['type'] == 'LogicalOr':
-                tf_layers_dict[layer_id] = tf.math.logical_or(
+                inp = tf.math.logical_or(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalOr" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### LogicalXor
             elif layer.attrib['type'] == 'LogicalXor':
-                tf_layers_dict[layer_id] = tf.math.logical_xor(
+                inp = tf.math.logical_xor(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LogicalXor" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Broadcast - TODO
             elif layer.attrib['type'] == 'Broadcast':
                 mode = data.attrib['mode']
                 if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray:
                     if mode == 'numpy':
-                        tf_layers_dict[layer_id] = tf.broadcast_to(
+                        inp = tf.broadcast_to(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                         )
                     elif mode == 'bidirectional':
-                        tf_layers_dict[layer_id] = tf.math.multiply(
+                        inp = tf.math.multiply(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
                         )
@@ -3517,12 +3562,12 @@ def convert(model_path,
                         target_shape[0], target_shape[1], target_shape[2], target_shape[3] = \
                             target_shape[0], target_shape[2], target_shape[3], target_shape[1]
                         if mode == 'numpy':
-                            tf_layers_dict[layer_id] = tf.broadcast_to(
+                            inp = tf.broadcast_to(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 target_shape
                             )
                         elif mode == 'bidirectional':
-                            tf_layers_dict[layer_id] = tf.math.multiply(
+                            inp = tf.math.multiply(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 tf.ones(target_shape)
                             )
@@ -3531,12 +3576,12 @@ def convert(model_path,
                             sys.exit(-1)
                     else:
                         if mode == 'numpy':
-                            tf_layers_dict[layer_id] = tf.broadcast_to(
+                            inp = tf.broadcast_to(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 target_shape
                             )
                         elif mode == 'bidirectional':
-                            tf_layers_dict[layer_id] = tf.math.multiply(
+                            inp = tf.math.multiply(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 tf.ones(target_shape)
                             )
@@ -3545,8 +3590,17 @@ def convert(model_path,
                             sys.exit(-1)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Broadcast" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Split
             elif layer.attrib['type'] == 'Split':
