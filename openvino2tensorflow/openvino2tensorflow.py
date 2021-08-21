@@ -3304,85 +3304,147 @@ def convert(model_path,
                 else:
                     tf_layers_dict[layer_id] = inp
 
-
             ### Unsqueeze - TODO
             elif layer.attrib['type'] == 'Unsqueeze':
                 input_shape = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
                 indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
 
                 if len(input_shape) == 1 and indices == [0]:
-                    tf_layers_dict[layer_id] = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    inp = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 elif len(input_shape) > 1 and len(indices) > 1:
                     print('The multi-dimensional indices specification in Unsqueeze is not yet implemented.')
                     sys.exit(-1)
                 else:
-                    tf_layers_dict[layer_id] = tf.expand_dims(
+                    inp = tf.expand_dims(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         indices[0]
                     )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Unsqueeze" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Equal
             elif layer.attrib['type'] == 'Equal':
-                tf_layers_dict[layer_id] = tf.math.equal(
+                inp = tf.math.equal(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Equal" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### NotEqual
             elif layer.attrib['type'] == 'NotEqual':
-                tf_layers_dict[layer_id] = tf.math.not_equal(
+                inp = tf.math.not_equal(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NotEqual" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Greater
             elif layer.attrib['type'] == 'Greater':
-                tf_layers_dict[layer_id] = tf.math.greater(
+                inp = tf.math.greater(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Greater" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### GreaterEqual
             elif layer.attrib['type'] == 'GreaterEqual':
-                tf_layers_dict[layer_id] = tf.math.greater_equal(
+                inp = tf.math.greater_equal(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "GreaterEqual" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Less
             elif layer.attrib['type'] == 'Less':
-                tf_layers_dict[layer_id] = tf.math.less(
+                inp = tf.math.less(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Less" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### LessEqual
             elif layer.attrib['type'] == 'LessEqual':
-                tf_layers_dict[layer_id] = tf.math.less_equal(
+                inp = tf.math.less_equal(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "LessEqual" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Select
             elif layer.attrib['type'] == 'Select':
