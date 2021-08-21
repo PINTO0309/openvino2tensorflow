@@ -283,7 +283,8 @@ def convert(model_path,
     weights_replacement_config_types = {
         'Const': ['direct', 'npy'],
         'Transpose': ['insert_before', 'insert_after'],
-        'Reshape': ['insert_before', 'insert_after']
+        'Reshape': ['insert_before', 'insert_after'],
+        'Cast': ['insert_before', 'insert_after']
     }
 
 
@@ -387,7 +388,11 @@ def convert(model_path,
                 input,
                 shape=param
             )
-
+        elif layer_type == 'Cast':
+            tf_layer = tf.cast(
+                input,
+                dtype=cast_type_ov_tf[param]
+            )
         return tf_layer
 
 
@@ -2371,8 +2376,8 @@ def convert(model_path,
                             batch_dims=batch_dims
                         )
 
-                    if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
-                        inp = tf_layers_dict[layer_id][0]
+                    if batch_dims is None and axis == 0 and tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0] == 1:
+                        inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
@@ -3448,11 +3453,18 @@ def convert(model_path,
 
             ### Select
             elif layer.attrib['type'] == 'Select':
-                inp = tf.raw_ops.SelectV2(
-                    condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                    e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
-                )
+                try:
+                    inp = tf.raw_ops.SelectV2(
+                        condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        t=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                        e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                    )
+                except:
+                    inp = tf.where(
+                        condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)],
+                        x=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                        y=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                    )
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
@@ -3542,6 +3554,7 @@ def convert(model_path,
             ### Broadcast - TODO
             elif layer.attrib['type'] == 'Broadcast':
                 mode = data.attrib['mode']
+                print(f'tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype}')
                 if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray:
                     if mode == 'numpy':
                         inp = tf.broadcast_to(
@@ -3551,7 +3564,10 @@ def convert(model_path,
                     elif mode == 'bidirectional':
                         inp = tf.math.multiply(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.ones(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                            tf.ones(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                dtype=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype
+                            )
                         )
                     else:
                         print(f'The {mode} mode of broadcast is not yet implemented.')
@@ -4210,6 +4226,106 @@ def convert(model_path,
                         )
                 else:
                     tf_layers_dict[layer_id] = inp
+
+            ### ScatterElementsUpdate - WIP
+            elif layer.attrib['type'] == 'ScatterElementsUpdate':
+                data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                updates = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)]
+                axis = axis if axis >= 0 else tf.add(tf.rank(data), axis)
+                data_shape = tf.shape(data)
+                max_i = tf.cast(data_shape[axis[0]], indices.dtype)
+                indices = tf.math.floormod(tf.add(indices, max_i), max_i)
+                sparsified_dense_idx_shape = tf.shape(updates)
+                updates_rank = tf.rank(updates)
+                try:
+                    idx_tensors_per_axis = [tf.range(sparsified_dense_idx_shape[i]) for i in range(updates_rank)]
+                except:
+                    idx_tensors_per_axis = [tf.range(sparsified_dense_idx_shape[i]) for i in range(1)]
+                idx_tensors_per_axis = tf.meshgrid(*idx_tensors_per_axis, indexing='ij')
+                idx_tensors_per_axis[int(axis)] = indices
+                dim_expanded_idx_tensors_per_axis = [tf.expand_dims(idx_tensor, axis=-1) for idx_tensor in idx_tensors_per_axis]
+                coordinate = tf.concat(dim_expanded_idx_tensors_per_axis, axis=-1)
+                indices = tf.reshape(coordinate, [-1, tf.rank(data)])
+                updates = tf.reshape(updates, [-1])
+                inp = tf.tensor_scatter_nd_update(data, indices, updates)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
+
+            ### ROIAlign - WIP
+            ### https://github.com/tensorpack/tensorpack/blob/3e0dffaccdb6a36490970014570b5e7426b55bf5/examples/FasterRCNN/model_box.py#L156-L172
+            elif layer.attrib['type'] == 'ROIAlign':
+                mode = None
+                pooled_h = None
+                pooled_w = None
+                sampling_ratio = None
+                spatial_scale = None
+                if not data is None and 'mode' in data.attrib:
+                    mode = data.attrib['mode']
+                if not data is None and 'pooled_h' in data.attrib:
+                    pooled_h = int(data.attrib['pooled_h'])
+                if not data is None and 'pooled_w' in data.attrib:
+                    pooled_w = int(data.attrib['pooled_w'])
+                if not data is None and 'sampling_ratio' in data.attrib:
+                    sampling_ratio = data.attrib['sampling_ratio']
+                if not data is None and 'spatial_scale' in data.attrib:
+                    spatial_scale = data.attrib['spatial_scale']
+                image = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                boxes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                box_indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+
+                # roi_width = max(spatial_scale * (x_2 - x_1), 1.0)
+                # roi_height = max(spatial_scale * (y_2 - y_1), 1.0)
+
+                crop_and_resize =tf.image.crop_and_resize(
+                    image=image,
+                    boxes=boxes,
+                    # box_indices=tf.zeros([tf.shape(boxes)[0]], dtype=tf.int32),
+                    box_indices=box_indices,
+                    crop_size=[pooled_h*2, pooled_w*2],
+                    method='bilinear',
+                    extrapolation_value=0
+                )
+                inp = None
+                if mode == 'avg':
+                    inp = tf.nn.avg_pool(
+                        input=crop_and_resize,
+                        ksize=[1,2,2,1],
+                        strides=[1,2,2,1],
+                        padding='SAME'
+                    )
+                elif mode == 'max':
+                    inp = tf.nn.max_pool(
+                        input=crop_and_resize,
+                        ksize=[1,2,2,1],
+                        strides=[1,2,2,1],
+                        padding='SAME'
+                    )
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
+
 
             ### Result
             elif layer.attrib['type'] == 'Result':
