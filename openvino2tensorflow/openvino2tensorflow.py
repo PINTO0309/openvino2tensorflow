@@ -3614,10 +3614,12 @@ def convert(model_path,
                 def split_tensor(x, axis, num_split):
                     return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
 
-                outputs = Lambda(split_tensor,
-                                arguments={'axis': axis,
-                                            'num_split': num_splits}
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                outputs = Lambda(
+                    split_tensor,
+                    arguments={
+                        'axis': axis,
+                        'num_split': num_splits}
+                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                 for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
                     tf_layers_dict[layer_id_port] = output
@@ -3647,11 +3649,12 @@ def convert(model_path,
                     return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
 
                 if len(num_or_size_splits) > 1 and np.average(num_or_size_splits) == num_or_size_splits[0]:
-                    outputs = Lambda(split_tensor,
-                                    arguments={
-                                        'axis': axis,
-                                        'num_split': len(num_or_size_splits)}
-                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    outputs = Lambda(
+                        split_tensor,
+                        arguments={
+                            'axis': axis,
+                            'num_split': len(num_or_size_splits)}
+                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 else:
                     if len(num_or_size_splits) > 1:
                         outputs = []
@@ -3768,11 +3771,20 @@ def convert(model_path,
                 else:
                     mvn = (data - mean)
 
-                tf_layers_dict[layer_id] = mvn
+                inp = mvn
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "MVN" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### NonMaxSuppression - TODO
             elif layer.attrib['type'] == 'NonMaxSuppression':
@@ -3907,7 +3919,7 @@ def convert(model_path,
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             tf.constant([0], dtype=input_type)
                         )
-                        tf_layers_dict[layer_id] = tf.expand_dims(
+                        inp = tf.expand_dims(
                             tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
                             axis=0
                         )
@@ -3917,7 +3929,7 @@ def convert(model_path,
                             temp_op,
                             tf.constant([0], dtype=output_type)
                         )
-                        tf_layers_dict[layer_id] = tf.expand_dims(
+                        inp = tf.expand_dims(
                             tf.boolean_mask(temp_op, mask),
                             axis=0
                         )
@@ -3929,7 +3941,7 @@ def convert(model_path,
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             tf.constant([0], dtype=input_type)
                         )
-                        tf_layers_dict[layer_id] = tf.expand_dims(
+                        inp = tf.expand_dims(
                             tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
                             axis=0
                         )
@@ -3939,14 +3951,23 @@ def convert(model_path,
                             temp_op,
                             tf.constant([0], dtype=output_type)
                         )
-                        tf_layers_dict[layer_id] = tf.expand_dims(
+                        inp = tf.expand_dims(
                             tf.boolean_mask(temp_op, mask),
                             axis=0
                         )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NonZero" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### SpaceToDepth
             elif layer.attrib['type'] == 'SpaceToDepth':
@@ -4015,23 +4036,41 @@ def convert(model_path,
 
             ### Sqrt
             elif layer.attrib['type'] == 'Sqrt':
-                tf_layers_dict[layer_id] = tf.math.sqrt(
+                inp = tf.math.sqrt(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Sqrt" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### SquaredDifference
             elif layer.attrib['type'] == 'SquaredDifference':
-                tf_layers_dict[layer_id] = tf.math.squared_difference(
+                inp = tf.math.squared_difference(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "SquaredDifference" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### FakeQuantize
             elif layer.attrib['type'] == 'FakeQuantize':
@@ -4074,13 +4113,22 @@ def convert(model_path,
 
                 ### https://stackoverflow.com/questions/64111110/how-to-do-round-half-up-in-tensorflow
                 ### https://www.xspdf.com/resolution/50434452.html
-                tf_layers_dict[layer_id] = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
+                inp = tf.where(tf.math.less_equal(x, tf.math.minimum(input_low, input_high)), output_low,
                                                     tf.where(tf.math.greater(x, tf.math.maximum(input_low, input_high)), output_high,
                                                     tf.floor(((x - input_low) / (input_high - input_low) * (levels-1)) + 0.5) / (levels-1) * (output_high - output_low) + output_low))
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "FakeQuantize" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Tile
             elif layer.attrib['type'] == 'Tile':
