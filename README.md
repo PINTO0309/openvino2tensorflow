@@ -84,7 +84,7 @@ Work in progress now.
 - pb -> **`pb_to_saved_model`** -> saved_model
 
 ## 3. Supported Layers
-- Currently, there are problems with the **`Reshape`** and **`Transpose`** operation of 5D Tensor. Since it is difficult to accurately predict the shape of a simple shape change, I have added support for forced replacement of transposition parameters using JSON files. [#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-just-before-the-operation-specified-by-layer_id](#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-just-before-the-operation-specified-by-layer_id)
+- Currently, there are problems with the **`Reshape`** and **`Transpose`** operation of 2D,3D,5D Tensor. Since it is difficult to accurately predict the shape of a simple shape change, I have added support for forced replacement of transposition parameters using JSON files. [#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-just-before-the-operation-specified-by-layer_id](#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-just-before-the-operation-specified-by-layer_id)
 
 |No.|OpenVINO Layer|TF Layer|Remarks|
 |:--:|:--|:--|:--|
