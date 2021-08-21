@@ -4228,6 +4228,7 @@ def convert(model_path,
                     tf_layers_dict[layer_id] = inp
 
             ### ScatterElementsUpdate - WIP
+            ### https://github.com/onnx/onnx-tensorflow/blob/master/onnx_tf/handlers/backend/scatter_elements.py
             elif layer.attrib['type'] == 'ScatterElementsUpdate':
                 data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                 indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
