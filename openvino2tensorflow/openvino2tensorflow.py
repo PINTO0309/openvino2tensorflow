@@ -2341,7 +2341,7 @@ def convert(model_path,
                             indices.append(dim + 1)
 
                 if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
-                    tf_layers_dict[layer_id] = tf.gather(
+                    inp = tf.gather(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         indices,
                         axis=axis,
@@ -2350,21 +2350,21 @@ def convert(model_path,
                 else:
                     if indices == [0] and axis == 0:
                         try:
-                            tf_layers_dict[layer_id] = tf.squeeze(
+                            inp = tf.squeeze(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 axis=axis
                             )
                             if tf_layers_dict[layer_id].type_spec.shape == []:
-                                tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
+                                inp = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
                         except:
-                            tf_layers_dict[layer_id] = tf.gather(
+                            inp = tf.gather(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 indices,
                                 axis=axis,
                                 batch_dims=batch_dims
                             )
                     else:
-                        tf_layers_dict[layer_id] = tf.gather(
+                        inp = tf.gather(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             indices,
                             axis=axis,
@@ -2372,11 +2372,20 @@ def convert(model_path,
                         )
 
                     if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
-                        tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
+                        inp = tf_layers_dict[layer_id][0]
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Gather" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### GatherND
             elif layer.attrib['type'] == 'GatherND':
@@ -2445,31 +2454,31 @@ def convert(model_path,
                         axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
 
                 if layer.attrib['type'] == 'ReduceMean':
-                    tf_layers_dict[layer_id] = tf.math.reduce_mean(
+                    inp = tf.math.reduce_mean(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceMax':
-                    tf_layers_dict[layer_id] = tf.math.reduce_max(
+                    inp = tf.math.reduce_max(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceMin':
-                    tf_layers_dict[layer_id] = tf.math.reduce_min(
+                    inp = tf.math.reduce_min(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceSum':
-                    tf_layers_dict[layer_id] = tf.math.reduce_sum(
+                    inp = tf.math.reduce_sum(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceProd':
-                    tf_layers_dict[layer_id] = tf.math.reduce_prod(
+                    inp = tf.math.reduce_prod(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         axis=axis,
                         keepdims=keep_dims
@@ -2483,11 +2492,20 @@ def convert(model_path,
                         axis=axis,
                         keepdims=keep_dims
                     )
-                    tf_layers_dict[layer_id] = tf.math.sqrt(reduceL2_sum)
+                    inp = tf.math.sqrt(reduceL2_sum)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "ReduceX" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### MatMul
             elif layer.attrib['type'] == 'MatMul':
