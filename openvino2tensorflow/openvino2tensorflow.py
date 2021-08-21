@@ -3866,23 +3866,25 @@ def convert(model_path,
                             layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
                 except:
                     pass
-                try:
+
+                if layer.attrib['type'] != 'Split' and layer.attrib['type'] != 'VariadicSplit' and layer.attrib['type'] != 'TopK' and layer.attrib['type'] != 'NonMaxSuppression':
                     layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
-                except:
-                    try:
-                        # Split, VariadicSplit
-                        for idx, (output, layer_id_port) in enumerate(zip(outputs, layer_id_port_dict[layer_id]['layer_id:port'])):
-                            layer_structure[f'tf_layers_dict{idx}'] = output
-                    except:
-                        try:
-                            # TopK
-                            layer_structure['tf_layers_dict0'] = tf_layers_dict[layer_id_values]
-                            layer_structure['tf_layers_dict1'] = tf_layers_dict[layer_id_indices]
-                        except:
-                            # NonMaxSuppression
-                            layer_structure['tf_layers_dict0'] = tf_layers_dict['99990']
-                            layer_structure['tf_layers_dict1'] = tf_layers_dict['99991']
-                            layer_structure['tf_layers_dict2'] = tf_layers_dict['99992']
+
+                elif layer.attrib['type'] == 'Split' and layer.attrib['type'] == 'VariadicSplit':
+                    # Split, VariadicSplit
+                    for idx, (output, layer_id_port) in enumerate(zip(outputs, layer_id_port_dict[layer_id]['layer_id:port'])):
+                        layer_structure[f'tf_layers_dict{idx}'] = output
+
+                elif layer.attrib['type'] == 'TopK':
+                    # TopK
+                    layer_structure['tf_layers_dict0'] = tf_layers_dict[layer_id_values]
+                    layer_structure['tf_layers_dict1'] = tf_layers_dict[layer_id_indices]
+
+                elif layer.attrib['type'] == 'NonMaxSuppression':
+                    # NonMaxSuppression
+                    layer_structure['tf_layers_dict0'] = tf_layers_dict['99990']
+                    layer_structure['tf_layers_dict1'] = tf_layers_dict['99991']
+                    layer_structure['tf_layers_dict2'] = tf_layers_dict['99992']
                 layer_structure_print(layer_structure)
 
 
