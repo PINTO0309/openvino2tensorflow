@@ -710,39 +710,99 @@ def convert(model_path,
                         # Biasadd or Add
                         edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
                         edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
-                        if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[-1] == tf_layers_dict[edge_id1].flatten().shape[0]:
-                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to Add {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                                sys.exit(-1)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[-1] == tf_layers_dict[edge_id1].flatten().shape[0]:
+                                    inp = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                                else:
+                                    inp = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
                         else:
-                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                            if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[-1] == tf_layers_dict[edge_id1].flatten().shape[0]:
+                                tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].flatten())
+                            else:
+                                tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+
                     except:
                         # Add
                         edge_id0 = get_tf_edges_from(tf_edges, layer_id, 0)
                         edge_id1 = get_tf_edges_from(tf_edges, layer_id, 1)
-                        try:
-                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
-                        except:
-                            tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].transpose(0,2,3,1))
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to Add {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                                sys.exit(-1)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                try:
+                                    inp = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                                except:
+                                    inp = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].transpose(0,2,3,1))
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                        else:
+                            try:
+                                tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1])
+                            except:
+                                tf_layers_dict[layer_id] = tf.math.add(tf_layers_dict[edge_id0], tf_layers_dict[edge_id1].transpose(0,2,3,1))
+
                 else:
                     # Add
-                    if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
-                        try:
-                            tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
-                            tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
-                        except:
-                            try:
-                                tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
-                                tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
-                            except:
-                                tmp_layers = [tf_layers_dict[from_layer_id] if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
-                                tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
-                    else:
-                        tf_layers_dict[layer_id] = tf.math.add_n(
-                            [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
-                        )
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to Add {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                            sys.exit(-1)
 
-                if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Add" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
+                                try:
+                                    tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                    inp = tf.math.add(tmp_layers[0], tmp_layers[1])
+
+                                except:
+                                    try:
+                                        tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                        inp = tf.math.add(tmp_layers[0], tmp_layers[1])
+
+                                    except:
+                                        tmp_layers = [tf_layers_dict[from_layer_id] if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                        inp = tf.math.add(tmp_layers[0], tmp_layers[1])
+
+                            else:
+                                inp = tf.math.add_n(
+                                    [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        if len(get_tf_edges_from(tf_edges, layer_id)) == 2:
+                            try:
+                                tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+
+                            except:
+                                try:
+                                    tmp_layers = [tf_layers_dict[from_layer_id].transpose(0,2,3,1) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                    tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+
+                                except:
+                                    tmp_layers = [tf_layers_dict[from_layer_id] if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                                    tf_layers_dict[layer_id] = tf.math.add(tmp_layers[0], tmp_layers[1])
+
+                        else:
+                            tf_layers_dict[layer_id] = tf.math.add_n(
+                                [tf_layers_dict[from_layer_id].transpose(0,2,3,1).astype(np.float32) if type(tf_layers_dict[from_layer_id]) == np.ndarray else tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)]
+                            )
 
             ### ReLU
             elif layer.attrib['type'] == 'ReLU':
@@ -1533,24 +1593,33 @@ def convert(model_path,
                             tensor_list.append([tf_layers_dict[from_layer_id]])
                         else:
                             tensor_list.append(tf_layers_dict[from_layer_id])
-                    tf_layers_dict[layer_id] = tf.concat(tensor_list, axis=axis)
+                    inp = tf.concat(tensor_list, axis=axis)
                 else:
                     temp = get_tf_edges_from(tf_edges, layer_id)
-                    tf_layers_dict[layer_id] = tf.concat(
+                    inp = tf.concat(
                         [tf_layers_dict[from_layer_id] for from_layer_id in get_tf_edges_from(tf_edges, layer_id)],
                         axis=axis
                     )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Concat" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to Add {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Multiply
             elif layer.attrib['type'] == 'Multiply':
                 if len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray):
                     if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].ndim == 4:
                         # 4D - NCHW->NHWC
-                        tf_layers_dict[layer_id] = tf.math.multiply(
+                        inp = tf.math.multiply(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1).astype(np.float32)
                         )
@@ -1560,36 +1629,36 @@ def convert(model_path,
                             x_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.shape
                             y_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].shape
                             if x_shape == y_shape:
-                                tf_layers_dict[layer_id] = tf.math.multiply(
+                                inp = tf.math.multiply(
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                 )
                             else:
                                 try:
-                                    tf_layers_dict[layer_id] = tf.math.multiply(
+                                    inp = tf.math.multiply(
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].reshape(x_shape)
                                     )
                                 except:
                                     try:
-                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                        inp = tf.math.multiply(
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,1)
                                         )
                                     except:
-                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                        inp = tf.math.multiply(
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                         )
                         except:
-                            tf_layers_dict[layer_id] = tf.math.multiply(
+                            inp = tf.math.multiply(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                             )
                 elif len(tf_edges[layer_id]) == 2 and (type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) == np.ndarray):
                     if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].ndim == 4:
                         # 4D - NCHW->NHWC
-                        tf_layers_dict[layer_id] = tf.math.multiply(
+                        inp = tf.math.multiply(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].transpose(0,2,3,1).astype(np.float32),
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                         )
@@ -1599,42 +1668,51 @@ def convert(model_path,
                             x_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
                             y_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].type_spec.shape
                             if x_shape == y_shape:
-                                tf_layers_dict[layer_id] = tf.math.multiply(
+                                inp = tf.math.multiply(
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                 )
                             else:
                                 try:
-                                    tf_layers_dict[layer_id] = tf.math.multiply(
+                                    inp = tf.math.multiply(
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].reshape(y_shape),
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                     )
                                 except:
                                     try:
-                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                        inp = tf.math.multiply(
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].transpose(0,2,1),
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                         )
                                     except:
-                                        tf_layers_dict[layer_id] = tf.math.multiply(
+                                        inp = tf.math.multiply(
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                                         )
                         except:
-                            tf_layers_dict[layer_id] = tf.math.multiply(
+                            inp = tf.math.multiply(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                             )
                 else:
                     # unknown
-                    tf_layers_dict[layer_id] = tf.math.multiply(
+                    inp = tf.math.multiply(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                     )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Multiply" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to Add {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Interpolate
             elif layer.attrib['type'] == 'Interpolate':
