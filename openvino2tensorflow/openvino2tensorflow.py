@@ -4132,13 +4132,22 @@ def convert(model_path,
 
             ### Tile
             elif layer.attrib['type'] == 'Tile':
-                tf_layers_dict[layer_id] = tf.tile(
+                inp = tf.tile(
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Tile" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Gelu
             elif layer.attrib['type'] == 'Gelu':
@@ -4146,18 +4155,27 @@ def convert(model_path,
                 if not data is None and 'approximation_mode' in data.attrib:
                     approximation_mode = data.attrib['approximation_mode']
                 if approximation_mode == 'ERF' or approximation_mode is None:
-                    tf_layers_dict[layer_id] = tf.nn.gelu(
+                    inp = tf.nn.gelu(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         approximate=False
                     )
                 elif approximation_mode == 'TANH':
-                    tf_layers_dict[layer_id] = tf.nn.gelu(
+                    inp = tf.nn.gelu(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         approximate=True
                     )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Gelu" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### NormalizeL2
             elif layer.attrib['type'] == 'NormalizeL2':
@@ -4169,20 +4187,29 @@ def convert(model_path,
                     eps_mode = data.attrib['eps_mode']
 
                 if eps_mode == 'add':
-                    tf_layers_dict[layer_id] = tf.math.l2_normalize(
+                    inp = tf.math.l2_normalize(
                         tf.math.add(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], eps),
                         axis=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                         epsilon=0.0
                     )
                 elif eps_mode == 'max':
-                    tf_layers_dict[layer_id] = tf.math.l2_normalize(
+                    inp = tf.math.l2_normalize(
                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                         axis=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                         epsilon=eps
                     )
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NormalizeL2" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Result
             elif layer.attrib['type'] == 'Result':
