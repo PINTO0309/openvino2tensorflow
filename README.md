@@ -14,9 +14,7 @@ Work in progress now.
 
 [![Downloads](https://static.pepy.tech/personalized-badge/openvino2tensorflow?period=total&units=none&left_color=grey&right_color=brightgreen&left_text=Downloads)](https://pepy.tech/project/openvino2tensorflow) ![GitHub](https://img.shields.io/github/license/PINTO0309/openvino2tensorflow?color=2BAF2B) [![PyPI](https://img.shields.io/pypi/v/openvino2tensorflow?color=2BAF2B)](https://pypi.org/project/openvino2tensorflow/)
 
-![ezgif com-gif-maker (4)](https://user-images.githubusercontent.com/33194443/103457894-4ffd9380-4d46-11eb-86dd-f753f2fca093.gif)
-
-![ezgif com-gif-maker (3)](https://user-images.githubusercontent.com/33194443/103456348-8d5b2480-4d38-11eb-8a58-9b7c7203b18c.gif)
+![render1629515758354](https://user-images.githubusercontent.com/33194443/130308925-f859a799-8013-4c57-b378-f405bdd2d39f.gif)
 
 ## 1. Environment
 - TensorFlow v2.6.0+
