@@ -180,7 +180,9 @@ Work in progress now.
 |90|NonMaxSuppression|non_max_suppression|WIP. Only available for batch size 1. To simplify post-processing ignore all OPs after non_max_suppression.|
 |91|Gelu|gelu||
 |92|NormalizeL2|tf.math.add, tf.math.l2_normalize|x/sqrt(max(sum(x\*\*2), eps)) or x/sqrt(add(sum(x\*\*2), eps))|
-|93|Result|Identity|Output|
+|93|ScatterElementsUpdate|shape, rank, floormod, add, cast, range, expand_dims, meshgrid, concat, reshape, tensor_scatter_nd_update||
+|94|ROIAlign|crop_and_resize, avg_pool, max_pool||
+|95|Result|Identity|Output|
 
 ## 4. Setup
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
