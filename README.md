@@ -613,7 +613,7 @@ $ saved_model_cli show \
   --signature_def serving_default
 ```
 
-### 6-7. Replace weights or constant values in **`Const`** OP, and add **`Transpose`** or **`Reshape`** just before the operation specified by layer_id
+### 6-7. Replace weights or constant values in **`Const`** OP, and add **`Transpose`** or **`Reshape`** or **`Cast`** just before/after the operation specified by layer_id
 #### 6-7-1. Overview
 If the transformation behavior of **`Reshape`**, **`Transpose`**, etc. does not go as expected, you can force the **`Const`** content to change by defining weights and constant values in a JSON file and having it read in. Alternatively, **`Transpose`** or **`Reshape`** or **`Cast`** can be added just before the operation specified by layer_id.
 ```
