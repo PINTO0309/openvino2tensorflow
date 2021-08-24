@@ -7,7 +7,7 @@ ARG CPVER=cp38
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
 ARG TENSORRTVER=cuda11.3-trt8.0.1.6-ga-20210626
-ARG APPVER=v1.18.3
+ARG APPVER=v1.19.0
 ARG wkdir=/home/user
 
 # dash -> bash

@@ -92,7 +92,8 @@ def convert(model_path,
             yolact,
             restricted_resize_image_mode,
             weight_replacement_config,
-            use_experimental_new_quantizer):
+            use_experimental_new_quantizer,
+            optimizing_barracuda):
 
     print(f'{Color.REVERCE}TensorFlow/Keras model building process starts{Color.RESET}', '=' * 38)
 
@@ -420,7 +421,9 @@ def convert(model_path,
                     added_key_list.append(to_layer)
                 else:
                     tf_edges.setdefault(to_layer, [])
-                    if layer.attrib['type'] == 'Concat':
+                    if layer.attrib['type'] == 'Concat' or \
+                        layer.attrib['type'] == 'Gather' or \
+                            layer.attrib['type'] == 'GatherND':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -538,6 +541,19 @@ def convert(model_path,
                                     tf_layers_dict[layer_id] = decodedwgt.astype(np.float32)
                                 else:
                                     tf_layers_dict[layer_id] = decodedwgt
+
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                                sys.exit(-1)
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[layer_id]
+                                )
+                        else:
+                            pass
 
                         layer_structure_print(
                             {
@@ -1599,6 +1615,9 @@ def convert(model_path,
                     axis = int(data.attrib['axis'])
                 if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                     axis = -1
+                if (axis == -1 or axis == len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) - 1) and \
+                    len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
+                    axis = 1
 
                 length_list = []
                 for from_layer_id in get_tf_edges_from(tf_edges, layer_id):
@@ -2394,13 +2413,29 @@ def convert(model_path,
 
             ### GatherND
             elif layer.attrib['type'] == 'GatherND':
-                batch_dims = data.attrib['batch_dims']
+                batch_dims = int(data.attrib['batch_dims'])
                 params = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                 indices_tmp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 if indices_tmp.dtype is tf.float32 or indices_tmp.dtype is tf.float64:
-                    indices = tf.cast(indices, tf.int64)
+                    indices = tf.cast(indices_tmp, tf.int32)
                 else:
                     indices = indices_tmp
+
+                def barracuda_gather_nd(params, indices):
+                    idx_shape = indices.shape
+                    params_shape = params.shape
+                    idx_dims = idx_shape[-1]
+                    gather_shape = params_shape[idx_dims:]
+                    params_flat = tf.reshape(params, tf.concat([[-1], gather_shape], axis=0))
+                    axis_step = tf.math.cumprod(params_shape[:idx_dims], exclusive=True, reverse=True)
+                    mul = tf.math.multiply(indices, axis_step)
+                    indices_flat = tf.reduce_sum(mul, axis=-1)
+                    result_flat = tf.gather(params_flat, indices_flat)
+                    return tf.reshape(result_flat, tf.concat([idx_shape[:-1], gather_shape], axis=0))
+
+                if optimizing_barracuda and batch_dims > 0:
+                    print(f'{Color.RED}ERROR:{Color.RESET} When optimize_barracuda = True, batch_dims > 0 is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
@@ -2408,16 +2443,27 @@ def convert(model_path,
                             wr_config[layer_id],
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                         )
-                        tf_layers_dict[layer_id] = tf.gather_nd(inp, indices, batch_dims=batch_dims)
+                        if not optimizing_barracuda:
+                            tf_layers_dict[layer_id] = tf.gather_nd(inp, indices, batch_dims=batch_dims)
+                        else:
+                            tf_layers_dict[layer_id] = barracuda_gather_nd(inp, indices)
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = tf.gather_nd(params, indices, batch_dims=batch_dims)
+                        inp = None
+                        if not optimizing_barracuda:
+                            inp = tf.gather_nd(params, indices, batch_dims=batch_dims)
+                        else:
+                            inp = barracuda_gather_nd(params, indices)
+
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
                             inp
                         )
                 else:
-                    tf_layers_dict[layer_id] = tf.gather_nd(params, indices, batch_dims=batch_dims)
+                    if not optimizing_barracuda:
+                        tf_layers_dict[layer_id] = tf.gather_nd(params, indices, batch_dims=batch_dims)
+                    else:
+                        tf_layers_dict[layer_id] = barracuda_gather_nd(params, indices)
 
             ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd, ReduceL2 - TODO
             elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
@@ -3460,11 +3506,18 @@ def convert(model_path,
                         e=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
                     )
                 except:
-                    inp = tf.where(
-                        condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)],
-                        x=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                        y=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                    )
+                    try:
+                        inp = tf.where(
+                            condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            x=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                            y=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                        )
+                    except:
+                        inp = tf.where(
+                            condition=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)],
+                            x=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                            y=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
@@ -3621,11 +3674,15 @@ def convert(model_path,
             ### Split
             elif layer.attrib['type'] == 'Split':
                 num_splits = int(data.attrib['num_splits'])
+                inp_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
                 axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
-                if axis == 1:
-                    axis = 3
-                elif axis >= 2:
-                    axis -= 1
+                if inp_shape_len >= 4:
+                    if axis == 1:
+                        axis = 3
+                    elif axis >= 2:
+                        axis -= 1
+                else:
+                    axis = axis
 
                 def split_tensor(x, axis, num_split):
                     return tf.raw_ops.Split(axis=axis, value=x, num_split=num_split)
@@ -4866,6 +4923,7 @@ def main():
     parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
+    parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
     model_output_path = args.model_output_path.rstrip('/')
@@ -4906,6 +4964,7 @@ def main():
     restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
     use_experimental_new_quantizer = args.use_experimental_new_quantizer
+    optimizing_barracuda = args.optimizing_barracuda
     if not output_saved_model and \
         not output_h5 and \
         not output_weight_and_json and \
@@ -4989,7 +5048,8 @@ def main():
             output_tfjs, output_tftrt, tftrt_maximum_cached_engines, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer)
+            yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
+            optimizing_barracuda)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":

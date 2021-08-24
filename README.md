@@ -291,6 +291,7 @@ usage: openvino2tensorflow
   [--restricted_resize_image_mode]
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
   [--use_experimental_new_quantizer]
+  [--optimizing_barracuda]
 
 optional arguments:
   -h, --help
@@ -383,6 +384,9 @@ optional arguments:
   --use_experimental_new_quantizer
                         Use MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
+  --optimizing_barracuda
+                        Generates ONNX by replacing Barracuda unsupported layers
+                        with standard layers. For example, GatherND.
 ```
 ### 5-2. saved_model to tflite convert
 ```bash
