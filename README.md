@@ -85,6 +85,8 @@ Work in progress now.
 
 - pb -> **`pb_to_saved_model`** -> saved_model
 
+**[↥ Back to top](#openvino2tensorflow)**
+
 ## 3. Supported Layers
 - Currently, there are problems with the **`Reshape`** and **`Transpose`** operation of 2D,3D,5D Tensor. Since it is difficult to accurately predict the shape of a simple shape change, I have added support for forced replacement of transposition parameters using JSON files. [#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-or-cast-just-beforeafter-the-operation-specified-by-layer_id](#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-or-cast-just-beforeafter-the-operation-specified-by-layer_id)
 
@@ -186,6 +188,8 @@ Work in progress now.
 |94|ROIAlign|crop_and_resize, avg_pool, max_pool||
 |95|Result|Identity|Output|
 
+**[↥ Back to top](#openvino2tensorflow)**
+
 ## 4. Setup
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
 You do not need to install any packages other than Docker.
@@ -239,6 +243,8 @@ $ xhost +local: && \
   pinto0309/openvino2tensorflow:latest
 $ cd workdir
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 4-2. **[Environment construction pattern 2]** Execution by Host machine
 To install using the **[Python Package Index (PyPI)](https://pypi.org/project/openvino2tensorflow/)**, use the following command.
 
@@ -251,6 +257,7 @@ To install with the latest source code of the main branch, use the following com
 ```bash
 $ pip3 install --user --upgrade git+https://github.com/PINTO0309/openvino2tensorflow
 ```
+**[↥ Back to top](#openvino2tensorflow)**
 
 ## 5. Usage
 ### 5-1. openvino to tensorflow convert
@@ -390,6 +397,8 @@ optional arguments:
                         Generates ONNX by replacing Barracuda unsupported layers
                         with standard layers. For example, GatherND.
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 5-2. saved_model to tflite convert
 ```bash
 usage: saved_model_to_tflite
@@ -490,6 +499,8 @@ optional arguments:
                         Use MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 5-3. pb to saved_model convert
 ```bash
 usage: pb_to_saved_model
@@ -513,6 +524,8 @@ optional arguments:
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 5-4. pb to tflite convert
 ```bash
 usage: pb_to_tflite
@@ -536,6 +549,8 @@ optional arguments:
   --model_output_path MODEL_OUTPUT_PATH
                         The output folder path of the converted model file
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 5-5. saved_model to pb convert
 ```bash
 usage: saved_model_to_pb
@@ -554,6 +569,8 @@ optional arguments:
   --signature_name SIGNATURE_NAME
                         Signature name to be extracted from saved_model
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 5-6. Extraction of IR weight
 ```bash
 usage: ir_weight_extractor
@@ -569,6 +586,7 @@ optional arguments:
   -o OUTPUT_PATH, --output_path OUTPUT_PATH
                         weights output folder path
 ```
+**[↥ Back to top](#openvino2tensorflow)**
 
 ## 6. Execution sample
 ### 6-1. Conversion of OpenVINO IR to Tensorflow models
@@ -582,6 +600,8 @@ $ openvino2tensorflow \
   --output_float16_quant_tflite \
   --output_no_quant_float32_tflite
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 6-2. Convert Protocol Buffer (.pb) to saved_model
 This tool is useful if you want to check the internal structure of pb files, tflite files, .h5 files, coreml files and IR (.xml) files. **https://lutzroeder.github.io/netron/**
 ```
@@ -590,6 +610,8 @@ $ pb_to_saved_model \
   --inputs inputs:0 \
   --outputs Identity:0
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 6-3. Convert Protocol Buffer (.pb) to tflite
 ```
 $ pb_to_tflite \
@@ -597,6 +619,8 @@ $ pb_to_tflite \
   --inputs inputs \
   --outputs Identity,Identity_1,Identity_2
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 6-4. Convert saved_model to Protocol Buffer (.pb)
 ```
 $ saved_model_to_pb \
@@ -604,6 +628,7 @@ $ saved_model_to_pb \
   --model_output_dir_path pb_from_saved_model \
   --signature_name serving_default
 ```
+**[↥ Back to top](#openvino2tensorflow)**
 
 ### 6-5. Converts saved_model to OpenVINO IR
 ```
@@ -611,6 +636,8 @@ $ python3 ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/mo_tf.py \
   --saved_model_dir saved_model \
   --output_dir openvino/reverse
 ```
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 6-6. Checking the structure of saved_model
 ```
 $ saved_model_cli show \
@@ -618,6 +645,7 @@ $ saved_model_cli show \
   --tag_set serve \
   --signature_def serving_default
 ```
+**[↥ Back to top](#openvino2tensorflow)**
 
 ### 6-7. Replace weights or constant values in **`Const`** OP, and add **`Transpose`** or **`Reshape`** or **`Cast`** just before/after the operation specified by layer_id
 #### 6-7-1. Overview
@@ -674,6 +702,7 @@ Structure of JSON sample
 |2-2|type|Fixed value replacement or type of operation to be added. "Const" or "Transpose" or "Reshape" or "Cast"|
 |2-3|replace_mode|"direct" or "npy" or "insert_before" or "insert_after".<br>"direct": Specify the values of the Numpy matrix directly in the "values" attribute. Ignores the values recorded in the .bin file and replaces them with the values specified in "values".<br>![Screenshot 2021-08-10 23:16:05](https://user-images.githubusercontent.com/33194443/128883404-256e4872-0f1e-4dea-948d-4f5818e6da96.png)<br>"npy": Load a Numpy binary file with the matrix output by **`np.save('xyz', a)`**. The "values" attribute specifies the path to the Numpy binary file.<br>![Screenshot 2021-08-10 23:17:22](https://user-images.githubusercontent.com/33194443/128883417-8a159a64-bb39-4c6d-92c2-d4da1c67ed2a.png)<br>"insert_before": Add **`Transpose`** or **`Reshape`** or **`Cast`** just before the operation specified by layer_id.<br>![Screenshot 2021-08-10 23:13:06](https://user-images.githubusercontent.com/33194443/128882853-cb78c2e4-3c80-4733-a768-a84bbc8b33a5.png)<br>"insert_after": Add **`Transpose`** or **`Reshape`** or **`Cast`** just after the operation specified by layer_id.<br>![Screenshot 2021-08-10 23:12:52](https://user-images.githubusercontent.com/33194443/128882909-780567c7-970a-483f-960b-571f33437cb5.png)|
 |2-4|values|Specify the value or the path to the Numpy binary file to replace the weight/constant value recorded in .bin. The way to specify is as described in the description of 'replace_mode'. The table below shows the correspondence between the strings that can be specified for the "Cast" operation and the TensorFlow types. In most cases, you will probably only use "i32", "i64", "f32", and "f16".<br>![Screenshot 2021-08-22 01:48:43](https://user-images.githubusercontent.com/33194443/130329181-25282919-2701-4885-8c72-b640743c2800.png)|
+**[↥ Back to top](#openvino2tensorflow)**
 
 #### 6-7-2. Example
   - YOLOX Nano 320x320 (NCHW format)
@@ -735,7 +764,7 @@ In the figure below, one of them is **`658`** and one of them is **`659`**. It i
   --output_no_quant_float32_tflite \
   --weight_replacement_config replace.json
   ```
-
+**[↥ Back to top](#openvino2tensorflow)**
 
 ### 6-8. Check the contents of the .npy file, which is a binary version of the image file
 ```
@@ -744,13 +773,18 @@ $ view_npy --npy_file_path sample_npy/calibration_data_img_sample.npy
 Press the **`Q`** button to display the next image. **`calibration_data_img_sample.npy`** contains 20 images extracted from the MS-COCO data set.
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/33194443/109318923-aba15480-7891-11eb-84aa-034f77125f34.gif)
 
+**[↥ Back to top](#openvino2tensorflow)**
+
 ### 6-9. Sample image of a conversion error message
 Since it is very difficult to mechanically predict the correct behavior of **`Transpose`** and **`Reshape`**, errors like the one shown below may occur. Using the information in the figure below, try several times to force the replacement of constants and weights using the **`--weight_replacement_config`** option [#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-or-cast-just-beforeafter-the-operation-specified-by-layer_id](#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-or-cast-just-beforeafter-the-operation-specified-by-layer_id). This is a very patient process, but if you take the time, you should be able to convert it correctly.
 ![error_sample2](https://user-images.githubusercontent.com/33194443/124498169-e181b700-ddf6-11eb-9200-83ba44c62410.png)
 
+**[↥ Back to top](#openvino2tensorflow)**
+
 ## 7. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)
 
+**[↥ Back to top](#openvino2tensorflow)**
 
 ## 8. Model Structure
 **[https://digital-standard.com/threedpose/models/Resnet34_3inputs_448x448_20200609.onnx](https://github.com/digital-standard/ThreeDPoseUnityBarracuda#download-and-put-files)**
@@ -759,12 +793,16 @@ Since it is very difficult to mechanically predict the correct behavior of **`Tr
 |:--:|:--:|:--:|
 |![Resnet34_3inputs_448x448_20200609 onnx_](https://user-images.githubusercontent.com/33194443/96398683-62683680-1207-11eb-928d-e4cb6c8cc188.png)|![Resnet34_3inputs_448x448_20200609 xml](https://user-images.githubusercontent.com/33194443/96153010-23f12400-0f48-11eb-8186-4bbad73b517a.png)|![model_float32 tflite](https://user-images.githubusercontent.com/33194443/96153019-26ec1480-0f48-11eb-96be-0c405ee2cbf7.png)|
 
+**[↥ Back to top](#openvino2tensorflow)**
+
 ## 9. My article
 - **[[English] Converting PyTorch, ONNX, Caffe, and OpenVINO (NCHW) models to Tensorflow / TensorflowLite (NHWC) in a snap](https://qiita.com/PINTO/items/ed06e03eb5c007c2e102)**
 
 - **[PyTorch, ONNX, Caffe, OpenVINO (NCHW) のモデルをTensorflow / TensorflowLite (NHWC) へお手軽に変換する](https://qiita.com/PINTO/items/7a0bcaacc77bb5d6abb1)**
 
 - **[tf.image.resizeを含むFull Integer Quantization (.tflite)モデルのEdgeTPUモデルへの変換後の推論時に発生する "main.ERROR - Only float32 and uint8 are supported currently, got -xxx.Node number n (op name) failed to invoke" エラーの回避方法](https://qiita.com/PINTO/items/6ff62da1d02089442c8c)**
+
+**[↥ Back to top](#openvino2tensorflow)**
 
 ## 10. Conversion Confirmed Models
 1. u-2-net
@@ -798,3 +836,5 @@ Since it is very difficult to mechanically predict the correct behavior of **`Tr
 29. Person Reidentification
 30. DeepSort
 31. DINO (Transformer)
+
+**[↥ Back to top](#openvino2tensorflow)**
