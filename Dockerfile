@@ -48,6 +48,8 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade matplotlib \
     && pip install --upgrade tf_slim \
     && pip install --upgrade numpy==1.19.5 \
+    && pip install --upgrade onnx2json \
+    && pip install --upgrade json2onnx \
     && ldconfig \
     && pip cache purge \
     && apt clean \
