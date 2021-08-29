@@ -61,6 +61,8 @@ def convert(
     tftrt_maximum_cached_engines,
     output_coreml,
     output_edgetpu,
+    edgetpu_compiler_timeout,
+    edgetpu_num_segments,
     output_onnx,
     onnx_opset,
     use_experimental_new_quantizer
@@ -265,6 +267,8 @@ def convert(
                     'edgetpu_compiler',
                     '-o', model_output_dir_path,
                     '-sad',
+                    '-t', edgetpu_compiler_timeout,
+                    '-n', edgetpu_num_segments,
                     f'{model_output_dir_path}/model_full_integer_quant.tflite'
                 ],
                 stderr=subprocess.PIPE
@@ -414,6 +418,8 @@ def main():
     parser.add_argument('--tftrt_maximum_cached_engines', type=int, default=10000, help='Specifies the quantity of tftrt_maximum_cached_engines for TFTRT. Default: 10000')
     parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
     parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
+    parser.add_argument('--edgetpu_compiler_timeout', type=int, default=3600, help='edgetpu_compiler timeout for one compilation process in seconds. Default: 3600')
+    parser.add_argument('--edgetpu_num_segments', type=int, default=1, help='Partition the model into [num_segments] segments. Default: 1 (no partition)')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
     parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
@@ -451,6 +457,8 @@ def main():
     tftrt_maximum_cached_engines = args.tftrt_maximum_cached_engines
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
+    edgetpu_compiler_timeout = args.edgetpu_compiler_timeout
+    edgetpu_num_segments = args.edgetpu_num_segments
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
     use_experimental_new_quantizer = args.use_experimental_new_quantizer
@@ -542,6 +550,8 @@ def main():
         tftrt_maximum_cached_engines,
         output_coreml,
         output_edgetpu,
+        edgetpu_compiler_timeout,
+        edgetpu_num_segments,
         output_onnx,
         onnx_opset,
         use_experimental_new_quantizer

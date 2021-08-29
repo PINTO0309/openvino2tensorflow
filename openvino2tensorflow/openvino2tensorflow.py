@@ -81,6 +81,8 @@ def convert(model_path,
             tftrt_maximum_cached_engines,
             output_coreml,
             output_edgetpu,
+            edgetpu_compiler_timeout,
+            edgetpu_num_segments,
             output_onnx,
             onnx_opset,
             output_myriad,
@@ -4824,6 +4826,8 @@ def convert(model_path,
                     'edgetpu_compiler',
                     '-o', model_output_path,
                     '-sad',
+                    '-t', edgetpu_compiler_timeout,
+                    '-n', edgetpu_num_segments,
                     f'{model_output_path}/model_full_integer_quant.tflite'
                 ],
                 stderr=subprocess.PIPE
@@ -4911,6 +4915,8 @@ def main():
     parser.add_argument('--tftrt_maximum_cached_engines', type=int, default=10000, help='Specifies the quantity of tftrt_maximum_cached_engines for TFTRT. Default: 10000')
     parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
     parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
+    parser.add_argument('--edgetpu_compiler_timeout', type=int, default=3600, help='edgetpu_compiler timeout for one compilation process in seconds. Default: 3600')
+    parser.add_argument('--edgetpu_num_segments', type=int, default=1, help='Partition the model into [num_segments] segments. Default: 1 (no partition)')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
     parser.add_argument('--output_myriad', action='store_true', help='myriad inference engine blob output switch')
@@ -4952,6 +4958,8 @@ def main():
     tftrt_maximum_cached_engines = args.tftrt_maximum_cached_engines
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
+    edgetpu_compiler_timeout = args.edgetpu_compiler_timeout
+    edgetpu_num_segments = args.edgetpu_num_segments
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
     output_myriad = args.output_myriad
@@ -5045,7 +5053,9 @@ def main():
             string_formulas_for_normalization,
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg, npy_load_default_path, load_dest_file_path_for_the_calib_npy,
-            output_tfjs, output_tftrt, tftrt_maximum_cached_engines, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
+            output_tfjs, output_tftrt, tftrt_maximum_cached_engines, output_coreml,
+            output_edgetpu, edgetpu_compiler_timeout, edgetpu_num_segments,
+            output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,

@@ -288,6 +288,8 @@ usage: openvino2tensorflow
   [--tftrt_maximum_cached_engines TFTRT_MAXIMUM_CACHED_ENGINES]
   [--output_coreml]
   [--output_edgetpu]
+  [--edgetpu_compiler_timeout]
+  [--edgetpu_num_segments]
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
   [--output_myriad]
@@ -364,6 +366,12 @@ optional arguments:
                         coreml model output switch
   --output_edgetpu
                         edgetpu model output switch
+  --edgetpu_compiler_timeout
+                        edgetpu_compiler timeout for one compilation process in seconds.
+                        Default: 3600
+  --edgetpu_num_segments
+                        Partition the model into 'num_segments' segments.
+                        Default: 1 (no partition)
   --output_onnx
                         onnx model output switch
   --onnx_opset ONNX_OPSET
@@ -425,6 +433,8 @@ usage: saved_model_to_tflite
   [--tftrt_maximum_cached_engines TFTRT_MAXIMUM_CACHED_ENGINES]
   [--output_coreml]
   [--output_edgetpu]
+  [--edgetpu_compiler_timeout]
+  [--edgetpu_num_segments]
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
   [--use_experimental_new_quantizer]
@@ -491,6 +501,12 @@ optional arguments:
                         coreml model output switch
   --output_edgetpu
                         edgetpu model output switch
+  --edgetpu_compiler_timeout
+                        edgetpu_compiler timeout for one compilation process in seconds.
+                        Default: 3600
+  --edgetpu_num_segments
+                        Partition the model into 'num_segments' segments.
+                        Default: 1 (no partition)
   --output_onnx
                         onnx model output switch
   --onnx_opset ONNX_OPSET
