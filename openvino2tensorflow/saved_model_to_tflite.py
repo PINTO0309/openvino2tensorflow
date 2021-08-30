@@ -267,8 +267,8 @@ def convert(
                     'edgetpu_compiler',
                     '-o', model_output_dir_path,
                     '-sad',
-                    '-t', edgetpu_compiler_timeout,
-                    '-n', edgetpu_num_segments,
+                    '-t', str(edgetpu_compiler_timeout),
+                    '-n', str(edgetpu_num_segments),
                     f'{model_output_dir_path}/model_full_integer_quant.tflite'
                 ],
                 stderr=subprocess.PIPE
