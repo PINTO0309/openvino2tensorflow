@@ -3803,7 +3803,7 @@ def convert(model_path,
                     normalize_variance = data.attrib['normalize_variance']
                 eps_mode = None
                 if not data is None and 'eps_mode' in data.attrib:
-                    eps_mode = data.attrib['eps_mode']
+                    eps_mode = data.attrib['eps_mode'].lower()
 
                 if across_channels == '0':
                     across_channels = False
