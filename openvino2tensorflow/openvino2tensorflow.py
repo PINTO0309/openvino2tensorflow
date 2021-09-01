@@ -1617,9 +1617,11 @@ def convert(model_path,
                     axis = int(data.attrib['axis'])
                 if axis == 1 and len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                     axis = -1
-                if (axis == -1 or axis == len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) - 1) and \
+                elif (axis == -1 or axis == len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) - 1) and \
                     len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                     axis = 1
+                elif axis > 0:
+                    axis -= 1
 
                 length_list = []
                 for from_layer_id in get_tf_edges_from(tf_edges, layer_id):
@@ -3830,11 +3832,11 @@ def convert(model_path,
                 except:
                     pass
                 if across_channels:
-                    mean = tf.math.reduce_mean(data, axis=[-1], keepdims=True)
-                    var = tf.math.reduce_variance(data, axis=[-1], keepdims=True)
+                    mean = tf.math.reduce_mean(data, axis=tf.constant([-1], dtype=tf.int32), keepdims=True)
+                    var = tf.math.reduce_variance(data, axis=tf.constant([-1], dtype=tf.int32), keepdims=True)
                 else:
-                    mean = tf.math.reduce_mean(data, axis=axes, keepdims=True)
-                    var = tf.math.reduce_variance(data, axis=axes, keepdims=True)
+                    mean = tf.math.reduce_mean(data, axis=tf.cast(axes, dtype=tf.int32), keepdims=True)
+                    var = tf.math.reduce_variance(data, axis=tf.cast(axes, dtype=tf.int32), keepdims=True)
 
                 if normalize_variance:
                     if eps_mode == 'inside_sqrt':
