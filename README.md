@@ -788,6 +788,7 @@ In the figure below, one of them is **`658`** and one of them is **`659`**. It i
 $ view_npy --npy_file_path sample_npy/calibration_data_img_sample.npy
 ```
 Press the **`Q`** button to display the next image. **`calibration_data_img_sample.npy`** contains 20 images extracted from the MS-COCO data set.
+
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/33194443/109318923-aba15480-7891-11eb-84aa-034f77125f34.gif)
 
 **[↥ Back to top](#openvino2tensorflow)**
