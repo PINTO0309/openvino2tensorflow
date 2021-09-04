@@ -185,7 +185,7 @@ def convert(model_path,
         output_count_by_layer_id_tmp = {}
         for key in tf_edges.keys():
             key_tmp = key.split(':')[0]
-            output_count_by_layer_id_tmp.setdefault(key_tmp, {'count' : 0, 'layer_id:port' : []})
+            output_count_by_layer_id_tmp.setdefault(key_tmp, {'count': 0, 'layer_id:port': []})
             output_count_by_layer_id_tmp[key_tmp]['count'] += 1
             output_count_by_layer_id_tmp[key_tmp]['layer_id:port'].append(key)
         return output_count_by_layer_id_tmp
@@ -463,8 +463,6 @@ def convert(model_path,
     del concat_port_list
 
     layer_id_port_dict = get_num_of_outputs_per_layer_id(tf_edges)
-
-    process_interruption_by_non_max_suppression = False
 
     # layers
     for idx, layer in enumerate(layers):
@@ -1620,6 +1618,8 @@ def convert(model_path,
                 elif (axis == -1 or axis == len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) - 1) and \
                     len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) == 4:
                     axis = 1
+                elif len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) < 4:
+                    pass
                 elif axis > 0:
                     axis -= 1
 
@@ -2185,23 +2185,52 @@ def convert(model_path,
                 layer_id_values  = layer_id_port_dict[layer_id]['layer_id:port'][0]
                 layer_id_indices = layer_id_port_dict[layer_id]['layer_id:port'][1]
                 try:
-                    tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                        tf.math.top_k(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
-                            sorted=True
-                        )
-                except:
-                    tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                        tf.math.top_k(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
-                            sorted=True
-                        )
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                tf.math.top_k(
+                                    inp,
+                                    k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    sorted=True
+                                )
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                            sys.exit(-1)
+                    else:
+                        tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                            tf.math.top_k(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                sorted=True
+                            )
 
-                if wr_config and layer_id in wr_config and format_version >= 2:
-                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "TopK" is not supported. layer_id: {layer_id}')
-                    sys.exit(-1)
+                except:
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                tf.math.top_k(
+                                    inp,
+                                    k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
+                                    sorted=True
+                                )
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                            sys.exit(-1)
+                    else:
+                        tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                            tf.math.top_k(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
+                                sorted=True
+                            )
 
             ### Transpose
             elif layer.attrib['type'] == 'Transpose':
@@ -2348,6 +2377,7 @@ def convert(model_path,
                 axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
                 temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
+
                 batch_dims = 0
                 if not data is None and 'batch_dims' in data.attrib:
                     batch_dims = int(data.attrib['batch_dims'])
@@ -2368,52 +2398,120 @@ def convert(model_path,
                         else:
                             indices.append(dim + 1)
 
-                if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
-                    inp = tf.gather(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        indices,
-                        axis=axis,
-                        batch_dims=batch_dims
-                    )
-                else:
-                    if indices == [0] and axis == 0:
-                        try:
-                            inp = tf.squeeze(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                axis=axis
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                        if isinstance(inp, tf.Tensor):
+                            tf_layers_dict[layer_id] = tf.gather(
+                                inp,
+                                indices,
+                                axis=axis,
+                                batch_dims=batch_dims
                             )
-                            if tf_layers_dict[layer_id].type_spec.shape == []:
-                                inp = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
-                        except:
+                        else:
+                            if indices == [0] and axis == 0:
+                                try:
+                                    tmp = tf.squeeze(
+                                        inp,
+                                        axis=axis
+                                    )
+                                    if tmp.type_spec.shape == []:
+                                        tf_layers_dict[layer_id] = tf.expand_dims(tmp, axis=0)
+                                except:
+                                    tf_layers_dict[layer_id] = tf.gather(
+                                        inp,
+                                        indices,
+                                        axis=axis,
+                                        batch_dims=batch_dims
+                                    )
+                            else:
+                                tf_layers_dict[layer_id] = tf.gather(
+                                    inp,
+                                    indices,
+                                    axis=axis,
+                                    batch_dims=batch_dims
+                                )
+
+                            if batch_dims is None and axis == 0 and inp.shape[0] == 1:
+                                tf_layers_dict[layer_id] = inp[0]
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
                             inp = tf.gather(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 indices,
                                 axis=axis,
                                 batch_dims=batch_dims
                             )
-                    else:
-                        inp = tf.gather(
+                        else:
+                            if indices == [0] and axis == 0:
+                                try:
+                                    inp = tf.squeeze(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        axis=axis
+                                    )
+                                    if tf_layers_dict[layer_id].type_spec.shape == []:
+                                        inp = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
+                                except:
+                                    inp = tf.gather(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        indices,
+                                        axis=axis,
+                                        batch_dims=batch_dims
+                                    )
+                            else:
+                                inp = tf.gather(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    indices,
+                                    axis=axis,
+                                    batch_dims=batch_dims
+                                )
+
+                            if batch_dims is None and axis == 0 and tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0] == 1:
+                                inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
+
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
+                        tf_layers_dict[layer_id] = tf.gather(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             indices,
                             axis=axis,
                             batch_dims=batch_dims
                         )
+                    else:
+                        if indices == [0] and axis == 0:
+                            try:
+                                tf_layers_dict[layer_id] = tf.squeeze(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    axis=axis
+                                )
+                                if tf_layers_dict[layer_id].type_spec.shape == []:
+                                    tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
+                            except:
+                                tf_layers_dict[layer_id] = tf.gather(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    indices,
+                                    axis=axis,
+                                    batch_dims=batch_dims
+                                )
+                        else:
+                            tf_layers_dict[layer_id] = tf.gather(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                indices,
+                                axis=axis,
+                                batch_dims=batch_dims
+                            )
 
-                    if batch_dims is None and axis == 0 and tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0] == 1:
-                        inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
-
-                if wr_config and layer_id in wr_config and format_version >= 2:
-                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
-                        sys.exit(-1)
-
-                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        tf_layers_dict[layer_id] = extrapolation_of_layers(
-                            wr_config[layer_id],
-                            inp
-                        )
-                else:
-                    tf_layers_dict[layer_id] = inp
+                        if batch_dims is None and axis == 0 and tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0] == 1:
+                            tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
 
             ### GatherND
             elif layer.attrib['type'] == 'GatherND':
@@ -3873,6 +3971,11 @@ def convert(model_path,
                 total_boxes_count = boxes.shape[0]
                 scores = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]
                 class_count = scores.shape[0]
+                if class_count > 1:
+                    print('When using NonMaxSuppression, fix the class_count to 1. Forcibly reduces the number of classes to 1.')
+
+                selected_boxes = None
+                selected_class_idx = None
 
                 max_output_boxes_per_class = 0
                 try:
@@ -3956,27 +4059,62 @@ def convert(model_path,
                     print(f'The NonMaxSuppression box_encoding=center mode is not yet implemented.')
                     sys.exit(-1)
 
-                tf_layers_dict['99990'] = tf.identity(
-                    tf.reshape(selected_boxes, [batch_size, output_size, 4]),
-                    name='selected_boxes'
-                )
-                tf_layers_dict['99991'] = tf.identity(
-                    tf.reshape(selected_class_idx, [batch_size, output_size]),
-                    name='selected_class_idx'
-                )
-                tf_layers_dict['99992'] = tf.identity(
-                    tf.reshape(selected_scores, [batch_size, output_size]),
-                    name='selected_scores'
-                )
-                tf_outputs.append(tf_layers_dict['99990'])
-                tf_outputs.append(tf_layers_dict['99991'])
-                tf_outputs.append(tf_layers_dict['99992'])
+                negative_value_template = tf.fill([total_boxes_count], -1)
 
-                tf_layers_dict[layer_id] = tf.zeros(
-                    [output_size * class_count, 3],
-                    name='dummy_non_max_suppression'
+                selected_class_idx_shape = tf.shape(selected_class_idx)[0]
+                selected_class_idx_range = tf.range(selected_class_idx_shape)
+                selected_class_idx_indices = tf.reshape(selected_class_idx_range, (selected_class_idx_shape, 1))
+
+                selected_boxes_shape = tf.shape(selected_boxes)[0]
+                selected_boxes_range = tf.range(selected_boxes_shape)
+                selected_boxes_indices = tf.reshape(selected_boxes_range, (selected_boxes_shape, 1))
+
+                selected_scores_shape = tf.shape(selected_scores)[0]
+                selected_scores_range = tf.range(selected_scores_shape)
+                selected_scores_indices = tf.reshape(selected_scores_range, (selected_scores_shape, 1))
+
+                selected_class_indices_upd = tf.tensor_scatter_nd_update(
+                    negative_value_template,
+                    selected_class_idx_indices,
+                    selected_class_idx
                 )
-                process_interruption_by_non_max_suppression = True
+
+                # selected_indices
+                selected_box_indices_upd = tf.tensor_scatter_nd_update(
+                    negative_value_template,
+                    selected_boxes_indices,
+                    tf.cast(selected_indices, dtype=tf.int32)
+                )
+                selected_indices_vino = tf.stack(
+                    [
+                        negative_value_template,
+                        selected_class_indices_upd,
+                        selected_box_indices_upd
+                    ]
+                    , axis=1
+                )
+
+                # selected_scores
+                selected_scores_upd = tf.tensor_scatter_nd_update(
+                    tf.cast(negative_value_template, dtype=tf.float32),
+                    selected_scores_indices,
+                    selected_scores
+                )
+                selected_scores_vino = tf.stack(
+                    [
+                        tf.cast(negative_value_template, dtype=tf.float32),
+                        tf.cast(selected_class_indices_upd, dtype=tf.float32),
+                        selected_scores_upd
+                    ]
+                    , axis=1
+                )
+
+                # valid_outputs
+                valid_outputs_vino = total_boxes_count
+
+                outputs = [selected_indices_vino, selected_scores_vino, valid_outputs_vino]
+                for output, layer_id_port in zip(outputs, layer_id_port_dict[layer_id]['layer_id:port']):
+                    tf_layers_dict[layer_id_port] = output
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "NonMaxSuppression" is not supported. layer_id: {layer_id}')
@@ -4391,16 +4529,15 @@ def convert(model_path,
 
             ### Result
             elif layer.attrib['type'] == 'Result':
-                if not process_interruption_by_non_max_suppression:
-                    tf_layers_dict[layer_id] = tf.identity(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        name=layer.attrib['name'].split('/')[0]
-                    )
-                    tf_outputs.append(tf_layers_dict[layer_id])
+                tf_layers_dict[layer_id] = tf.identity(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    name=layer.attrib['name'].split('/')[0]
+                )
+                tf_outputs.append(tf_layers_dict[layer_id])
 
-                    if wr_config and layer_id in wr_config and format_version >= 2:
-                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Result" is not supported. layer_id: {layer_id}')
-                        sys.exit(-1)
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Result" is not supported. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             else:
                 print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
@@ -4425,21 +4562,21 @@ def convert(model_path,
                 if layer.attrib['type'] != 'Split' and layer.attrib['type'] != 'VariadicSplit' and layer.attrib['type'] != 'TopK' and layer.attrib['type'] != 'NonMaxSuppression':
                     layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
 
-                elif layer.attrib['type'] == 'Split' and layer.attrib['type'] == 'VariadicSplit':
-                    # Split, VariadicSplit
+                elif layer.attrib['type'] == 'Split' or layer.attrib['type'] == 'VariadicSplit' or layer.attrib['type'] == 'NonMaxSuppression':
+                    # Split, VariadicSplit, NonMaxSuppression
+                    for edge_index, tmp_layer_id_port in enumerate(layer_id_port_dict[layer_id]['layer_id:port']):
+                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)]) != np.ndarray:
+                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[tmp_layer_id_port][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)]}'
+                        else:
+                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[tmp_layer_id_port][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)].shape}'
                     for idx, (output, layer_id_port) in enumerate(zip(outputs, layer_id_port_dict[layer_id]['layer_id:port'])):
-                        layer_structure[f'tf_layers_dict{idx}'] = output
+                        layer_structure[f'tf_layers_dict{idx}'] = f'layer_id_port: {layer_id_port} {output}'
 
                 elif layer.attrib['type'] == 'TopK':
                     # TopK
                     layer_structure['tf_layers_dict0'] = tf_layers_dict[layer_id_values]
                     layer_structure['tf_layers_dict1'] = tf_layers_dict[layer_id_indices]
 
-                elif layer.attrib['type'] == 'NonMaxSuppression':
-                    # NonMaxSuppression
-                    layer_structure['tf_layers_dict0'] = tf_layers_dict['99990']
-                    layer_structure['tf_layers_dict1'] = tf_layers_dict['99991']
-                    layer_structure['tf_layers_dict2'] = tf_layers_dict['99992']
                 layer_structure_print(layer_structure)
 
 

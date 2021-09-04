@@ -181,7 +181,7 @@ Work in progress now.
 |87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add||
 |88|Tile|tile||
 |89|GatherND|gather_nd, reshape, cumprod, multiply, reduce_sum, gather, concat||
-|90|NonMaxSuppression|non_max_suppression|WIP. Only available for batch size 1. To simplify post-processing ignore all OPs after non_max_suppression.|
+|90|NonMaxSuppression|non_max_suppression|WIP. Only available for batch size 1.|
 |91|Gelu|gelu||
 |92|NormalizeL2|tf.math.add, tf.math.l2_normalize|x/sqrt(max(sum(x\*\*2), eps)) or x/sqrt(add(sum(x\*\*2), eps))|
 |93|ScatterElementsUpdate|shape, rank, floormod, add, cast, range, expand_dims, meshgrid, concat, reshape, tensor_scatter_nd_update||
