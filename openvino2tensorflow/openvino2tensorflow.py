@@ -24,7 +24,6 @@ import struct
 import numpy as np
 from pathlib import Path
 import xml.etree.ElementTree as et
-from openvino.inference_engine import IECore
 import logging
 import warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
@@ -106,10 +105,9 @@ def convert(model_path,
     tf.get_logger().setLevel(logging.ERROR)
     import tensorflow_datasets as tfds
     from tensorflow.keras import Model, Input
-    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, MaxPool2D, AveragePooling2D, Reshape, Conv2DTranspose, PReLU, Lambda, LeakyReLU
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, AveragePooling2D, Conv2DTranspose, PReLU, Lambda, LeakyReLU
     from tensorflow.keras.initializers import Constant
     from tensorflow.keras.activations import elu
-    from tensorflow.python.keras.engine.keras_tensor import KerasTensor
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
     if output_coreml:
         import coremltools as ct
