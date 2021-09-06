@@ -303,6 +303,7 @@ usage: openvino2tensorflow
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
   [--use_experimental_new_quantizer]
   [--optimizing_barracuda]
+  [--layerids_of_the_terminating_output]
 
 optional arguments:
   -h, --help
@@ -404,6 +405,10 @@ optional arguments:
   --optimizing_barracuda
                         Generates ONNX by replacing Barracuda unsupported layers
                         with standard layers. For example, GatherND.
+  --layerids_of_the_terminating_output
+                        A comma-separated list of layerIDs to be used as output layers.
+                        e.g. --layerids_of_the_terminating_output 100,201,560
+                        Default: ''
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
@@ -798,6 +803,13 @@ Since it is very difficult to mechanically predict the correct behavior of **`Tr
 ![error_sample2](https://user-images.githubusercontent.com/33194443/124498169-e181b700-ddf6-11eb-9200-83ba44c62410.png)
 
 **[↥ Back to top](#openvino2tensorflow)**
+
+### 6-10. Ability to specify an output layer for debugging the output values of the model
+If you want to debug the output values of each layer, specify multiple layer IDs separated by commas in the **`--layerids_of_the_terminating_output`** option to check the output values. For example, if you want to debug the output values of two layers, **`LayerID=1007 (Add)`** and **`LayerID=1217 (Sigmoid)`**, as shown in the figure below, specify as **`--layerids_of_the_terminating_output 1007,1217`**.
+![Screenshot 2021-09-06 21:33:19](https://user-images.githubusercontent.com/33194443/132218610-0577f219-158e-4554-a3a0-47f216b82816.png)
+![Screenshot 2021-09-06 21:33:28](https://user-images.githubusercontent.com/33194443/132218771-b0e86036-411c-4f3c-8c39-0aed17ed0681.png)
+When you convert a model, the output will be censored at the two specified layerIDs, and the model will be generated with the output of the model available for review. Note that if you specify a layer ID for an operation that has multiple outputs, such as **`Split`**, **`VariadicSplit`**, **`TopK`**, or **`NonMaxSuppression`**, all output values will be used as outputs.
+![Screenshot 2021-09-06 21:43:17](https://user-images.githubusercontent.com/33194443/132219420-367bcae9-ae45-4c2b-a893-8311be487142.png)
 
 ## 7. Output sample
 ![Screenshot 2020-10-16 00:08:40](https://user-images.githubusercontent.com/33194443/96149093-e38fa700-0f43-11eb-8101-65fc20b2cc8f.png)

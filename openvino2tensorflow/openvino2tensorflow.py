@@ -94,7 +94,8 @@ def convert(model_path,
             restricted_resize_image_mode,
             weight_replacement_config,
             use_experimental_new_quantizer,
-            optimizing_barracuda):
+            optimizing_barracuda,
+            layerids_of_the_terminating_output):
 
     print(f'{Color.REVERCE}TensorFlow/Keras model building process starts{Color.RESET}', '=' * 38)
 
@@ -4531,7 +4532,8 @@ def convert(model_path,
                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                     name=layer.attrib['name'].split('/')[0]
                 )
-                tf_outputs.append(tf_layers_dict[layer_id])
+                if layerids_of_the_terminating_output is None:
+                    tf_outputs.append(tf_layers_dict[layer_id])
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to "Result" is not supported. layer_id: {layer_id}')
@@ -4540,6 +4542,15 @@ def convert(model_path,
             else:
                 print('The {} layer is not yet implemented.'.format(layer.attrib['type']))
                 sys.exit(-1)
+
+
+            # layerids_of_the_terminating_output
+            if layerids_of_the_terminating_output is not None and layer_id in layerids_of_the_terminating_output:
+                if layer.attrib['type'] != 'Split' and layer.attrib['type'] != 'VariadicSplit' and layer.attrib['type'] != 'TopK' and layer.attrib['type'] != 'NonMaxSuppression':
+                    tf_outputs.append(tf_layers_dict[layer_id])
+                else:
+                    for layer_id_port in layer_id_port_dict[layer_id]['layer_id:port']:
+                        tf_outputs.append(tf_layers_dict[layer_id_port])
 
 
             # Layer structure print
@@ -4597,9 +4608,7 @@ def convert(model_path,
             traceback.print_exc()
             sys.exit(-1)
 
-    # pprint.pprint(tf_outputs)
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
-    # model.summary()
 
     print(f'{Color.GREEN}TensorFlow/Keras model building process complete!{Color.RESET}')
 
@@ -5067,6 +5076,7 @@ def main():
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
     parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
+    parser.add_argument('--layerids_of_the_terminating_output', type=str, default='', help='A comma-separated list of layer IDs to be used as output layers. Default: \'\'')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
     model_output_path = args.model_output_path.rstrip('/')
@@ -5110,6 +5120,11 @@ def main():
     weight_replacement_config = args.weight_replacement_config
     use_experimental_new_quantizer = args.use_experimental_new_quantizer
     optimizing_barracuda = args.optimizing_barracuda
+    layerids_of_the_terminating_output_tmp = args.layerids_of_the_terminating_output
+    layerids_of_the_terminating_output = None
+    if layerids_of_the_terminating_output_tmp:
+        layerids_of_the_terminating_output = [ids.strip() for ids in layerids_of_the_terminating_output_tmp.split(',')]
+
     if not output_saved_model and \
         not output_h5 and \
         not output_weight_and_json and \
@@ -5182,6 +5197,12 @@ def main():
         print('The json file does not exist in the path specified in weight_replacement_config.')
         sys.exit(-1)
 
+    if layerids_of_the_terminating_output:
+        for s in layerids_of_the_terminating_output:
+            if not s.isdecimal():
+                print('layerids_of_the_terminating_output should be specified as a comma-separated integer value.')
+                sys.exit(-1)
+
     del package_list
     os.makedirs(model_output_path, exist_ok=True)
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
@@ -5196,7 +5217,7 @@ def main():
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
-            optimizing_barracuda)
+            optimizing_barracuda, layerids_of_the_terminating_output)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
