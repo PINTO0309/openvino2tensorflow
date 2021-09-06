@@ -808,7 +808,7 @@ Since it is very difficult to mechanically predict the correct behavior of **`Tr
 If you want to debug the output values of each layer, specify multiple layer IDs separated by commas in the **`--layerids_of_the_terminating_output`** option to check the output values. For example, if you want to debug the output values of two layers, **`LayerID=1007 (Add)`** and **`LayerID=1214 (Sigmoid)`**, as shown in the figure below, specify as **`--layerids_of_the_terminating_output 1007,1214`**.
 ![Screenshot 2021-09-06 21:33:19](https://user-images.githubusercontent.com/33194443/132218610-0577f219-158e-4554-a3a0-47f216b82816.png)
 ![Screenshot 2021-09-06 21:33:28](https://user-images.githubusercontent.com/33194443/132218771-b0e86036-411c-4f3c-8c39-0aed17ed0681.png)
-When you convert a model, the output will be censored at the two specified layerIDs, and the model will be generated with the output of the model available for review. Note that if you specify a layer ID for an operation that has multiple outputs, such as **`Split`**, **`VariadicSplit`**, **`TopK`**, or **`NonMaxSuppression`**, all output values will be used as outputs.
+When you convert a model, the output will be censored at the two specified layer IDs, and the model will be generated with the output of the model available for review. Note that if you specify a layer ID for an operation that has multiple outputs, such as **`Split`**, **`VariadicSplit`**, **`TopK`**, or **`NonMaxSuppression`**, all output values will be used as outputs.
 ![Screenshot 2021-09-06 21:43:17](https://user-images.githubusercontent.com/33194443/132219420-367bcae9-ae45-4c2b-a893-8311be487142.png)
 
 **[↥ Back to top](#openvino2tensorflow)**
