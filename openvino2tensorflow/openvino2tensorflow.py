@@ -2276,6 +2276,15 @@ def convert(model_path,
                     for idx, dim in enumerate(temp):
                         perm.append(dim)
 
+                # If the Transpose shape has been changed by extrapolation, the extrapolated perm is given priority.
+                try:
+                    before_layer_id = str(int(layer_id) - 1)
+                    if wr_config and before_layer_id in wr_config and format_version >= 2:
+                        if wr_config[before_layer_id]['type'] == 'Const':
+                            perm = wr_config[before_layer_id]['values']
+                except:
+                    pass
+
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         inp = extrapolation_of_layers(
@@ -2830,6 +2839,15 @@ def convert(model_path,
                     if op_len2 == 4:
                         op2 = op2.transpose(0,2,3,1)
                     shape = [op1.shape[idx] if val == 0 else val for idx, val in enumerate(op2)]
+
+                # If the Reshape shape has been changed by extrapolation, the extrapolated shape is given priority.
+                try:
+                    before_layer_id = str(int(layer_id) - 1)
+                    if wr_config and before_layer_id in wr_config and format_version >= 2:
+                        if wr_config[before_layer_id]['type'] == 'Const':
+                            shape = wr_config[before_layer_id]['values']
+                except:
+                    pass
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
