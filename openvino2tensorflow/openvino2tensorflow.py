@@ -2385,6 +2385,7 @@ def convert(model_path,
                 axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)])
                 temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0]
+                output_shape = [int(v.text) for v in layer.find("output").find("port")]
 
                 batch_dims = 0
                 if not data is None and 'batch_dims' in data.attrib:
@@ -2443,8 +2444,10 @@ def convert(model_path,
                                     batch_dims=batch_dims
                                 )
 
-                            if batch_dims is None and axis == 0 and inp.shape[0] == 1:
-                                tf_layers_dict[layer_id] = inp[0]
+                            if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
+                                tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
+                            elif batch_dims is None and (axis == -1 or axis == (len(tf_layers_dict[layer_id].shape) - 1)) and tf_layers_dict[layer_id].shape[-1] == 1:
+                                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[layer_id], axis=axis)
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                         if isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], tf.Tensor):
@@ -2478,8 +2481,10 @@ def convert(model_path,
                                     batch_dims=batch_dims
                                 )
 
-                            if batch_dims is None and axis == 0 and tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0] == 1:
-                                inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
+                            if batch_dims is None and axis == 0 and inp.shape[0] == 1:
+                                inp = inp[0]
+                            elif batch_dims is None and (axis == -1 or axis == (len(inp.shape) - 1)) and inp.shape[-1] == 1:
+                                inp = tf.squeeze(inp, axis=axis)
 
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
@@ -2518,8 +2523,10 @@ def convert(model_path,
                                 batch_dims=batch_dims
                             )
 
-                        if batch_dims is None and axis == 0 and tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape[0] == 1:
-                            tf_layers_dict[layer_id] = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)][0]
+                            if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
+                                tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
+                            elif batch_dims is None and (axis == -1 or axis == (len(tf_layers_dict[layer_id].shape) - 1)) and tf_layers_dict[layer_id].shape[-1] == 1:
+                                tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[layer_id], axis=axis)
 
             ### GatherND
             elif layer.attrib['type'] == 'GatherND':
@@ -3726,7 +3733,6 @@ def convert(model_path,
             ### Broadcast - TODO
             elif layer.attrib['type'] == 'Broadcast':
                 mode = data.attrib['mode']
-                print(f'tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype}')
                 if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) != np.ndarray:
                     if mode == 'numpy':
                         inp = tf.broadcast_to(
@@ -4466,6 +4472,26 @@ def convert(model_path,
                 coordinate = tf.concat(dim_expanded_idx_tensors_per_axis, axis=-1)
                 indices = tf.reshape(coordinate, [-1, tf.rank(data)])
                 updates = tf.reshape(updates, [-1])
+                inp = tf.tensor_scatter_nd_update(data, indices, updates)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
+
+            ### ScatterNDUpdate - WIP
+            elif layer.attrib['type'] == 'ScatterNDUpdate':
+                data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                updates = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
                 inp = tf.tensor_scatter_nd_update(data, indices, updates)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:

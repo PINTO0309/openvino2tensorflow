@@ -186,7 +186,8 @@ Work in progress now.
 |92|NormalizeL2|tf.math.add, tf.math.l2_normalize|x/sqrt(max(sum(x\*\*2), eps)) or x/sqrt(add(sum(x\*\*2), eps))|
 |93|ScatterElementsUpdate|shape, rank, floormod, add, cast, range, expand_dims, meshgrid, concat, reshape, tensor_scatter_nd_update||
 |94|ROIAlign|crop_and_resize, avg_pool, max_pool||
-|95|Result|Identity|Output|
+|95|ScatterNDUpdate|tensor_scatter_nd_update||
+|96|Result|Identity|Output|
 
 **[↥ Back to top](#openvino2tensorflow)**
 
