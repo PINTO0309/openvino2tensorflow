@@ -424,7 +424,10 @@ def convert(model_path,
                     tf_edges.setdefault(to_layer, [])
                     if layer.attrib['type'] == 'Concat' or \
                         layer.attrib['type'] == 'Gather' or \
-                            layer.attrib['type'] == 'GatherND':
+                            layer.attrib['type'] == 'GatherND' or \
+                                layer.attrib['type'] == 'GatherElements' or \
+                                    layer.attrib['type'] == 'ScatterElementsUpdate' or \
+                                        layer.attrib['type'] == 'ScatterNDUpdate':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -449,7 +452,6 @@ def convert(model_path,
                 break
 
     # The following loop sorts tf_edges in ascending order by port
-    # However, only the Concat layer is implemented.
     for to_layer, from_layer_ports in concat_port_list.items():
         temp_sorted_tf_edge = []
         # from_layer_ports = [from_layer_id:port, from_layer_id:port, from_layer_id:port, ...]
@@ -4569,6 +4571,60 @@ def convert(model_path,
                 else:
                     tf_layers_dict[layer_id] = inp
 
+            ### GatherElements - WIP
+            ### https://github.com/onnx/onnx-tensorflow/blob/master/onnx_tf/handlers/backend/gather_elements.py
+            elif layer.attrib['type'] == 'GatherElements':
+                axis = None
+                if not data is None and 'axis' in data.attrib:
+                    axis = int(data.attrib['axis'])
+
+                data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                axis = axis if axis >= 0 else tf.add(tf.rank(data), axis)
+                data_shape = tf.shape(data)
+                max_i = tf.cast(data_shape[axis], indices.dtype)
+                indices = tf.math.floormod(tf.add(indices, max_i), max_i)
+
+                if axis == 0:
+                    axis_perm = tf.range(tf.rank(data))
+                    data_swaped = data
+                    index_swaped = indices
+                else:
+                    axis_perm = tf.tensor_scatter_nd_update(
+                        tf.range(tf.rank(data)),
+                        tf.constant([[0], [axis]]),
+                        tf.constant([axis, 0])
+                    )
+                    data_swaped = tf.transpose(data, perm=axis_perm)
+                    index_swaped = tf.transpose(indices, perm=axis_perm)
+
+                idx_tensors_per_axis = [
+                    tf.range(tf.shape(index_swaped, index_swaped.dtype)[i])
+                    for i in range(index_swaped.shape.rank)
+                ]
+                idx_tensors_per_axis = tf.meshgrid(*idx_tensors_per_axis, indexing='ij')
+                idx_tensors_per_axis[0] = index_swaped
+                dim_expanded_idx_tensors_per_axis = [
+                    tf.expand_dims(idx_tensor, axis=-1)
+                    for idx_tensor in idx_tensors_per_axis
+                ]
+                index_expanded = tf.concat(dim_expanded_idx_tensors_per_axis, axis=-1)
+
+                gathered = tf.gather_nd(data_swaped, index_expanded)
+                inp = tf.transpose(gathered, perm=axis_perm)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Result
             elif layer.attrib['type'] == 'Result':

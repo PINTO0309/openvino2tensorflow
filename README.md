@@ -187,7 +187,8 @@ Work in progress now.
 |93|ScatterElementsUpdate|shape, rank, floormod, add, cast, range, expand_dims, meshgrid, concat, reshape, tensor_scatter_nd_update||
 |94|ROIAlign|crop_and_resize, avg_pool, max_pool||
 |95|ScatterNDUpdate|tensor_scatter_nd_update||
-|96|Result|Identity|Output|
+|96|GatherElements|rank, add, shape, cast, floormod, range, tensor_scatter_nd_update, constant, transpose, meshgrid, expand_dims, concat, gather_nd|WIP|
+|97|Result|Identity|Output|
 
 **[↥ Back to top](#openvino2tensorflow)**
 
