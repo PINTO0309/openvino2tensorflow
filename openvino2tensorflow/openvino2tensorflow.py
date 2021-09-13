@@ -866,11 +866,11 @@ def convert(model_path,
                                 )
                                 tf_layers_dict[layer_id] = \
                                     tf.maximum(0.0, inp) + \
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, inp)
+                                        tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -878,7 +878,7 @@ def convert(model_path,
                         else:
                             tf_layers_dict[layer_id] = \
                                 tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -917,11 +917,11 @@ def convert(model_path,
                                 )
                                 tf_layers_dict[layer_id] = \
                                     tf.maximum(0.0, inp) + \
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, inp)
+                                        tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -929,7 +929,7 @@ def convert(model_path,
                         else:
                             tf_layers_dict[layer_id] = \
                                 tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -969,11 +969,11 @@ def convert(model_path,
                                 )
                                 tf_layers_dict[layer_id] = \
                                     tf.maximum(0.0, inp) + \
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, inp)
+                                        tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -981,7 +981,28 @@ def convert(model_path,
                         else:
                             tf_layers_dict[layer_id] = \
                                 tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+                    elif output_edgetpu: # LeakyReLU -> Max/Min
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                )
+                                tf_layers_dict[layer_id] = tf.maximum(0.0, inp) + tf.minimum(0.0, inp * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                        else:
+                            tf_layers_dict[layer_id] = \
+                                tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
                         if wr_config and layer_id in wr_config and format_version >= 2:
