@@ -97,7 +97,7 @@ Work in progress now.
 |3|Convolution|Conv2D||
 |4|Add|Add||
 |5|ReLU|ReLU||
-|6|PReLU|PReLU|Maximum(0.0,x)+alpha\*Minimum(0.0,x)|
+|6|PReLU|PReLU|Maximum(0.0,x)+Minimum(0.0,alpha\*x)|
 |7|MaxPool|MaxPool2D||
 |8|AvgPool|AveragePooling2D||
 |9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat||
