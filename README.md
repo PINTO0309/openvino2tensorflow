@@ -94,14 +94,14 @@ Work in progress now.
 |:--:|:--|:--|:--|
 |1|Parameter|Input||
 |2|Const|Constant, Bias||
-|3|Convolution|Conv2D||
+|3|Convolution|Conv2D, Conv3D|Conv3D has limited support|
 |4|Add|Add||
 |5|ReLU|ReLU||
 |6|PReLU|PReLU|Maximum(0.0,x)+Minimum(0.0,alpha\*x)|
 |7|MaxPool|MaxPool2D||
 |8|AvgPool|AveragePooling2D||
 |9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat||
-|10|ConvolutionBackpropData|Conv2DTranspose||
+|10|ConvolutionBackpropData|Conv2DTranspose, Conv3DTranspose|Conv3DTranspose has limited support|
 |11|Concat|Concat||
 |12|Multiply|Multiply||
 |13|Tan|Tan||

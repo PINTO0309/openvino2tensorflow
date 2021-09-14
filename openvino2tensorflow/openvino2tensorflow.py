@@ -106,7 +106,7 @@ def convert(model_path,
     tf.get_logger().setLevel(logging.ERROR)
     import tensorflow_datasets as tfds
     from tensorflow.keras import Model, Input
-    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, AveragePooling2D, Conv2DTranspose, PReLU, Lambda, LeakyReLU
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, AveragePooling2D, Conv2DTranspose, PReLU, Lambda, LeakyReLU, Conv3D
     from tensorflow.keras.initializers import Constant
     from tensorflow.keras.activations import elu
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
@@ -590,65 +590,27 @@ def convert(model_path,
                     padding = 'same'
 
                 temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                orig = None
-                if pads_begin > 0:
-                    padding = 'valid'
-                    # begin 0 = top
-                    # begin 1 = left
-                    # end 0 = bottom
-                    # end 1 = right
-                    begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
-                    end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
-                    orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
-                else:
-                    if temp.shape[0] == 1 and temp.shape[2] == 1 and temp.shape[3] == 1:
-                        orig = tf.transpose(temp, perm=(0,2,3,1))
+
+                if len(strides) == 2:
+                    # Conv2D
+                    orig = None
+                    if pads_begin > 0:
+                        padding = 'valid'
+                        # begin 0 = top
+                        # begin 1 = left
+                        # end 0 = bottom
+                        # end 1 = right
+                        begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+                        end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+                        orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
                     else:
-                        orig = temp
+                        if temp.shape[0] == 1 and temp.shape[2] == 1 and temp.shape[3] == 1:
+                            orig = tf.transpose(temp, perm=(0,2,3,1))
+                        else:
+                            orig = temp
 
-                dilations = [int(s) for s in data.attrib['dilations'].split(',')]
+                    dilations = [int(s) for s in data.attrib['dilations'].split(',')]
 
-                try:
-                    if wr_config and layer_id in wr_config and format_version >= 2:
-                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                            inp = extrapolation_of_layers(
-                                wr_config[layer_id],
-                                orig
-                            )
-                            tf_layers_dict[layer_id] = Conv2D(
-                                filters=filters,
-                                kernel_size=kernel_size,
-                                strides=strides,
-                                padding=padding,
-                                dilation_rate=dilations,
-                                use_bias=False,
-                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(inp)
-
-                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                            inp = Conv2D(
-                                filters=filters,
-                                kernel_size=kernel_size,
-                                strides=strides,
-                                padding=padding,
-                                dilation_rate=dilations,
-                                use_bias=False,
-                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
-                            tf_layers_dict[layer_id] = extrapolation_of_layers(
-                                wr_config[layer_id],
-                                inp
-                            )
-
-                    else:
-                        tf_layers_dict[layer_id] = Conv2D(
-                            filters=filters,
-                            kernel_size=kernel_size,
-                            strides=strides,
-                            padding=padding,
-                            dilation_rate=dilations,
-                            use_bias=False,
-                            kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
-
-                except:
                     try:
                         if wr_config and layer_id in wr_config and format_version >= 2:
                             if wr_config[layer_id]['replace_mode'] == 'insert_before':
@@ -663,7 +625,8 @@ def convert(model_path,
                                     padding=padding,
                                     dilation_rate=dilations,
                                     use_bias=False,
-                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(inp)
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(inp)
+
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = Conv2D(
                                     filters=filters,
@@ -672,11 +635,12 @@ def convert(model_path,
                                     padding=padding,
                                     dilation_rate=dilations,
                                     use_bias=False,
-                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
                                 )
+
                         else:
                             tf_layers_dict[layer_id] = Conv2D(
                                 filters=filters,
@@ -685,30 +649,157 @@ def convert(model_path,
                                 padding=padding,
                                 dilation_rate=dilations,
                                 use_bias=False,
-                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
 
                     except:
-                        # Weights from OP that are not fixed values
-                        if wr_config and layer_id in wr_config and format_version >= 2:
-                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                                inp = extrapolation_of_layers(
-                                    wr_config[layer_id],
-                                    orig
-                                )
+                        try:
+                            if wr_config and layer_id in wr_config and format_version >= 2:
+                                if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                    inp = extrapolation_of_layers(
+                                        wr_config[layer_id],
+                                        orig
+                                    )
+                                    tf_layers_dict[layer_id] = Conv2D(
+                                        filters=filters,
+                                        kernel_size=kernel_size,
+                                        strides=strides,
+                                        padding=padding,
+                                        dilation_rate=dilations,
+                                        use_bias=False,
+                                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(inp)
+                                elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                    inp = Conv2D(
+                                        filters=filters,
+                                        kernel_size=kernel_size,
+                                        strides=strides,
+                                        padding=padding,
+                                        dilation_rate=dilations,
+                                        use_bias=False,
+                                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                                    tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                        wr_config[layer_id],
+                                        inp
+                                    )
+                            else:
+                                tf_layers_dict[layer_id] = Conv2D(
+                                    filters=filters,
+                                    kernel_size=kernel_size,
+                                    strides=strides,
+                                    padding=padding,
+                                    dilation_rate=dilations,
+                                    use_bias=False,
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+
+                        except:
+                            # Weights from OP that are not fixed values
+                            if wr_config and layer_id in wr_config and format_version >= 2:
+                                if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                    inp = extrapolation_of_layers(
+                                        wr_config[layer_id],
+                                        orig
+                                    )
+                                    tf_layers_dict[layer_id] = tf.nn.conv2d(
+                                        input=inp,
+                                        filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                        strides=strides,
+                                        padding=padding.upper(),
+                                        dilations=dilations
+                                    )
+
+                                elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                    inp = tf.nn.conv2d(
+                                        input=orig,
+                                        filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                        strides=strides,
+                                        padding=padding.upper(),
+                                        dilations=dilations
+                                    )
+                                    tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                        wr_config[layer_id],
+                                        inp
+                                    )
+                            else:
                                 tf_layers_dict[layer_id] = tf.nn.conv2d(
-                                    input=inp,
+                                    input=orig,
                                     filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                     strides=strides,
                                     padding=padding.upper(),
                                     dilations=dilations
                                 )
 
+                elif len(strides) == 3:
+                    # Conv3D - WIP padding same only
+                    # https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv3D
+                    """
+                    openvino = [C_OUT, C_IN, Z,    Y,     X] = [8,1,3,3,3] [16,8,3,3,3]
+                    tf       = [    Z,    Y, X, C_IN, C_OUT] = [3,3,3,1,8] [3,3,3,8,16]
+                    """
+                    kernel_size = [int(port1[2]), int(port1[3]), int(port1[4])]
+                    try:
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    orig
+                                )
+                                tf_layers_dict[layer_id] = Conv3D(
+                                    filters=filters,
+                                    kernel_size=kernel_size,
+                                    strides=strides[0],
+                                    padding='same',
+                                    dilation_rate=dilations,
+                                    use_bias=False,
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose((2,3,4,1,0)))
+                                )(inp)
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                                inp = tf.nn.conv2d(
+                                inp = Conv3D(
+                                    filters=filters,
+                                    kernel_size=kernel_size,
+                                    strides=strides[0],
+                                    padding='same',
+                                    dilation_rate=dilations,
+                                    use_bias=False,
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose((2,3,4,1,0)))
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    inp
+                                )
+                        else:
+                            tf_layers_dict[layer_id] = Conv3D(
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                strides=strides[0],
+                                padding='same',
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose((2,3,4,1,0)))
+                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+                    except:
+                        # Weights from OP that are not fixed values
+                        # https://www.tensorflow.org/api_docs/python/tf/nn/conv3d
+                        strides = [1, strides[0], strides[1], strides[2], 1]
+                        if wr_config and layer_id in wr_config and format_version >= 2:
+                            if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                                inp = extrapolation_of_layers(
+                                    wr_config[layer_id],
+                                    orig
+                                )
+                                tf_layers_dict[layer_id] = tf.nn.conv3d(
+                                    input=inp,
+                                    filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                    strides=strides,
+                                    padding="SAME",
+                                    dilations=dilations
+                                )
+
+                            elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                                inp = tf.nn.conv3d(
                                     input=orig,
                                     filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                     strides=strides,
-                                    padding=padding.upper(),
+                                    padding="SAME",
                                     dilations=dilations
                                 )
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -716,11 +807,11 @@ def convert(model_path,
                                     inp
                                 )
                         else:
-                            tf_layers_dict[layer_id] = tf.nn.conv2d(
+                            tf_layers_dict[layer_id] = tf.nn.conv3d(
                                 input=orig,
                                 filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                 strides=strides,
-                                padding=padding.upper(),
+                                padding="SAME",
                                 dilations=dilations
                             )
 
@@ -1577,23 +1668,40 @@ def convert(model_path,
                     padding = 'same'
                 dilations = [int(s) for s in data.attrib['dilations'].split(',')]
 
-                tf_layers_dict[layer_id] = Conv2DTranspose(
-                    filters=filters,
-                    kernel_size=kernel_size,
-                    strides=strides,
-                    padding=padding,
-                    dilation_rate=dilations,
-                    use_bias=False,
-                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
-                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                if len(strides) == 2:
+                    # Conv2DTranspose
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = Conv2DTranspose(
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                strides=strides,
+                                padding=padding,
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                            )(inp)
 
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = Conv2DTranspose(
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                strides=strides,
+                                padding=padding,
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
 
-                if wr_config and layer_id in wr_config and format_version >= 2:
-                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                        inp = extrapolation_of_layers(
-                            wr_config[layer_id],
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                        )
+                    else:
                         tf_layers_dict[layer_id] = Conv2DTranspose(
                             filters=filters,
                             kernel_size=kernel_size,
@@ -1602,33 +1710,65 @@ def convert(model_path,
                             dilation_rate=dilations,
                             use_bias=False,
                             kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
-                        )(inp)
-
-                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = Conv2DTranspose(
-                            filters=filters,
-                            kernel_size=kernel_size,
-                            strides=strides,
-                            padding=padding,
-                            dilation_rate=dilations,
-                            use_bias=False,
-                            kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
                         )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                        tf_layers_dict[layer_id] = extrapolation_of_layers(
-                            wr_config[layer_id],
-                            inp
-                        )
 
-                else:
-                    tf_layers_dict[layer_id] = Conv2DTranspose(
-                        filters=filters,
-                        kernel_size=kernel_size,
-                        strides=strides,
-                        padding=padding,
-                        dilation_rate=dilations,
-                        use_bias=False,
-                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
-                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                elif len(strides) == 3:
+                    # Conv3DTranspose - WIP padding same only
+                    # https://www.tensorflow.org/api_docs/python/tf/nn/conv3d_transpose
+                    """
+                    in =
+                        [N, C_INPUT, Z, Y, X]
+
+                    kernel =
+                        [C_INPUT, C_OUTPUT, Z, Y, X]
+                        [     48,       32, 4, 4, 4]
+
+                        [N, Z, Y,  X, C_INPUT]
+                        [1, 6, 8, 11,      48]
+                        [1, 6, 8, 11,      48]
+
+                        [Z,  Y,   X, C_OUTPUT, C_INPUT]
+                        [4, 4, 4, 32, 48]
+
+                        [N, C_OUTPUT,  Z,  Y,  X]
+                        [1,       32, 12, 16, 22]
+                        [1,       12, 16, 22, 32]
+                    """
+                    output_shape = np.asarray([int(v.text) for v in layer.find("output").find("port")])
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.nn.conv3d_transpose(
+                                input=inp,
+                                filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose((2,3,4,1,0)),
+                                output_shape=output_shape[[0,2,3,4,1]],
+                                strides=strides[0],
+                                padding='SAME'
+                            )
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.nn.conv3d_transpose(
+                                input=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose((2,3,4,1,0)),
+                                output_shape=output_shape[[0,2,3,4,1]],
+                                strides=strides[0],
+                                padding='SAME'
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.conv3d_transpose(
+                            input=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose((2,3,4,1,0)),
+                            output_shape=output_shape[[0,2,3,4,1]],
+                            strides=strides[0],
+                            padding='SAME'
+                        )
 
             ### Concat
             elif layer.attrib['type'] == 'Concat':
