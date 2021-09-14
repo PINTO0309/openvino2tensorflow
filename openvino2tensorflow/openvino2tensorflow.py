@@ -5335,7 +5335,7 @@ def main():
     parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
     parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
-    parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
+    parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
     parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
     parser.add_argument('--layerids_of_the_terminating_output', type=str, default='', help='A comma-separated list of layer IDs to be used as output layers. Default: \'\'')
     args = parser.parse_args()
@@ -5379,7 +5379,7 @@ def main():
     yolact = args.yolact
     restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
-    use_experimental_new_quantizer = args.use_experimental_new_quantizer
+    use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
     optimizing_barracuda = args.optimizing_barracuda
     layerids_of_the_terminating_output_tmp = args.layerids_of_the_terminating_output
     layerids_of_the_terminating_output = None

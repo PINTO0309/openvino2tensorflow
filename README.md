@@ -303,7 +303,7 @@ usage: openvino2tensorflow
   [--yolact]
   [--restricted_resize_image_mode]
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
-  [--use_experimental_new_quantizer]
+  [--disable_experimental_new_quantizer]
   [--optimizing_barracuda]
   [--layerids_of_the_terminating_output]
 
@@ -401,8 +401,8 @@ optional arguments:
                         Replaces the value of Const for each layer_id defined
                         in json. Specify the path to the json file.
                         'weight_replacement_config.json'
-  --use_experimental_new_quantizer
-                        Use MLIRs new quantization feature during INT8 quantization
+  --disable_experimental_new_quantizer
+                        Disable MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
   --optimizing_barracuda
                         Generates ONNX by replacing Barracuda unsupported layers
@@ -444,7 +444,7 @@ usage: saved_model_to_tflite
   [--edgetpu_num_segments EDGETPU_NUM_SEGMENTS]
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
-  [--use_experimental_new_quantizer]
+  [--disable_experimental_new_quantizer]
 
 optional arguments:
   -h, --help
@@ -518,8 +518,8 @@ optional arguments:
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
-  --use_experimental_new_quantizer
-                        Use MLIRs new quantization feature during INT8 quantization
+  --disable_experimental_new_quantizer
+                        Disable MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
 ```
 **[↥ Back to top](#openvino2tensorflow)**

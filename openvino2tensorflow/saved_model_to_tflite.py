@@ -422,7 +422,7 @@ def main():
     parser.add_argument('--edgetpu_num_segments', type=int, default=1, help='Partition the model into [num_segments] segments. Default: 1 (no partition)')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
-    parser.add_argument('--use_experimental_new_quantizer', action='store_true', help='Use MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
+    parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
 
     args = parser.parse_args()
     saved_model_dir_path = args.saved_model_dir_path
@@ -461,7 +461,7 @@ def main():
     edgetpu_num_segments = args.edgetpu_num_segments
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
-    use_experimental_new_quantizer = args.use_experimental_new_quantizer
+    use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
 
     if not output_no_quant_float32_tflite and \
         not output_weight_quant_tflite and \
