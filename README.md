@@ -92,7 +92,7 @@ Work in progress now.
 
 |No.|OpenVINO Layer|TF Layer|Remarks|
 |:--:|:--|:--|:--|
-|1|Parameter|Input||
+|1|Parameter|Input|Convert to NHWC (Default) or NCHW|
 |2|Const|Constant, Bias||
 |3|Convolution|Conv2D, Conv3D|Conv3D has limited support|
 |4|Add|Add||
