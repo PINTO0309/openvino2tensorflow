@@ -36,39 +36,39 @@ Work in progress now.
 ## 2. Use case
 
 - PyTorch (NCHW) -> ONNX (NCHW) -> OpenVINO (NCHW) ->
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFJS (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFLite (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFJS (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TF-TRT (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> CoreML (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> ONNX (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW/NCHW)
 
 - Caffe (NCHW) -> OpenVINO (NCHW) ->
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFJS (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFLite (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFJS (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TF-TRT (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> CoreML (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> ONNX (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW/NCHW)
 
 - MXNet (NCHW) -> OpenVINO (NCHW) ->
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFJS (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFLite (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFJS (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TF-TRT (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> CoreML (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> ONNX (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW/NCHW)
 
 - Keras (NHWC) -> OpenVINO (NCHW・Optimized) ->
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFLite (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TFJS (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> TF-TRT (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFLite (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TFJS (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> TF-TRT (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> EdgeTPU (NHWC)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> CoreML (NHWC/NCHW)
-  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC) -> ONNX (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> CoreML (NHWC/NCHW)
+  - -> **`openvino2tensorflow`** -> Tensorflow/Keras (NHWC/NCHW) -> ONNX (NHWC/NCHW)
   - -> **`openvino2tensorflow`** -> Myriad Inference Engine Blob (NCHW/NCHW)
 
 - saved_model -> **`saved_model_to_pb`** -> pb
