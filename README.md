@@ -305,7 +305,8 @@ usage: openvino2tensorflow
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
   [--disable_experimental_new_quantizer]
   [--optimizing_barracuda]
-  [--layerids_of_the_terminating_output]
+  [--layerids_of_the_terminating_output LAYERIDS_OF_THE_TERMINATING_OUTPUT]
+  [--keep_input_tensor_in_nchw]
 
 optional arguments:
   -h, --help
@@ -407,10 +408,14 @@ optional arguments:
   --optimizing_barracuda
                         Generates ONNX by replacing Barracuda unsupported layers
                         with standard layers. For example, GatherND.
-  --layerids_of_the_terminating_output
+  --layerids_of_the_terminating_output LAYERIDS_OF_THE_TERMINATING_OUTPUT
                         A comma-separated list of layerIDs to be used as output layers.
                         e.g. --layerids_of_the_terminating_output 100,201,560
                         Default: ''
+  --keep_input_tensor_in_nchw
+                        Does not convert the input to NHWC, but keeps the NCHW format.
+                        Transpose is inserted right after the input layer, and
+                        the model internals are handled by NHWC. Only 4D input is supported.
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 

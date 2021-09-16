@@ -95,7 +95,8 @@ def convert(model_path,
             weight_replacement_config,
             use_experimental_new_quantizer,
             optimizing_barracuda,
-            layerids_of_the_terminating_output):
+            layerids_of_the_terminating_output,
+            keep_input_tensor_in_nchw):
 
     print(f'{Color.REVERCE}TensorFlow/Keras model building process starts{Color.RESET}', '=' * 38)
 
@@ -483,10 +484,21 @@ def convert(model_path,
                     shape_str  = data.attrib['shape'].split(',')
                     shape = [int(s) for s in shape_str]
                     if len(shape) == 4:
-                        tf_layers_dict[layer_id] = Input(shape=(shape[2], shape[3], shape[1]), batch_size=shape[0], name=layer_name)
+                        if not keep_input_tensor_in_nchw:
+                            tf_layers_dict[layer_id] = Input(shape=(shape[2], shape[3], shape[1]), batch_size=shape[0], name=layer_name)
+                        else:
+                            nchw = Input(shape=(shape[1], shape[2], shape[3]), batch_size=shape[0], name=layer_name)
+                            tf_layers_dict[layer_id] = tf.transpose(nchw, perm=[0,2,3,1])
                     else:
+                        if keep_input_tensor_in_nchw:
+                            print(f'{Color.RED}ERROR:{Color.RESET} The keep_input_tensor_in_nchw parameter only supports 4D input. layer_id: {layer_id} input_shape: {shape}')
+                            sys.exit(-1)
                         tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
-                    tf_inputs.append(tf_layers_dict[layer_id])
+
+                    if keep_input_tensor_in_nchw:
+                        tf_inputs.append(nchw)
+                    else:
+                        tf_inputs.append(tf_layers_dict[layer_id])
 
                     layer_structure_print(
                         {
@@ -5338,6 +5350,7 @@ def main():
     parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
     parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
     parser.add_argument('--layerids_of_the_terminating_output', type=str, default='', help='A comma-separated list of layer IDs to be used as output layers. Default: \'\'')
+    parser.add_argument('--keep_input_tensor_in_nchw', action='store_true', help='Does not convert the input to NHWC, but keeps the NCHW format. Transpose is inserted right after the input layer, and the model internals are handled by NHWC. Only 4D input is supported.')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
     model_output_path = args.model_output_path.rstrip('/')
@@ -5385,6 +5398,7 @@ def main():
     layerids_of_the_terminating_output = None
     if layerids_of_the_terminating_output_tmp:
         layerids_of_the_terminating_output = [ids.strip() for ids in layerids_of_the_terminating_output_tmp.split(',')]
+    keep_input_tensor_in_nchw = args.keep_input_tensor_in_nchw
 
     if not output_saved_model and \
         not output_h5 and \
@@ -5478,7 +5492,7 @@ def main():
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
-            optimizing_barracuda, layerids_of_the_terminating_output)
+            optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
