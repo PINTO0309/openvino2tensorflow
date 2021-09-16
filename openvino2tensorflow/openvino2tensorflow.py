@@ -582,6 +582,7 @@ def convert(model_path,
                 port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
                 filters = int(port1[0])
                 kernel_size = [int(port1[2]), int(port1[3])]
+                dilations = [int(s) for s in data.attrib['dilations'].split(',')]
                 strides = [int(s) for s in data.attrib['strides'].split(',')]
                 pads_begin = 0
                 pads_end = 0
@@ -620,8 +621,6 @@ def convert(model_path,
                             orig = tf.transpose(temp, perm=(0,2,3,1))
                         else:
                             orig = temp
-
-                    dilations = [int(s) for s in data.attrib['dilations'].split(',')]
 
                     try:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -752,12 +751,12 @@ def convert(model_path,
                             if wr_config[layer_id]['replace_mode'] == 'insert_before':
                                 inp = extrapolation_of_layers(
                                     wr_config[layer_id],
-                                    orig
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
                                 tf_layers_dict[layer_id] = Conv3D(
                                     filters=filters,
                                     kernel_size=kernel_size,
-                                    strides=strides[0],
+                                    strides=strides,
                                     padding='same',
                                     dilation_rate=dilations,
                                     use_bias=False,
@@ -767,7 +766,7 @@ def convert(model_path,
                                 inp = Conv3D(
                                     filters=filters,
                                     kernel_size=kernel_size,
-                                    strides=strides[0],
+                                    strides=strides,
                                     padding='same',
                                     dilation_rate=dilations,
                                     use_bias=False,
@@ -796,7 +795,7 @@ def convert(model_path,
                             if wr_config[layer_id]['replace_mode'] == 'insert_before':
                                 inp = extrapolation_of_layers(
                                     wr_config[layer_id],
-                                    orig
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
                                 tf_layers_dict[layer_id] = tf.nn.conv3d(
                                     input=inp,
@@ -808,7 +807,7 @@ def convert(model_path,
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = tf.nn.conv3d(
-                                    input=orig,
+                                    input=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                     filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                     strides=strides,
                                     padding="SAME",
@@ -820,7 +819,7 @@ def convert(model_path,
                                 )
                         else:
                             tf_layers_dict[layer_id] = tf.nn.conv3d(
-                                input=orig,
+                                input=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                 strides=strides,
                                 padding="SAME",
