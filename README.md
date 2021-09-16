@@ -171,7 +171,7 @@ Work in progress now.
 |77|Broadcast|broadcast_to, ones, Multiply|numpy / bidirectional mode, WIP|
 |78|Split|Split||
 |79|VariadicSplit|Split, Slice, SplitV||
-|80|MVN|reduce_mean, sqrt, reduce_variance|(x-reduce_mean(x))/sqrt(reduce_variance(x)+eps)|
+|80|MVN|reduce_mean, sqrt, reduce_variance|(x - reduce_mean(x)) / sqrt(reduce_variance(x) + eps)|
 |81|NonZero|not_equal, boolean_mask||
 |82|ReduceL2|square, reduce_sum, sqrt||
 |83|SpaceToDepth|SpaceToDepth||
