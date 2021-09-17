@@ -428,7 +428,8 @@ def convert(model_path,
                             layer.attrib['type'] == 'GatherND' or \
                                 layer.attrib['type'] == 'GatherElements' or \
                                     layer.attrib['type'] == 'ScatterElementsUpdate' or \
-                                        layer.attrib['type'] == 'ScatterNDUpdate':
+                                        layer.attrib['type'] == 'ScatterNDUpdate' or \
+                                            layer.attrib['type'] == 'Reshape':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -780,7 +781,7 @@ def convert(model_path,
                             tf_layers_dict[layer_id] = Conv3D(
                                 filters=filters,
                                 kernel_size=kernel_size,
-                                strides=strides[0],
+                                strides=strides,
                                 padding='same',
                                 dilation_rate=dilations,
                                 use_bias=False,
@@ -802,7 +803,7 @@ def convert(model_path,
                                     filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                     strides=strides,
                                     padding="SAME",
-                                    dilations=dilations
+                                    dilations=[1, dilations[0], dilations[1], dilations[2], 1]
                                 )
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
@@ -811,7 +812,7 @@ def convert(model_path,
                                     filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                     strides=strides,
                                     padding="SAME",
-                                    dilations=dilations
+                                    dilations=[1, dilations[0], dilations[1], dilations[2], 1]
                                 )
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
@@ -823,7 +824,7 @@ def convert(model_path,
                                 filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                                 strides=strides,
                                 padding="SAME",
-                                dilations=dilations
+                                dilations=[1, dilations[0], dilations[1], dilations[2], 1]
                             )
 
             ### Add
@@ -1588,26 +1589,34 @@ def convert(model_path,
                             kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,2,1,0)
 
                         for i in range(groups):
-                            convs.append(Conv2D(filters=filters // groups,
-                                                kernel_size=kernel_size,
-                                                strides=strides,
-                                                padding=padding,
-                                                dilation_rate=dilations,
-                                                use_bias=False,
-                                                kernel_initializer=Constant(kernel[:,:,:,:,i])))
+                            convs.append(
+                                Conv2D(
+                                    filters=filters // groups,
+                                    kernel_size=kernel_size,
+                                    strides=strides,
+                                    padding=padding,
+                                    dilation_rate=dilations,
+                                    use_bias=False,
+                                    kernel_initializer=Constant(kernel[:,:,:,:,i])
+                                )
+                            )
                     else:
                         try:
                             kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)
                         except:
                             kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)
                         for i in range(groups):
-                            convs.append(Conv2D(filters=filters // groups,
-                                                kernel_size=kernel_size,
-                                                strides=strides,
-                                                padding=padding,
-                                                dilation_rate=dilations,
-                                                use_bias=False,
-                                                kernel_initializer=Constant(kernel[:,:,:,i])))
+                            convs.append(
+                                Conv2D(
+                                    filters=filters // groups,
+                                    kernel_size=kernel_size,
+                                    strides=strides,
+                                    padding=padding,
+                                    dilation_rate=dilations,
+                                    use_bias=False,
+                                    kernel_initializer=Constant(kernel[:,:,:,i])
+                                )
+                            )
 
                     x_splits = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], groups, -1)
                     x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
