@@ -111,7 +111,7 @@ Work in progress now.
 |17|HardSigmoid|hard_sigmoid||
 |18|SoftPlus|SoftPlus||
 |19|Swish|Swish|You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
-|20|Interpolate|ResizeNearestNeighbor, ResizeBilinear|4D or 5D|
+|20|Interpolate|ResizeNearestNeighbor, ResizeBilinear|4D [N,H,W,C] or 5D [N,D,H,W,C]|
 |21|ShapeOf|Shape||
 |22|Convert|Cast||
 |23|StridedSlice|Strided_Slice||
