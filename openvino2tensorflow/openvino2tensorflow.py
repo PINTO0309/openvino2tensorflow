@@ -1948,22 +1948,15 @@ def convert(model_path,
                     antialias = False if int(data.attrib['antialias']) == 0 else True
                 except:
                     antialias = False if data.attrib['antialias'].upper() == 'FALSE' else True
-                out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
-                out_height = int(out_port0[2])
-                out_width  = int(out_port0[3])
-
                 input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
-                input_shape_height = input_shape[1]
-                input_shape_width  = input_shape[2]
-                upsampling_factor_height = out_height // input_shape_height
-                upsampling_factor_width  = out_width // input_shape_width
+                out_port0 = [int(sdim.text) for sdim in layer.find('output')[0]]
 
                 def upsampling2d_bilinear(x, upsampling_factor_height, upsampling_factor_width):
                     h = x.shape[1] * upsampling_factor_height
                     w = x.shape[2] * upsampling_factor_width
                     if output_edgetpu:
-                        print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
-                        return tf.compat.v1.image.resize_bilinear(x, (h, w))#, align_corners=True, half_pixel_centers=True)
+                        print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                        return tf.compat.v1.image.resize_bilinear(x, (h, w))
                     else:
                         return tf.image.resize(x, [h, w], method='bilinear')
 
@@ -1971,122 +1964,415 @@ def convert(model_path,
                     h = x.shape[1] * upsampling_factor_height
                     w = x.shape[2] * upsampling_factor_width
                     if output_edgetpu:
-                        print(f'{Color.RED}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
-                        return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))#, align_corners=True, half_pixel_centers=True)
+                        print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                        return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
                     else:
                         return tf.image.resize(x, [h, w], method='nearest')
 
-                if not restricted_resize_image_mode:
+                def upsampling2d_bilinear_5d(x, upsampling_factor_depth, upsampling_factor_height, upsampling_factor_width):
+                    d = x.shape[1] * upsampling_factor_depth
+                    h = x.shape[2] * upsampling_factor_height
+                    w = x.shape[3] * upsampling_factor_width
+                    # Dpeth (height x width)
+                    resized_list = []
+                    unstack_img_list = tf.unstack(x, axis=1)
+                    for i in unstack_img_list:
+                        if output_edgetpu:
+                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            resized_list.append(tf.compat.v1.image.resize_bilinear(x, (h, w)))
+                        else:
+                            resized_list.append(tf.image.resize(i, [h, w], method='bilinear'))
+                    stack_img_hw = tf.stack(resized_list, axis=1)
+                    # Width (depth x Height)
+                    resized_list = []
+                    unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                    for i in unstack_img_list:
+                        if output_edgetpu:
+                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            resized_list.append(tf.compat.v1.image.resize_bilinear(x, (d, h)))
+                        else:
+                            resized_list.append(tf.image.resize(i, [d, h], method='bilinear'))
+                    stack_img_dh = tf.stack(resized_list, axis=3)
+                    return stack_img_dh
 
-                    if (upsampling_factor_height * input_shape_height) == out_height and \
-                        (upsampling_factor_width * input_shape_width) == out_width and \
-                            upsampling_factor_height >= 1.0 and \
-                                upsampling_factor_width >= 1.0:
-                        # Upsampling
+                def upsampling2d_nearest_5d(x, upsampling_factor_depth, upsampling_factor_height, upsampling_factor_width):
+                    d = x.shape[1] * upsampling_factor_depth
+                    h = x.shape[2] * upsampling_factor_height
+                    w = x.shape[3] * upsampling_factor_width
+                    # Dpeth (height x width)
+                    resized_list = []
+                    unstack_img_list = tf.unstack(x, axis=1)
+                    for i in unstack_img_list:
+                        if output_edgetpu:
+                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            resized_list.append(tf.compat.v1.image.resize_nearest_neighbor(x, (h, w)))
+                        else:
+                            resized_list.append(tf.image.resize(i, [h, w], method='nearest'))
+                    stack_img_hw = tf.stack(resized_list, axis=1)
+                    # Width (depth x Height)
+                    resized_list = []
+                    unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                    for i in unstack_img_list:
+                        if output_edgetpu:
+                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            resized_list.append(tf.compat.v1.image.resize_nearest_neighbor(x, (d, h)))
+                        else:
+                            resized_list.append(tf.image.resize(i, [d, h], method='nearest'))
+                    stack_img_dh = tf.stack(resized_list, axis=3)
+                    return stack_img_dh
+
+
+                if len(input_shape) == 4:
+                    # 4D Tensor N,H,W,C
+                    out_height = int(out_port0[2])
+                    out_width  = int(out_port0[3])
+
+                    input_shape_height = input_shape[1]
+                    input_shape_width  = input_shape[2]
+                    upsampling_factor_height = out_height // input_shape_height
+                    upsampling_factor_width  = out_width  // input_shape_width
+
+                    if not restricted_resize_image_mode:
+
+                        if (upsampling_factor_height * input_shape_height) == out_height and \
+                            (upsampling_factor_width * input_shape_width) == out_width and \
+                                upsampling_factor_height >= 1.0 and \
+                                    upsampling_factor_width >= 1.0:
+                            # Upsampling
+                            if mode == 'linear':
+                                inp = Lambda(
+                                    upsampling2d_bilinear,
+                                    arguments={
+                                        'upsampling_factor_height': upsampling_factor_height,
+                                        'upsampling_factor_width': upsampling_factor_width
+                                    }
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            elif mode == 'nearest':
+                                inp = Lambda(
+                                    upsampling2d_nearest,
+                                    arguments={
+                                        'upsampling_factor_height': upsampling_factor_height,
+                                        'upsampling_factor_width': upsampling_factor_width
+                                    }
+                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            else:
+                                print(f'The Interpolate - {mode} is not yet implemented.')
+                                sys.exit(-1)
+
+                        else:
+                            # Others
+                            if yolact:
+                                if mode == 'linear':
+                                    x = Lambda(
+                                        upsampling2d_bilinear,
+                                        arguments={
+                                            'upsampling_factor_height': 2,
+                                            'upsampling_factor_width':  2
+                                        }
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                                elif mode == 'nearest':
+                                    x = Lambda(
+                                        upsampling2d_nearest,
+                                        arguments={
+                                            'upsampling_factor_height': 2,
+                                            'upsampling_factor_width':  2
+                                        }
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                                else:
+                                    print(f'The Interpolate - {mode} is not yet implemented.')
+                                    sys.exit(-1)
+
+                            else:
+                                if mode == 'linear':
+                                    if output_edgetpu:
+                                        inp = tf.compat.v1.image.resize(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            [out_height, out_width],
+                                            method='bilinear'
+                                        )
+                                    else:
+                                        inp = tf.image.resize(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            [out_height, out_width],
+                                            method='bilinear'
+                                        )
+                                elif mode == 'nearest':
+                                    if output_edgetpu:
+                                        inp = tf.compat.v1.image.resize(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            [out_height, out_width],
+                                            method='nearest'
+                                        )
+                                    else:
+                                        inp = tf.image.resize(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            [out_height, out_width],
+                                            method='nearest'
+                                        )
+                                else:
+                                    print(f'The Interpolate - {mode} is not yet implemented.')
+                                    sys.exit(-1)
+                    else:
                         if mode == 'linear':
-                            inp = Lambda(
-                                upsampling2d_bilinear,
-                                arguments={
-                                    'upsampling_factor_height': upsampling_factor_height,
-                                    'upsampling_factor_width': upsampling_factor_width
-                                }
-                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            inp = tf.image.resize(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                [out_height, out_width],
+                                method='bilinear'
+                            )
                         elif mode == 'nearest':
-                            inp = Lambda(
-                                upsampling2d_nearest,
-                                arguments={
-                                    'upsampling_factor_height': upsampling_factor_height,
-                                    'upsampling_factor_width': upsampling_factor_width
-                                }
-                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            inp = tf.image.resize(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                [out_height, out_width],
+                                method='nearest'
+                            )
                         else:
                             print(f'The Interpolate - {mode} is not yet implemented.')
                             sys.exit(-1)
 
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                            sys.exit(-1)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
                     else:
-                        # Others
-                        if yolact:
+                        tf_layers_dict[layer_id] = inp
+
+                elif len(input_shape) == 5:
+                    # 5D Tensor N,D,H,W,C
+                    out_depth = int(out_port0[2])
+                    out_height = int(out_port0[3])
+                    out_width  = int(out_port0[4])
+
+                    input_shape_depth  = input_shape[1]
+                    input_shape_height = input_shape[2]
+                    input_shape_width  = input_shape[3]
+                    upsampling_factor_depth  = out_depth  // input_shape_depth
+                    upsampling_factor_height = out_height // input_shape_height
+                    upsampling_factor_width  = out_width  // input_shape_width
+
+                    if not restricted_resize_image_mode:
+
+                        if (upsampling_factor_depth * input_shape_depth) == out_depth and \
+                            (upsampling_factor_height * input_shape_height) == out_height and \
+                            (upsampling_factor_width * input_shape_width) == out_width and \
+                                upsampling_factor_depth >= 1.0 and \
+                                    upsampling_factor_height >= 1.0 and \
+                                        upsampling_factor_width >= 1.0:
+                            # Upsampling
                             if mode == 'linear':
-                                x = Lambda(
-                                    upsampling2d_bilinear,
+                                inp = Lambda(
+                                    upsampling2d_bilinear_5d,
                                     arguments={
-                                        'upsampling_factor_height': 2,
-                                        'upsampling_factor_width':  2
+                                        'upsampling_factor_depth': upsampling_factor_depth,
+                                        'upsampling_factor_height': upsampling_factor_height,
+                                        'upsampling_factor_width': upsampling_factor_width
                                     }
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                                inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
                             elif mode == 'nearest':
-                                x = Lambda(
-                                    upsampling2d_nearest,
+                                inp = Lambda(
+                                    upsampling2d_nearest_5d,
                                     arguments={
-                                        'upsampling_factor_height': 2,
-                                        'upsampling_factor_width':  2
+                                        'upsampling_factor_depth': upsampling_factor_depth,
+                                        'upsampling_factor_height': upsampling_factor_height,
+                                        'upsampling_factor_width': upsampling_factor_width
                                     }
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                                inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
                             else:
                                 print(f'The Interpolate - {mode} is not yet implemented.')
                                 sys.exit(-1)
 
                         else:
+                            # Others
                             if mode == 'linear':
                                 if output_edgetpu:
-                                    inp = tf.compat.v1.image.resize(
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        [out_height, out_width],
-                                        method='bilinear'
-                                    )
+                                    # Dpeth (height x width)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.compat.v1.image.resize(
+                                                i,
+                                                [out_height, out_width],
+                                                method='bilinear'
+                                            )
+                                        )
+                                    stack_img_hw = tf.stack(resized_list, axis=1)
+                                    # Width (depth x Height)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.compat.v1.image.resize(
+                                                i,
+                                                [out_depth, out_height],
+                                                method='bilinear'
+                                            )
+                                        )
+                                    inp = tf.stack(resized_list, axis=3)
+
                                 else:
-                                    inp = tf.image.resize(
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        [out_height, out_width],
-                                        method='bilinear'
-                                    )
+                                    # Dpeth (height x width)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.image.resize(
+                                                i,
+                                                [out_height, out_width],
+                                                method='bilinear'
+                                            )
+                                        )
+                                    stack_img_hw = tf.stack(resized_list, axis=1)
+                                    # Width (depth x Height)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.image.resize(
+                                                i,
+                                                [out_depth, out_height],
+                                                method='bilinear'
+                                            )
+                                        )
+                                    inp = tf.stack(resized_list, axis=3)
+
                             elif mode == 'nearest':
                                 if output_edgetpu:
-                                    inp = tf.compat.v1.image.resize(
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        [out_height, out_width],
-                                        method='nearest'
-                                    )
+                                    # Dpeth (height x width)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.compat.v1.image.resize(
+                                                i,
+                                                [out_height, out_width],
+                                                method='nearest'
+                                            )
+                                        )
+                                    stack_img_hw = tf.stack(resized_list, axis=1)
+                                    # Width (depth x Height)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.compat.v1.image.resize(
+                                                i,
+                                                [out_depth, out_height],
+                                                method='nearest'
+                                            )
+                                        )
+                                    inp = tf.stack(resized_list, axis=3)
+
                                 else:
-                                    inp = tf.image.resize(
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        [out_height, out_width],
-                                        method='nearest'
-                                    )
+                                    # Dpeth (height x width)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.image.resize(
+                                                i,
+                                                [out_height, out_width],
+                                                method='nearest'
+                                            )
+                                        )
+                                    stack_img_hw = tf.stack(resized_list, axis=1)
+                                    # Width (depth x Height)
+                                    resized_list = []
+                                    unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                                    for i in unstack_img_list:
+                                        resized_list.append(
+                                            tf.image.resize(
+                                                i,
+                                                [out_depth, out_height],
+                                                method='nearest'
+                                            )
+                                        )
+                                    inp = tf.stack(resized_list, axis=3)
+
                             else:
                                 print(f'The Interpolate - {mode} is not yet implemented.')
                                 sys.exit(-1)
-                else:
-                    if mode == 'linear':
-                        inp = tf.image.resize(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            [out_height, out_width],
-                            method='bilinear'
-                        )
-                    elif mode == 'nearest':
-                        inp = tf.image.resize(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            [out_height, out_width],
-                            method='nearest'
-                        )
+
                     else:
-                        print(f'The Interpolate - {mode} is not yet implemented.')
-                        sys.exit(-1)
+                        if mode == 'linear':
+                            # Dpeth (height x width)
+                            resized_list = []
+                            unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                            for i in unstack_img_list:
+                                resized_list.append(
+                                    tf.image.resize(
+                                        i,
+                                        [out_height, out_width],
+                                        method='bilinear'
+                                    )
+                                )
+                            stack_img_hw = tf.stack(resized_list, axis=1)
+                            # Width (depth x Height)
+                            resized_list = []
+                            unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                            for i in unstack_img_list:
+                                resized_list.append(
+                                    tf.image.resize(
+                                        i,
+                                        [out_depth, out_height],
+                                        method='bilinear'
+                                    )
+                                )
+                            inp = tf.stack(resized_list, axis=3)
 
-                if wr_config and layer_id in wr_config and format_version >= 2:
-                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
-                        sys.exit(-1)
+                        elif mode == 'nearest':
+                            # Dpeth (height x width)
+                            resized_list = []
+                            unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                            for i in unstack_img_list:
+                                resized_list.append(
+                                    tf.image.resize(
+                                        i,
+                                        [out_height, out_width],
+                                        method='nearest'
+                                    )
+                                )
+                            stack_img_hw = tf.stack(resized_list, axis=1)
+                            # Width (depth x Height)
+                            resized_list = []
+                            unstack_img_list = tf.unstack(stack_img_hw, axis=3)
+                            for i in unstack_img_list:
+                                resized_list.append(
+                                    tf.image.resize(
+                                        i,
+                                        [out_depth, out_height],
+                                        method='nearest'
+                                    )
+                                )
+                            inp = tf.stack(resized_list, axis=3)
 
-                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        tf_layers_dict[layer_id] = extrapolation_of_layers(
-                            wr_config[layer_id],
-                            inp
-                        )
+                        else:
+                            print(f'The Interpolate - {mode} is not yet implemented.')
+                            sys.exit(-1)
+
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                            sys.exit(-1)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = inp
+
                 else:
-                    tf_layers_dict[layer_id] = inp
+                    print(f'{Color.RED}ERROR:{Color.RESET} Interpolate is only supported in 4D or 5D. layer_id: {layer_id} input_shape: {input_shape}')
+                    sys.exit(-1)
 
             ### ShapeOf
             elif layer.attrib['type'] == 'ShapeOf':
