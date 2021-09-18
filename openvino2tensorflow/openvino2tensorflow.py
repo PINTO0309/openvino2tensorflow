@@ -2021,6 +2021,17 @@ def convert(model_path,
                     stack_img_dh = tf.stack(resized_list, axis=3)
                     return stack_img_dh
 
+                inp = None
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                else:
+                    inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
 
                 if len(input_shape) == 4:
                     # 4D Tensor N,H,W,C
@@ -2046,7 +2057,7 @@ def convert(model_path,
                                         'upsampling_factor_height': upsampling_factor_height,
                                         'upsampling_factor_width': upsampling_factor_width
                                     }
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                )(inp)
                             elif mode == 'nearest':
                                 inp = Lambda(
                                     upsampling2d_nearest,
@@ -2054,7 +2065,7 @@ def convert(model_path,
                                         'upsampling_factor_height': upsampling_factor_height,
                                         'upsampling_factor_width': upsampling_factor_width
                                     }
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                )(inp)
                             else:
                                 print(f'The Interpolate - {mode} is not yet implemented.')
                                 sys.exit(-1)
@@ -2069,7 +2080,7 @@ def convert(model_path,
                                             'upsampling_factor_height': 2,
                                             'upsampling_factor_width':  2
                                         }
-                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    )(inp)
                                     inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
                                 elif mode == 'nearest':
                                     x = Lambda(
@@ -2078,7 +2089,7 @@ def convert(model_path,
                                             'upsampling_factor_height': 2,
                                             'upsampling_factor_width':  2
                                         }
-                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    )(inp)
                                     inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
                                 else:
                                     print(f'The Interpolate - {mode} is not yet implemented.')
@@ -2088,26 +2099,26 @@ def convert(model_path,
                                 if mode == 'linear':
                                     if output_edgetpu:
                                         inp = tf.compat.v1.image.resize(
-                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            inp,
                                             [out_height, out_width],
                                             method='bilinear'
                                         )
                                     else:
                                         inp = tf.image.resize(
-                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            inp,
                                             [out_height, out_width],
                                             method='bilinear'
                                         )
                                 elif mode == 'nearest':
                                     if output_edgetpu:
                                         inp = tf.compat.v1.image.resize(
-                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            inp,
                                             [out_height, out_width],
                                             method='nearest'
                                         )
                                     else:
                                         inp = tf.image.resize(
-                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            inp,
                                             [out_height, out_width],
                                             method='nearest'
                                         )
@@ -2117,13 +2128,13 @@ def convert(model_path,
                     else:
                         if mode == 'linear':
                             inp = tf.image.resize(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                inp,
                                 [out_height, out_width],
                                 method='bilinear'
                             )
                         elif mode == 'nearest':
                             inp = tf.image.resize(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                inp,
                                 [out_height, out_width],
                                 method='nearest'
                             )
@@ -2133,8 +2144,7 @@ def convert(model_path,
 
                     if wr_config and layer_id in wr_config and format_version >= 2:
                         if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                            print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
-                            sys.exit(-1)
+                            tf_layers_dict[layer_id] = inp
 
                         elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                             tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -2174,7 +2184,7 @@ def convert(model_path,
                                         'upsampling_factor_height': upsampling_factor_height,
                                         'upsampling_factor_width': upsampling_factor_width
                                     }
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                )(inp)
                             elif mode == 'nearest':
                                 inp = Lambda(
                                     upsampling2d_nearest_5d,
@@ -2183,7 +2193,7 @@ def convert(model_path,
                                         'upsampling_factor_height': upsampling_factor_height,
                                         'upsampling_factor_width': upsampling_factor_width
                                     }
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                )(inp)
                             else:
                                 print(f'The Interpolate - {mode} is not yet implemented.')
                                 sys.exit(-1)
@@ -2194,7 +2204,7 @@ def convert(model_path,
                                 if output_edgetpu:
                                     # Dpeth (height x width)
                                     resized_list = []
-                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    unstack_img_list = tf.unstack(inp, axis=1)
                                     for i in unstack_img_list:
                                         resized_list.append(
                                             tf.compat.v1.image.resize(
@@ -2220,7 +2230,7 @@ def convert(model_path,
                                 else:
                                     # Dpeth (height x width)
                                     resized_list = []
-                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    unstack_img_list = tf.unstack(inp, axis=1)
                                     for i in unstack_img_list:
                                         resized_list.append(
                                             tf.image.resize(
@@ -2247,7 +2257,7 @@ def convert(model_path,
                                 if output_edgetpu:
                                     # Dpeth (height x width)
                                     resized_list = []
-                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    unstack_img_list = tf.unstack(inp, axis=1)
                                     for i in unstack_img_list:
                                         resized_list.append(
                                             tf.compat.v1.image.resize(
@@ -2273,7 +2283,7 @@ def convert(model_path,
                                 else:
                                     # Dpeth (height x width)
                                     resized_list = []
-                                    unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                                    unstack_img_list = tf.unstack(inp, axis=1)
                                     for i in unstack_img_list:
                                         resized_list.append(
                                             tf.image.resize(
@@ -2304,7 +2314,7 @@ def convert(model_path,
                         if mode == 'linear':
                             # Dpeth (height x width)
                             resized_list = []
-                            unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                            unstack_img_list = tf.unstack(inp, axis=1)
                             for i in unstack_img_list:
                                 resized_list.append(
                                     tf.image.resize(
@@ -2330,7 +2340,7 @@ def convert(model_path,
                         elif mode == 'nearest':
                             # Dpeth (height x width)
                             resized_list = []
-                            unstack_img_list = tf.unstack(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], axis=1)
+                            unstack_img_list = tf.unstack(inp, axis=1)
                             for i in unstack_img_list:
                                 resized_list.append(
                                     tf.image.resize(
@@ -2359,8 +2369,7 @@ def convert(model_path,
 
                     if wr_config and layer_id in wr_config and format_version >= 2:
                         if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                            print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
-                            sys.exit(-1)
+                            tf_layers_dict[layer_id] = inp
 
                         elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                             tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -2618,9 +2627,21 @@ def convert(model_path,
                 if 'pad_value' in data.attrib:
                     pad_value = np.float32(data.attrib['pad_value'])
 
+                inp = None
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                else:
+                    inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+
                 try:
                     inp = tf.pad(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        inp,
                         paddings,
                         mode=pad_mode,
                         constant_values=pad_value
@@ -2628,13 +2649,12 @@ def convert(model_path,
                 except:
                     # workaround
                     inp = tf.identity(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        inp
                     )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
-                        sys.exit(-1)
+                        tf_layers_dict[layer_id] = inp
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -2795,6 +2815,15 @@ def convert(model_path,
                         elif part_axis >= 2:
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][idx] -= 1
                     axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                # If the Squeeze axis has been changed by extrapolation, the extrapolated axis is given priority.
+                try:
+                    before_layer_id = str(int(layer_id) - 1)
+                    if wr_config and before_layer_id in wr_config and format_version >= 2:
+                        if wr_config[before_layer_id]['type'] == 'Const':
+                            axis = wr_config[before_layer_id]['values']
+                except:
+                    pass
 
                 try:
                     if wr_config and layer_id in wr_config and format_version >= 2:
@@ -3090,39 +3119,51 @@ def convert(model_path,
                     else:
                         axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
 
+                inp = None
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                else:
+                    inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+
                 if layer.attrib['type'] == 'ReduceMean':
                     inp = tf.math.reduce_mean(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        inp,
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceMax':
                     inp = tf.math.reduce_max(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        inp,
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceMin':
                     inp = tf.math.reduce_min(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        inp,
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceSum':
                     inp = tf.math.reduce_sum(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        inp,
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceProd':
                     inp = tf.math.reduce_prod(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        inp,
                         axis=axis,
                         keepdims=keep_dims
                     )
                 elif layer.attrib['type'] == 'ReduceL2':
                     reduceL2_square = tf.math.square(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        inp
                     )
                     reduceL2_sum = tf.math.reduce_sum(
                         reduceL2_square,
@@ -3133,8 +3174,7 @@ def convert(model_path,
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
-                        sys.exit(-1)
+                        tf_layers_dict[layer_id] = inp
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -3954,6 +3994,15 @@ def convert(model_path,
             elif layer.attrib['type'] == 'Unsqueeze':
                 input_shape = np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
                 indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                # If the Unsqueeze axis has been changed by extrapolation, the extrapolated axis is given priority.
+                try:
+                    before_layer_id = str(int(layer_id) - 1)
+                    if wr_config and before_layer_id in wr_config and format_version >= 2:
+                        if wr_config[before_layer_id]['type'] == 'Const':
+                            indices = wr_config[before_layer_id]['values']
+                except:
+                    pass
 
                 if len(input_shape) == 1 and indices == [0]:
                     inp = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
