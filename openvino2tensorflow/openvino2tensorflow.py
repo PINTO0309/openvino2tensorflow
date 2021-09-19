@@ -5237,7 +5237,6 @@ def convert(model_path,
             traceback.print_exc()
             sys.exit(-1)
 
-    pprint.pprint(tf_outputs)
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
 
     print(f'{Color.GREEN}TensorFlow/Keras model building process complete!{Color.RESET}')
