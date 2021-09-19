@@ -417,6 +417,7 @@ def convert(model_path,
         for layer in layers:
             if layer.attrib['id'] == to_layer:
                 output_layer_ports = layer.find('output')
+
                 if layer.attrib['type'] != 'Result' and len(output_layer_ports) >= 2:
                     for port in output_layer_ports:
                         tf_edges.setdefault('{}:{}'.format(to_layer, port.attrib['id']), []).append(from_layer)
@@ -436,7 +437,19 @@ def convert(model_path,
             if layer.attrib['id'] == from_layer:
                 output_layer_ports = layer.find('output')
                 if len(output_layer_ports) >= 2:
-                    tf_edges.setdefault(to_layer, []).append('{}:{}'.format(from_layer, from_layer_port))
+                    flg = 'not_found'
+                    for key in tf_edges.keys():
+                        if to_layer in key and from_layer in tf_edges[key] and '{}:{}'.format(from_layer, from_layer_port) not in tf_edges[key]:
+                            tf_edges[key].append('{}:{}'.format(from_layer, from_layer_port))
+                            flg = 'found'
+                            try:
+                                tf_edges[key].remove(from_layer)
+                            except:
+                                pass
+
+                    if flg == 'not_found':
+                        tf_edges.setdefault(to_layer, []).append('{}:{}'.format(from_layer, from_layer_port))
+
                     if to_layer not in added_key_list:
                         added_key_list.append(to_layer)
                 else:
@@ -4600,7 +4613,7 @@ def convert(model_path,
                     print(f'The NonMaxSuppression box_encoding=center mode is not yet implemented.')
                     sys.exit(-1)
 
-                negative_value_template = tf.fill([total_boxes_count], -1)
+                negative_value_template = tf.fill([output_size], -1)
 
                 selected_class_idx_shape = tf.shape(selected_class_idx)[0]
                 selected_class_idx_range = tf.range(selected_class_idx_shape)
@@ -5224,6 +5237,7 @@ def convert(model_path,
             traceback.print_exc()
             sys.exit(-1)
 
+    pprint.pprint(tf_outputs)
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
 
     print(f'{Color.GREEN}TensorFlow/Keras model building process complete!{Color.RESET}')
