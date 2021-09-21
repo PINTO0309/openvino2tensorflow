@@ -2661,9 +2661,21 @@ def convert(model_path,
                     )
                 except:
                     # workaround
-                    inp = tf.identity(
-                        inp
-                    )
+                    # pads_begin: [0,0,0,1] -> [n,c,h,w]
+                    # pads_end  : [0,0,2,0] -> [n,c,h,w]
+                    # paddins = [[0,2], [1,0]] #[[top, bottom], [left, right]]
+                    if len(inp.shape) == 4:
+                        paddings = [
+                            [pads_begin[2], pads_end[2]],
+                            [pads_begin[3], pads_end[3]]
+                        ]
+                        inp = tf.keras.layers.ZeroPadding2D(
+                            padding=paddings
+                        )(inp)
+                    else:
+                        inp = tf.identity(
+                            inp
+                        )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
@@ -4017,7 +4029,7 @@ def convert(model_path,
                 except:
                     pass
 
-                if len(input_shape) == 1 and indices == [0]:
+                if len(input_shape) == 1 and len(indices) == 1 and indices == [0]:
                     inp = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                 elif len(input_shape) > 1 and len(indices) > 1:
                     print('The multi-dimensional indices specification in Unsqueeze is not yet implemented.')
