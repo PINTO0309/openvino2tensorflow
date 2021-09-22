@@ -430,7 +430,8 @@ def convert(model_path,
                                 layer.attrib['type'] == 'GatherElements' or \
                                     layer.attrib['type'] == 'ScatterElementsUpdate' or \
                                         layer.attrib['type'] == 'ScatterNDUpdate' or \
-                                            layer.attrib['type'] == 'Reshape':
+                                            layer.attrib['type'] == 'Reshape' or \
+                                                layer.attrib['type'] == 'ConvertLike':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -5220,6 +5221,39 @@ def convert(model_path,
                 else:
                     tf_layers_dict[layer_id] = inp
 
+            ### ConvertLike
+            elif layer.attrib['type'] == 'ConvertLike':
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                like = port2.dtype
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            port1
+                        )
+                        tf_layers_dict[layer_id] = tf.cast(
+                            inp,
+                            like
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.cast(
+                            port1,
+                            like
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    tf_layers_dict[layer_id] = tf.cast(
+                        port1,
+                        like
+                    )
+
             ### Result
             elif layer.attrib['type'] == 'Result':
                 tf_layers_dict[layer_id] = tf.identity(
@@ -5268,10 +5302,13 @@ def convert(model_path,
                 elif layer.attrib['type'] == 'Split' or layer.attrib['type'] == 'VariadicSplit' or layer.attrib['type'] == 'NonMaxSuppression':
                     # Split, VariadicSplit, NonMaxSuppression
                     for edge_index, tmp_layer_id_port in enumerate(layer_id_port_dict[layer_id]['layer_id:port']):
-                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)]) != np.ndarray:
-                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[tmp_layer_id_port][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)]}'
-                        else:
-                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[tmp_layer_id_port][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)].shape}'
+                        try:
+                            if type(tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)]) != np.ndarray:
+                                layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[tmp_layer_id_port][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)]}'
+                            else:
+                                layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[tmp_layer_id_port][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, tmp_layer_id_port, edge_index)].shape}'
+                        except:
+                            layer_structure[f'input_layer{edge_index}'] = f'layer_id=Unkown: Unkown'
                     for idx, (output, layer_id_port) in enumerate(zip(outputs, layer_id_port_dict[layer_id]['layer_id:port'])):
                         layer_structure[f'tf_layers_dict{idx}'] = f'layer_id_port: {layer_id_port} {output}'
 
