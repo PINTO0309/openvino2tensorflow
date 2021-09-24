@@ -274,6 +274,7 @@ usage: openvino2tensorflow
   [--output_weight_and_json]
   [--output_pb]
   [--output_no_quant_float32_tflite]
+  [--output_dynamic_range_quant_tflite]
   [--output_weight_quant_tflite]
   [--output_float16_quant_tflite]
   [--output_integer_quant_tflite]
@@ -326,6 +327,8 @@ optional arguments:
                         .pb output switch
   --output_no_quant_float32_tflite
                         float32 tflite output switch
+  --output_dynamic_range_quant_tflite
+                        dynamic range quant tflite output switch
   --output_weight_quant_tflite
                         weight quant tflite output switch
   --output_float16_quant_tflite
@@ -429,6 +432,7 @@ usage: saved_model_to_tflite
   [--input_shapes INPUT_SHAPES]
   [--model_output_dir_path MODEL_OUTPUT_DIR_PATH]
   [--output_no_quant_float32_tflite]
+  [--output_dynamic_range_quant_tflite]
   [--output_weight_quant_tflite]
   [--output_float16_quant_tflite]
   [--output_integer_quant_tflite]
@@ -469,6 +473,8 @@ optional arguments:
                         The output folder path of the converted model file
   --output_no_quant_float32_tflite
                         float32 tflite output switch
+  --output_dynamic_range_quant_tflite
+                        dynamic range quant tflite output switch
   --output_weight_quant_tflite
                         weight quant tflite output switch
   --output_float16_quant_tflite

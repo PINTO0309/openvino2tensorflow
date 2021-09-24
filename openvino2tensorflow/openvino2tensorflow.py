@@ -62,6 +62,7 @@ def convert(model_path,
             output_weight_and_json,
             output_pb,
             output_no_quant_float32_tflite,
+            output_dynamic_range_quant_tflite,
             output_weight_quant_tflite,
             output_float16_quant_tflite,
             output_integer_quant_tflite,
@@ -5459,6 +5460,22 @@ def convert(model_path,
             import traceback
             traceback.print_exc()
 
+    # Dynamic Range Quantization - Input/Output=float32
+    if output_dynamic_range_quant_tflite:
+        try:
+            print(f'{Color.REVERCE}Dynamic Range Quantization started{Color.RESET}', '=' * 50)
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+            tflite_model = converter.convert()
+            with open(f'{model_output_path}/model_dynamic_range_quant.tflite', 'wb') as w:
+                w.write(tflite_model)
+            print(f'{Color.GREEN}Dynamic Range Quantization complete!{Color.RESET} - {model_output_path}/model_dynamic_range_quant.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+
     # Weight Quantization - Input/Output=float32
     if output_weight_quant_tflite:
         try:
@@ -5773,6 +5790,7 @@ def main():
     parser.add_argument('--output_weight_and_json', action='store_true', help='weight of h5 and json output switch')
     parser.add_argument('--output_pb', action='store_true', help='.pb output switch')
     parser.add_argument('--output_no_quant_float32_tflite', action='store_true', help='float32 tflite output switch')
+    parser.add_argument('--output_dynamic_range_quant_tflite', action='store_true', help='dynamic range quant tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', action='store_true', help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', action='store_true', help='float16 quant tflite output switch')
     parser.add_argument('--output_integer_quant_tflite', action='store_true', help='integer quant tflite output switch')
@@ -5820,6 +5838,7 @@ def main():
     output_weight_and_json = args.output_weight_and_json
     output_pb = args.output_pb
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
+    output_dynamic_range_quant_tflite = args.output_dynamic_range_quant_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
     output_float16_quant_tflite = args.output_float16_quant_tflite
     output_integer_quant_tflite = args.output_integer_quant_tflite
@@ -5860,6 +5879,7 @@ def main():
 
     if not output_saved_model and \
         not output_h5 and \
+        not output_dynamic_range_quant_tflite and \
         not output_weight_and_json and \
         not output_pb and \
         not output_no_quant_float32_tflite and \
@@ -5939,7 +5959,7 @@ def main():
     del package_list
     os.makedirs(model_output_path, exist_ok=True)
     convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
-            output_no_quant_float32_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
+            output_no_quant_float32_tflite, output_dynamic_range_quant_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
             output_integer_quant_tflite, output_full_integer_quant_tflite, output_integer_quant_type,
             string_formulas_for_normalization,
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,

@@ -43,6 +43,7 @@ def convert(
     input_shapes,
     model_output_dir_path,
     output_no_quant_float32_tflite,
+    output_dynamic_range_quant_tflite,
     output_weight_quant_tflite,
     output_float16_quant_tflite,
     output_integer_quant_tflite,
@@ -106,6 +107,22 @@ def convert(
             with open(f'{model_output_dir_path}/model_float32.tflite', 'wb') as w:
                 w.write(tflite_model)
             print(f'{Color.GREEN}tflite Float32 convertion complete!{Color.RESET} - {model_output_dir_path}/model_float32.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+
+    # Dynamic Range Quantization - Input/Output=float32
+    if output_dynamic_range_quant_tflite:
+        try:
+            print(f'{Color.REVERCE}Dynamic Range Quantization started{Color.RESET}', '=' * 50)
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+            tflite_model = converter.convert()
+            with open(f'{model_output_path}/model_dynamic_range_quant.tflite', 'wb') as w:
+                w.write(tflite_model)
+            print(f'{Color.GREEN}Dynamic Range Quantization complete!{Color.RESET} - {model_output_path}/model_dynamic_range_quant.tflite')
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
             import traceback
@@ -399,6 +416,7 @@ def main():
     parser.add_argument('--input_shapes', type=str, default='', help='Overwrites an undefined input dimension (None or -1). Specify the input shape in [n,h,w,c] format. For non-4D tensors, specify [a,b,c,d,e], [a,b], etc. A comma-separated list if there are multiple inputs. (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]')
     parser.add_argument('--model_output_dir_path', type=str, default='tflite_from_saved_model', help='The output folder path of the converted model file')
     parser.add_argument('--output_no_quant_float32_tflite', action='store_true', help='float32 tflite output switch')
+    parser.add_argument('--output_dynamic_range_quant_tflite', action='store_true', help='dynamic range quant tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', action='store_true', help='weight quant tflite output switch')
     parser.add_argument('--output_float16_quant_tflite', action='store_true', help='float16 quant tflite output switch')
     parser.add_argument('--output_integer_quant_tflite', action='store_true', help='integer quant tflite output switch')
@@ -440,6 +458,7 @@ def main():
             input_shapes.append([int(dim) for dim in shape_str.split(',')])
     model_output_dir_path = args.model_output_dir_path
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
+    output_dynamic_range_quant_tflite = args.output_dynamic_range_quant_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
     output_float16_quant_tflite = args.output_float16_quant_tflite
     output_integer_quant_tflite = args.output_integer_quant_tflite
@@ -464,14 +483,15 @@ def main():
     use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
 
     if not output_no_quant_float32_tflite and \
-        not output_weight_quant_tflite and \
-            not output_integer_quant_tflite and \
-                not output_full_integer_quant_tflite and \
-                    not output_tfjs and \
-                        not output_tftrt and \
-                            not output_coreml and \
-                                not output_edgetpu and \
-                                    not output_onnx:
+        not output_dynamic_range_quant_tflite and \
+            not output_weight_quant_tflite and \
+                not output_integer_quant_tflite and \
+                    not output_full_integer_quant_tflite and \
+                        not output_tfjs and \
+                            not output_tftrt and \
+                                not output_coreml and \
+                                    not output_edgetpu and \
+                                        not output_onnx:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
 
@@ -532,6 +552,7 @@ def main():
         input_shapes,
         model_output_dir_path,
         output_no_quant_float32_tflite,
+        output_dynamic_range_quant_tflite,
         output_weight_quant_tflite,
         output_float16_quant_tflite,
         output_integer_quant_tflite,
