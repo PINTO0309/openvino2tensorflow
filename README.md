@@ -94,7 +94,7 @@ Work in progress now.
 |:--:|:--|:--|:--|
 |1|Parameter|Input|Convert to NHWC (Default) or NCHW|
 |2|Const|Constant, Bias||
-|3|Convolution|Conv2D, Conv3D|Conv3D has limited support|
+|3|Convolution|Conv1D, Conv2D, Conv3D|Conv3D has limited support|
 |4|Add|Add||
 |5|ReLU|ReLU||
 |6|PReLU|PReLU|Maximum(0.0,x)+Minimum(0.0,alpha\*x)|
