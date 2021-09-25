@@ -597,7 +597,6 @@ def convert(model_path,
                 # port0 = [int(sdim.text) for sdim in layer.find('input')[0]]
                 port1 = [int(sdim.text) for sdim in layer.find('input')[1]]
                 filters = int(port1[0])
-                kernel_size = [int(port1[2]), int(port1[3])]
                 dilations = [int(s) for s in data.attrib['dilations'].split(',')]
                 strides = [int(s) for s in data.attrib['strides'].split(',')]
                 pads_begin = 0
@@ -622,6 +621,7 @@ def convert(model_path,
 
                 if len(strides) == 2:
                     # Conv2D
+                    kernel_size = [int(port1[2]), int(port1[3])]
                     orig = None
                     if pads_begin > 0:
                         padding = 'valid'
@@ -841,6 +841,51 @@ def convert(model_path,
                                 padding="SAME",
                                 dilations=[1, dilations[0], dilations[1], dilations[2], 1]
                             )
+
+                elif len(strides) == 1:
+                    # Conv1D
+                    """
+                    VINO:[N, C, W]
+                    TF  :[N, W, C]
+                    VINO = input:[1,1024,16] filter:[512,1024,1]
+                    TF   = input:[1,16,1024] filter:[1,1024,512]
+                    """
+                    kernel_size = [int(port1[2])]
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = tf.nn.conv1d(
+                                input=inp,
+                                filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,1,0),
+                                stride=strides,
+                                padding=padding.upper(),
+                                dilations=dilations
+                            )
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = tf.nn.conv1d(
+                                input=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,1,0),
+                                stride=strides,
+                                padding=padding.upper(),
+                                dilations=dilations
+                            )
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.conv1d(
+                            input=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            filters=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,1,0),
+                            stride=strides,
+                            padding=padding.upper(),
+                            dilations=dilations
+                        )
+
 
             ### Add
             elif layer.attrib['type'] == 'Add':
