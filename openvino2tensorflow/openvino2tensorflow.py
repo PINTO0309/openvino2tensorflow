@@ -3686,6 +3686,7 @@ def convert(model_path,
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                         )
                         if output_no_quant_float32_tflite or \
+                            output_dynamic_range_quant_tflite or \
                             output_weight_quant_tflite or \
                             output_float16_quant_tflite or \
                             output_integer_quant_tflite or \
@@ -3699,6 +3700,7 @@ def convert(model_path,
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                         if output_no_quant_float32_tflite or \
+                            output_dynamic_range_quant_tflite or \
                             output_weight_quant_tflite or \
                             output_float16_quant_tflite or \
                             output_integer_quant_tflite or \
@@ -3716,6 +3718,7 @@ def convert(model_path,
                         )
                 else:
                     if output_no_quant_float32_tflite or \
+                        output_dynamic_range_quant_tflite or \
                         output_weight_quant_tflite or \
                         output_float16_quant_tflite or \
                         output_integer_quant_tflite or \
@@ -3748,22 +3751,76 @@ def convert(model_path,
 
             ### Asin
             elif layer.attrib['type'] == 'Asin':
+                # https://zenn.dev/pinto0309/articles/8f6df1d2304395
+                def pseudo_asin(x, output_myriad):
+                    x_abs = None
+                    if output_myriad:
+                        x_abs = tf.math.sqrt(tf.math.square(x)) # OAK-D (MyriadX) is not compatible with ABS.
+                    else:
+                        x_abs = tf.abs(x)
+                    neg = tf.math.divide(tf.math.multiply(tf.minimum(x, 0), -1), x_abs)
+                    x = x_abs
+                    y = tf.constant(-0.0187293)
+                    y = tf.math.multiply(y, x)
+                    y = tf.math.add(y, 0.0742610)
+                    y = tf.math.multiply(y, x)
+                    y = tf.math.subtract(y, 0.2121144)
+                    y = tf.math.multiply(y, x)
+                    y = tf.math.add(y, 1.5707288)
+                    y = tf.math.subtract(tf.math.multiply(3.14159265358979, 0.5), tf.math.multiply(tf.sqrt(tf.math.subtract(1.0, x)), y))
+                    asin = tf.math.subtract(y, tf.math.multiply(tf.math.multiply(2, neg), y))
+                    return asin
+
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         inp = extrapolation_of_layers(
                             wr_config[layer_id],
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                         )
-                        tf_layers_dict[layer_id] = tf.math.asin(inp)
+                        if output_no_quant_float32_tflite or \
+                            output_dynamic_range_quant_tflite or \
+                            output_weight_quant_tflite or \
+                            output_float16_quant_tflite or \
+                            output_integer_quant_tflite or \
+                            output_full_integer_quant_tflite or \
+                            output_edgetpu or \
+                            output_myriad:
+
+                            tf_layers_dict[layer_id] = pseudo_asin(inp, output_myriad)
+                        else:
+                            tf_layers_dict[layer_id] = tf.math.asin(inp)
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        if output_no_quant_float32_tflite or \
+                            output_dynamic_range_quant_tflite or \
+                            output_weight_quant_tflite or \
+                            output_float16_quant_tflite or \
+                            output_integer_quant_tflite or \
+                            output_full_integer_quant_tflite or \
+                            output_edgetpu or \
+                            output_myriad:
+
+                            inp = pseudo_asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], output_myriad)
+                        else:
+                            inp = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
                             inp
                         )
                 else:
-                    tf_layers_dict[layer_id] = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    if output_no_quant_float32_tflite or \
+                        output_dynamic_range_quant_tflite or \
+                        output_weight_quant_tflite or \
+                        output_float16_quant_tflite or \
+                        output_integer_quant_tflite or \
+                        output_full_integer_quant_tflite or \
+                        output_edgetpu or \
+                        output_myriad:
+
+                        tf_layers_dict[layer_id] = pseudo_asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], output_myriad)
+                    else:
+                        tf_layers_dict[layer_id] = tf.math.asin(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Asinh
             elif layer.attrib['type'] == 'Asinh':
