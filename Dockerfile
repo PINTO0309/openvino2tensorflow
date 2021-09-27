@@ -61,7 +61,6 @@ RUN pip3 install --upgrade pip \
 RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/sclblonnx-0.1.9_nvc-py3-none-any.whl \
     && pip3 install sclblonnx-0.1.9_nvc-py3-none-any.whl \
     && rm sclblonnx-0.1.9_nvc-py3-none-any.whl \
-    && pip cache purge \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
