@@ -51,7 +51,16 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade numpy==1.19.5 \
     && pip install --upgrade onnx2json \
     && pip install --upgrade json2onnx \
+    && python3 -m pip install onnx_graphsurgeon --index-url https://pypi.ngc.nvidia.com \
     && ldconfig \
+    && pip cache purge \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install sclblonnx non-version check custom .ver
+RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/sclblonnx-0.1.9_nvc-py3-none-any.whl \
+    && pip3 install sclblonnx-0.1.9_nvc-py3-none-any.whl \
+    && rm sclblonnx-0.1.9_nvc-py3-none-any.whl \
     && pip cache purge \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
