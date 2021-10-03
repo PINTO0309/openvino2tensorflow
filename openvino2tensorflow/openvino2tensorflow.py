@@ -5730,15 +5730,15 @@ def convert(model_path,
                 image = raw_test_data[idx]
                 images = []
                 for shape in input_shapes:
-                    if shape[3] == 3:
+                    if len(shape) == 4 and shape[3] == 3:
                         data = tf.image.resize(image, (shape[1], shape[2]))
                         data = data[np.newaxis,:,:,:]
-                    elif shape[3] == 1:
+                    elif len(shape) == 4 and shape[3] == 1:
                         data = tf.image.resize(image, (shape[1], shape[2]))
                         data = 0.299 * data[:, :, 0] + 0.587 * data[:, :, 1] + 0.114 * data[:, :, 2]
                         data = data[np.newaxis,:,:,np.newaxis]
                     else:
-                        data = np.random.random_sample([i for i in shape]) * 255.0
+                        data = np.random.random_sample([i for i in shape]).astype(np.float32) * 255.0
                     tmp_image = eval(string_formulas_for_normalization) # Default: (data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]
                     images.append(tmp_image)
                 yield images
