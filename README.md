@@ -189,7 +189,8 @@ Work in progress now.
 |95|ScatterNDUpdate|tensor_scatter_nd_update||
 |96|GatherElements|rank, add, shape, cast, floormod, range, tensor_scatter_nd_update, constant, transpose, meshgrid, expand_dims, concat, gather_nd|WIP|
 |97|ConvertLike|Cast||
-|98|Result|Identity|Output|
+|98|ReduceL1|Abs, ReduceSum||
+|99|Result|Identity|Output|
 
 **[↥ Back to top](#openvino2tensorflow)**
 
@@ -288,7 +289,8 @@ usage: openvino2tensorflow
   [--tfds_download_flg]
   [--load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY]
   [--output_tfjs]
-  [--output_tftrt]
+  [--output_tftrt_float32]
+  [--output_tftrt_float16]
   [--tftrt_maximum_cached_engines TFTRT_MAXIMUM_CACHED_ENGINES]
   [--output_coreml]
   [--output_edgetpu]
@@ -365,8 +367,10 @@ optional arguments:
                         Default: sample_npy/calibration_data_img_sample.npy
   --output_tfjs
                         tfjs model output switch
-  --output_tftrt
-                        tftrt model output switch
+  --output_tftrt_float32
+                        tftrt float32 model output switch
+  --output_tftrt_float16
+                        tftrt float16 model output switch
   --tftrt_maximum_cached_engines
                         Specifies the quantity of tftrt_maximum_cached_engines for TFTRT.
                         Default: 10000
@@ -446,7 +450,8 @@ usage: saved_model_to_tflite
   [--tfds_download_flg]
   [--load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY]
   [--output_tfjs]
-  [--output_tftrt]
+  [--output_tftrt_float32]
+  [--output_tftrt_float16]
   [--tftrt_maximum_cached_engines TFTRT_MAXIMUM_CACHED_ENGINES]
   [--output_coreml]
   [--output_edgetpu]
@@ -511,8 +516,10 @@ optional arguments:
                         Default: sample_npy/calibration_data_img_sample.npy
   --output_tfjs
                         tfjs model output switch
-  --output_tftrt
-                        tftrt model output switch
+  --output_tftrt_float32
+                        tftrt float32 model output switch
+  --output_tftrt_float16
+                        tftrt float16 model output switch
   --tftrt_maximum_cached_engines
                         Specifies the quantity of tftrt_maximum_cached_engines for TFTRT.
                         Default: 10000

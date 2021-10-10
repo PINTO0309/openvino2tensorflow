@@ -58,7 +58,8 @@ def convert(
     npy_load_default_path,
     load_dest_file_path_for_the_calib_npy,
     output_tfjs,
-    output_tftrt,
+    output_tftrt_float32,
+    output_tftrt_float16,
     tftrt_maximum_cached_engines,
     output_coreml,
     output_edgetpu,
@@ -351,7 +352,7 @@ def convert(
             traceback.print_exc()
 
     # TF-TRT (TensorRT) convert
-    if output_tftrt:
+    if output_tftrt_float32:
         try:
             def input_fn():
                 input_shapes_tmp = []
@@ -367,6 +368,20 @@ def convert(
             converter.save(f'{model_output_dir_path}/tensorrt_saved_model_float32')
             print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_dir_path}/tensorrt_saved_model_float32')
 
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+            print(f'{Color.RED}The binary versions of TensorFlow and TensorRT may not be compatible. Please check the version compatibility of each package.{Color.RESET}')
+
+    if output_tftrt_float16:
+        try:
+            def input_fn():
+                input_shapes_tmp = []
+                for tf_input in input_shapes:
+                    input_shapes_tmp.append(np.zeros(tf_input).astype(np.float32))
+                yield input_shapes_tmp
+
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float16 convertion started{Color.RESET}', '=' * 40)
             params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=tftrt_maximum_cached_engines)
             converter = tf.experimental.tensorrt.Converter(input_saved_model_dir=model_output_dir_path, conversion_params=params)
@@ -380,6 +395,7 @@ def convert(
             import traceback
             traceback.print_exc()
             print(f'{Color.RED}The binary versions of TensorFlow and TensorRT may not be compatible. Please check the version compatibility of each package.{Color.RESET}')
+
 
     # CoreML convert
     if output_coreml:
@@ -439,7 +455,8 @@ def main():
     npy_load_default_path = 'sample_npy/calibration_data_img_sample.npy'
     parser.add_argument('--load_dest_file_path_for_the_calib_npy', type=str, default=npy_load_default_path, help='The path from which to load the .npy file containing the numpy binary version of the calibration data. Default: sample_npy/calibration_data_img_sample.npy')
     parser.add_argument('--output_tfjs', action='store_true', help='tfjs model output switch')
-    parser.add_argument('--output_tftrt', action='store_true', help='tftrt model output switch')
+    parser.add_argument('--output_tftrt_float32', action='store_true', help='tftrt float32 model output switch')
+    parser.add_argument('--output_tftrt_float16', action='store_true', help='tftrt float16 model output switch')
     parser.add_argument('--tftrt_maximum_cached_engines', type=int, default=10000, help='Specifies the quantity of tftrt_maximum_cached_engines for TFTRT. Default: 10000')
     parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
     parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
@@ -479,7 +496,8 @@ def main():
     tfds_download_flg = args.tfds_download_flg
     load_dest_file_path_for_the_calib_npy = args.load_dest_file_path_for_the_calib_npy
     output_tfjs = args.output_tfjs
-    output_tftrt = args.output_tftrt
+    output_tftrt_float32 = args.output_tftrt_float32
+    output_tftrt_float16 = args.output_tftrt_float16
     tftrt_maximum_cached_engines = args.tftrt_maximum_cached_engines
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
@@ -495,10 +513,11 @@ def main():
                 not output_integer_quant_tflite and \
                     not output_full_integer_quant_tflite and \
                         not output_tfjs and \
-                            not output_tftrt and \
-                                not output_coreml and \
-                                    not output_edgetpu and \
-                                        not output_onnx:
+                            not output_tftrt_float32 and \
+                                not output_tftrt_float16 and \
+                                    not output_coreml and \
+                                        not output_edgetpu and \
+                                            not output_onnx:
         print('Set at least one of the output switches (output_*) to true.')
         sys.exit(-1)
 
@@ -515,7 +534,7 @@ def main():
             print('\'tensorflowjs\' is not installed. Please run the following command to install \'tensorflowjs\'.')
             print('pip3 install --upgrade tensorflowjs')
             sys.exit(-1)
-    if output_tftrt:
+    if output_tftrt_float32 or output_tftrt_float16:
         if not 'tensorrt' in package_list:
             print('\'tensorrt\' is not installed. Please check the following website and install \'tensorrt\'.')
             print('https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html')
@@ -574,7 +593,8 @@ def main():
         npy_load_default_path,
         load_dest_file_path_for_the_calib_npy,
         output_tfjs,
-        output_tftrt,
+        output_tftrt_float32,
+        output_tftrt_float16,
         tftrt_maximum_cached_engines,
         output_coreml,
         output_edgetpu,

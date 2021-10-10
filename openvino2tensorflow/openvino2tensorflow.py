@@ -77,7 +77,8 @@ def convert(model_path,
             npy_load_default_path,
             load_dest_file_path_for_the_calib_npy,
             output_tfjs,
-            output_tftrt,
+            output_tftrt_float32,
+            output_tftrt_float16,
             tftrt_maximum_cached_engines,
             output_coreml,
             output_edgetpu,
@@ -3210,7 +3211,8 @@ def convert(model_path,
 
             ### ReduceMean, ReduceMax, ReduceMin, ReduceSum, ReduceProd, ReduceL2 - TODO
             elif layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
-                layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd' or layer.attrib['type'] == 'ReduceL2':
+                layer.attrib['type'] == 'ReduceSum' or layer.attrib['type'] == 'ReduceProd' or \
+                layer.attrib['type'] == 'ReduceL1' or layer.attrib['type'] == 'ReduceL2':
                 keep_dims = True if (data.attrib['keep_dims'] == "True" or data.attrib['keep_dims'] == "true") else False
                 axis = None
                 if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == np.ndarray and len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]) == 1:
@@ -3286,6 +3288,15 @@ def convert(model_path,
                 elif layer.attrib['type'] == 'ReduceProd':
                     inp = tf.math.reduce_prod(
                         inp,
+                        axis=axis,
+                        keepdims=keep_dims
+                    )
+                elif layer.attrib['type'] == 'ReduceL1':
+                    reduceL1_abs = tf.math.abs(
+                        inp
+                    )
+                    inp = tf.math.reduce_sum(
+                        reduceL1_abs,
                         axis=axis,
                         keepdims=keep_dims
                     )
@@ -5832,7 +5843,7 @@ def convert(model_path,
             traceback.print_exc()
 
     # TF-TRT (TensorRT) convert
-    if output_tftrt:
+    if output_tftrt_float32:
         try:
             def input_fn():
                 input_shapes = []
@@ -5847,6 +5858,22 @@ def convert(model_path,
             converter.build(input_fn=input_fn)
             converter.save(f'{model_output_path}/tensorrt_saved_model_float32')
             print(f'{Color.GREEN}TF-TRT (TensorRT) convertion complete!{Color.RESET} - {model_output_path}/tensorrt_saved_model_float32')
+
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+            print(f'{Color.RED}The binary versions of TensorFlow and TensorRT may not be compatible. Please check the version compatibility of each package.{Color.RESET}')
+            print(f'{Color.RED}--tftrt_maximum_cached_engines should be less than 10000 and try to convert again. It is very likely that the GPU memory has been exhausted.{Color.RESET}')
+            print(f'{Color.RED}Try using the nvidia-smi command during the conversion process to see how much GPU RAM is consumed.{Color.RESET}')
+
+    if output_tftrt_float16:
+        try:
+            def input_fn():
+                input_shapes = []
+                for tf_input in tf_inputs:
+                    input_shapes.append(np.zeros(tf_input.shape).astype(np.float32))
+                yield input_shapes
 
             print(f'{Color.REVERCE}TF-TRT (TensorRT) Float16 convertion started{Color.RESET}', '=' * 40)
             params = tf.experimental.tensorrt.ConversionParams(precision_mode='FP16', maximum_cached_engines=tftrt_maximum_cached_engines)
@@ -5971,7 +5998,8 @@ def main():
     npy_load_default_path = 'sample_npy/calibration_data_img_sample.npy'
     parser.add_argument('--load_dest_file_path_for_the_calib_npy', type=str, default=npy_load_default_path, help='The path from which to load the .npy file containing the numpy binary version of the calibration data. Default: sample_npy/calibration_data_img_sample.npy')
     parser.add_argument('--output_tfjs', action='store_true', help='tfjs model output switch')
-    parser.add_argument('--output_tftrt', action='store_true', help='tftrt model output switch')
+    parser.add_argument('--output_tftrt_float32', action='store_true', help='tftrt float32 model output switch')
+    parser.add_argument('--output_tftrt_float16', action='store_true', help='tftrt float16 model output switch')
     parser.add_argument('--tftrt_maximum_cached_engines', type=int, default=10000, help='Specifies the quantity of tftrt_maximum_cached_engines for TFTRT. Default: 10000')
     parser.add_argument('--output_coreml', action='store_true', help='coreml model output switch')
     parser.add_argument('--output_edgetpu', action='store_true', help='edgetpu model output switch')
@@ -6017,7 +6045,8 @@ def main():
     tfds_download_flg = args.tfds_download_flg
     load_dest_file_path_for_the_calib_npy = args.load_dest_file_path_for_the_calib_npy
     output_tfjs = args.output_tfjs
-    output_tftrt = args.output_tftrt
+    output_tftrt_float32 = args.output_tftrt_float32
+    output_tftrt_float16 = args.output_tftrt_float16
     tftrt_maximum_cached_engines = args.tftrt_maximum_cached_engines
     output_coreml = args.output_coreml
     output_edgetpu = args.output_edgetpu
@@ -6053,7 +6082,8 @@ def main():
         not output_integer_quant_tflite and \
         not output_full_integer_quant_tflite and \
         not output_tfjs and \
-        not output_tftrt and \
+        not output_tftrt_float32 and \
+        not output_tftrt_float16 and \
         not output_coreml and \
         not output_edgetpu and \
         not output_onnx and \
@@ -6074,7 +6104,7 @@ def main():
             print('\'tensorflowjs\' is not installed. Please run the following command to install \'tensorflowjs\'.')
             print('pip3 install --upgrade tensorflowjs')
             sys.exit(-1)
-    if output_tftrt:
+    if output_tftrt_float32 or output_tftrt_float16:
         if not 'tensorrt' in package_list:
             print('\'tensorrt\' is not installed. Please check the following website and install \'tensorrt\'.')
             print('https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html')
@@ -6129,7 +6159,7 @@ def main():
             string_formulas_for_normalization,
             calib_ds_type, ds_name_for_tfds_for_calibration, split_name_for_tfds_for_calibration,
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg, npy_load_default_path, load_dest_file_path_for_the_calib_npy,
-            output_tfjs, output_tftrt, tftrt_maximum_cached_engines, output_coreml,
+            output_tfjs, output_tftrt_float32, output_tftrt_float16, tftrt_maximum_cached_engines, output_coreml,
             output_edgetpu, edgetpu_compiler_timeout, edgetpu_num_segments,
             output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
