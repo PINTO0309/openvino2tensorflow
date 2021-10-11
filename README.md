@@ -691,7 +691,8 @@ $ saved_model_cli show \
 
 ### 6-7. Replace weights or constant values in **`Const`** OP, and add **`Transpose`** or **`Reshape`** or **`Cast`** just before/after the operation specified by layer_id
 #### 6-7-1. Overview
-If the transformation behavior of **`Reshape`**, **`Transpose`**, etc. does not go as expected, you can force the **`Const`** content to change by defining weights and constant values in a JSON file and having it read in. Alternatively, **`Transpose`** or **`Reshape`** or **`Cast`** can be added just before the operation specified by layer_id.
+If the transformation behavior of **`Reshape`**, **`Transpose`**, etc. does not go as expected, you can force the **`Const`** content to change by defining weights and constant values in a JSON file and having it read in. Alternatively, **`Transpose`** or **`Reshape`** or **`Cast`** can be added just before the operation specified by layer_id. After changing the structure, you need to carefully check the consistency of Reshape, Transpose and Interpolate before and after. Even if the model is successfully transformed, there is a possibility that the dimensions that should have been changed have been transformed incorrectly.
+
 ```
 $ openvino2tensorflow \
   --model_path xxx.xml \

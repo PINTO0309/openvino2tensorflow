@@ -3025,14 +3025,18 @@ def convert(model_path,
                         indices.append(dim)
                 else:
                     # TODO
-                    shape = tf.shape(temp)
-                    for idx, dim in enumerate(shape):
-                        if idx == 0:
-                            indices.append(0)
-                        elif idx == input_shape - 1:
-                            indices.append(1)
-                        else:
-                            indices.append(dim + 1)
+                    if len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape) < len(temp.shape):
+                        for idx, dim in enumerate(temp):
+                            indices.append(dim)
+                    else:
+                        shape = tf.shape(temp)
+                        for idx, dim in enumerate(shape):
+                            if idx == 0:
+                                indices.append(0)
+                            elif idx == input_shape - 1:
+                                indices.append(1)
+                            else:
+                                indices.append(dim + 1)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
