@@ -1704,7 +1704,6 @@ def convert(model_path,
                             kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,2,1,0)
                         except:
                             kernel = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,2,1,0)
-
                         for i in range(groups):
                             convs.append(
                                 Conv2D(
@@ -1734,8 +1733,7 @@ def convert(model_path,
                                     kernel_initializer=Constant(kernel[:,:,:,i])
                                 )
                             )
-
-                    x_splits = tf.split(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], groups, -1)
+                    x_splits = tf.split(orig, groups, -1)
                     x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
                     inp = tf.concat(x_outputs, -1)
 
@@ -1761,8 +1759,6 @@ def convert(model_path,
                             use_bias=False,
                             depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0))
                         )(orig)
-
-
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
