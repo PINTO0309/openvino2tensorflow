@@ -1527,11 +1527,28 @@ def convert(model_path,
                 else:
                     padding = 'SAME'
 
+                temp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+
+                if pads_begin > 0:
+                    padding = 'VALID'
+                    # begin 0 = top
+                    # begin 1 = left
+                    # end 0 = bottom
+                    # end 1 = right
+                    begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
+                    end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
+                    orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+                else:
+                    if temp.shape[0] == 1 and temp.shape[2] == 1 and temp.shape[3] == 1:
+                        orig = tf.transpose(temp, perm=(0,2,3,1))
+                    else:
+                        orig = temp
+
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         inp = extrapolation_of_layers(
                             wr_config[layer_id],
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            orig
                         )
                         tf_layers_dict[layer_id] = tf.nn.max_pool(
                             inp,
@@ -1542,7 +1559,7 @@ def convert(model_path,
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                         inp = tf.nn.max_pool(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            orig,
                             ksize=kernel_size,
                             strides=strides,
                             padding=padding
@@ -1554,7 +1571,7 @@ def convert(model_path,
 
                 else:
                     tf_layers_dict[layer_id] = tf.nn.max_pool(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                        orig,
                         ksize=kernel_size,
                         strides=strides,
                         padding=padding
@@ -1567,7 +1584,7 @@ def convert(model_path,
                         if wr_config[layer_id]['replace_mode'] == 'insert_before':
                             inp = extrapolation_of_layers(
                                 wr_config[layer_id],
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                                orig
                             )
                             tf_layers_dict[layer_id] = tf.nn.max_pool(
                                 inp,
@@ -1578,7 +1595,7 @@ def convert(model_path,
 
                         elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                             inp = tf.nn.max_pool(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                orig,
                                 ksize=kernel_size,
                                 strides=strides,
                                 padding='SAME'
@@ -1590,7 +1607,7 @@ def convert(model_path,
 
                     else:
                         tf_layers_dict[layer_id] = tf.nn.max_pool(
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            orig,
                             ksize=kernel_size,
                             strides=strides,
                             padding='SAME'
