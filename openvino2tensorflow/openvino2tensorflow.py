@@ -2050,10 +2050,16 @@ def convert(model_path,
                             )
                 else:
                     # unknown
-                    inp = tf.math.multiply(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                    )
+                    try:
+                        inp = tf.math.multiply(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                        )
+                    except:
+                        # squaring
+                        inp = tf.math.square(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
