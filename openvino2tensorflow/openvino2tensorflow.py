@@ -289,7 +289,9 @@ def convert(model_path,
         'Const': ['direct', 'npy'],
         'Transpose': ['insert_before', 'insert_after'],
         'Reshape': ['insert_before', 'insert_after'],
-        'Cast': ['insert_before', 'insert_after']
+        'Cast': ['insert_before', 'insert_after'],
+        'Concat': ['change_axis'],
+        'SoftMax': ['change_axis'],
     }
 
 
@@ -1935,6 +1937,10 @@ def convert(model_path,
                 elif axis > 0:
                     axis -= 1
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'Concat' and wr_config[layer_id]['replace_mode'] == 'change_axis':
+                        axis = int(wr_config[layer_id]['values'])
+
                 length_list = []
                 for from_layer_id in get_tf_edges_from(tf_edges, layer_id):
                     length_list.append(len(tf_layers_dict[from_layer_id].shape))
@@ -1965,6 +1971,8 @@ def convert(model_path,
                             wr_config[layer_id],
                             inp
                         )
+                    else:
+                        tf_layers_dict[layer_id] = inp
                 else:
                     tf_layers_dict[layer_id] = inp
 
@@ -3623,6 +3631,10 @@ def convert(model_path,
                     axis = -1
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'Softmax' and wr_config[layer_id]['replace_mode'] == 'change_axis':
+                        axis = int(wr_config[layer_id]['values'])
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         inp = extrapolation_of_layers(
                             wr_config[layer_id],
@@ -3641,6 +3653,11 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
                             inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.softmax(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            axis=axis
                         )
                 else:
                     tf_layers_dict[layer_id] = tf.nn.softmax(
@@ -5492,6 +5509,14 @@ def convert(model_path,
                 if layer.attrib['type'] != 'Split' and layer.attrib['type'] != 'VariadicSplit' and layer.attrib['type'] != 'TopK' and layer.attrib['type'] != 'NonMaxSuppression':
                     layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
 
+                    if layer.attrib['type'] == 'Concat' or layer.attrib['type'] == 'SoftMax' or layer.attrib['type'] == 'Squeeze' or \
+                        layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
+                            layer.attrib['type'] == 'ReduceSum' or  layer.attrib['type'] == 'ReduceProd' or layer.attrib['type'] == 'ReduceL2':
+                        layer_structure['axis'] = axis
+
+                    if layer.attrib['type'] == 'Unsqueeze':
+                        layer_structure['indices'] = indices
+
                 elif layer.attrib['type'] == 'Split' or layer.attrib['type'] == 'VariadicSplit' or layer.attrib['type'] == 'NonMaxSuppression':
                     # Split, VariadicSplit, NonMaxSuppression
                     for edge_index, tmp_layer_id_port in enumerate(layer_id_port_dict[layer_id]['layer_id:port']):
@@ -5511,7 +5536,6 @@ def convert(model_path,
                     layer_structure['tf_layers_dict1'] = tf_layers_dict[layer_id_indices]
 
                 layer_structure_print(layer_structure)
-
 
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
