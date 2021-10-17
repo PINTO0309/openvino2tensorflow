@@ -432,6 +432,38 @@ def convert(
             import traceback
             traceback.print_exc()
 
+        try:
+            print(f'{Color.REVERCE}ONNX optimization started{Color.RESET}', '=' * 59)
+
+            # onnxoptimizer
+            import onnx
+            import onnxoptimizer
+            onnx_model = onnx.load(f'{model_output_dir_path}/model_float32.onnx')
+            passes = [
+                "extract_constant_to_initializer",
+                "eliminate_unused_initializer"
+            ]
+            optimized_model = onnxoptimizer.optimize(onnx_model, passes)
+            onnx.save(optimized_model, f'{model_output_dir_path}/model_float32.onnx')
+
+            # onnx-simplifier
+            result = subprocess.check_output(
+                [
+                    'python3',
+                    '-m', 'onnxsim',
+                    f'{model_output_dir_path}/model_float32.onnx',
+                    f'{model_output_dir_path}/model_float32.onnx'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
+            print(result)
+
+            print(f'{Color.GREEN}ONNX optimization complete!{Color.RESET} - {model_output_dir_path}/model_float32.onnx')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.YELLOW}WARNING:{Color.RESET}', e.stderr.decode('utf-8'))
+            import traceback
+            traceback.print_exc()
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--saved_model_dir_path', type=str, required=True, help='Input saved_model dir path')

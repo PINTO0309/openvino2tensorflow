@@ -655,7 +655,8 @@ def convert(model_path,
                                     padding=padding,
                                     dilation_rate=dilations,
                                     use_bias=False,
-                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(inp)
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                                )(inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = Conv2D(
@@ -665,7 +666,8 @@ def convert(model_path,
                                     padding=padding,
                                     dilation_rate=dilations,
                                     use_bias=False,
-                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                                )(orig)
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -679,7 +681,8 @@ def convert(model_path,
                                 padding=padding,
                                 dilation_rate=dilations,
                                 use_bias=False,
-                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0)))(orig)
+                                kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(2,3,1,0))
+                            )(orig)
 
                     except:
                         try:
@@ -696,7 +699,8 @@ def convert(model_path,
                                         padding=padding,
                                         dilation_rate=dilations,
                                         use_bias=False,
-                                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(inp)
+                                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0))
+                                    )(inp)
                                 elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                     inp = Conv2D(
                                         filters=filters,
@@ -705,7 +709,8 @@ def convert(model_path,
                                         padding=padding,
                                         dilation_rate=dilations,
                                         use_bias=False,
-                                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                                        kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0))
+                                    )(orig)
                                     tf_layers_dict[layer_id] = extrapolation_of_layers(
                                         wr_config[layer_id],
                                         inp
@@ -718,7 +723,8 @@ def convert(model_path,
                                     padding=padding,
                                     dilation_rate=dilations,
                                     use_bias=False,
-                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0)))(orig)
+                                    kernel_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(2,3,1,0))
+                                )(orig)
 
                         except:
                             # Weights from OP that are not fixed values
@@ -5994,6 +6000,38 @@ def convert(model_path,
             print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_path}/model_float32.onnx')
         except subprocess.CalledProcessError as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
+            import traceback
+            traceback.print_exc()
+
+        try:
+            print(f'{Color.REVERCE}ONNX optimization started{Color.RESET}', '=' * 59)
+
+            # onnxoptimizer
+            import onnx
+            import onnxoptimizer
+            onnx_model = onnx.load(f'{model_output_path}/model_float32.onnx')
+            passes = [
+                "extract_constant_to_initializer",
+                "eliminate_unused_initializer"
+            ]
+            optimized_model = onnxoptimizer.optimize(onnx_model, passes)
+            onnx.save(optimized_model, f'{model_output_path}/model_float32.onnx')
+
+            # onnx-simplifier
+            result = subprocess.check_output(
+                [
+                    'python3',
+                    '-m', 'onnxsim',
+                    f'{model_output_path}/model_float32.onnx',
+                    f'{model_output_path}/model_float32.onnx'
+                ],
+                stderr=subprocess.PIPE
+            ).decode('utf-8')
+            print(result)
+
+            print(f'{Color.GREEN}ONNX optimization complete!{Color.RESET} - {model_output_path}/model_float32.onnx')
+        except subprocess.CalledProcessError as e:
+            print(f'{Color.YELLOW}WARNING:{Color.RESET}', e.stderr.decode('utf-8'))
             import traceback
             traceback.print_exc()
 
