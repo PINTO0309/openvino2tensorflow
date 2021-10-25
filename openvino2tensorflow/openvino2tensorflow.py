@@ -435,7 +435,17 @@ def convert(model_path,
                                     layer.attrib['type'] == 'ScatterElementsUpdate' or \
                                         layer.attrib['type'] == 'ScatterNDUpdate' or \
                                             layer.attrib['type'] == 'Reshape' or \
-                                                layer.attrib['type'] == 'ConvertLike':
+                                                layer.attrib['type'] == 'ConvertLike' or \
+                                                    layer.attrib['type'] == 'Subtract' or \
+                                                        layer.attrib['type'] == 'Divide' or \
+                                                            layer.attrib['type'] == 'FloorMod' or \
+                                                                layer.attrib['type'] == 'Power' or \
+                                                                    layer.attrib['type'] == 'MatMul' or \
+                                                                        layer.attrib['type'] == 'Greater' or \
+                                                                            layer.attrib['type'] == 'GreaterEqual' or \
+                                                                                layer.attrib['type'] == 'Less' or \
+                                                                                    layer.attrib['type'] == 'LessEqual' or \
+                                                                                        layer.attrib['type'] == 'SquaredDifference':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
