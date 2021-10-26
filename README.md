@@ -200,12 +200,12 @@ You do not need to install any packages other than Docker.
 ```bash
 $ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
-$ docker build -t pinto0309/openvino2tensorflow:latest .
+$ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest .
 
 # If you don't need to access the GUI of the HostPC and the USB camera.
 $ docker run -it --rm \
   -v `pwd`:/home/user/workdir \
-  pinto0309/openvino2tensorflow:latest
+  ghcr.io/pinto0309/openvino2tensorflow:latest
 
 # If conversion to TF-TRT is not required. And if you need to access the HostPC GUI and USB camera.
 $ xhost +local: && \
@@ -217,7 +217,7 @@ $ xhost +local: && \
   -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
   -e DISPLAY=$DISPLAY \
   --privileged \
-  pinto0309/openvino2tensorflow:latest
+  ghcr.io/pinto0309/openvino2tensorflow:latest
 $ cd workdir
 
 # If you need to convert to TF-TRT. And if you need to access the HostPC GUI and USB camera.
@@ -230,7 +230,7 @@ $ xhost +local: && \
   -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
   -e DISPLAY=$DISPLAY \
   --privileged \
-  pinto0309/openvino2tensorflow:latest
+  ghcr.io/pinto0309/openvino2tensorflow:latest
 $ cd workdir
 
 # If you are using iGPU (OpenCL). And if you need to access the HostPC GUI and USB camera.
@@ -244,7 +244,7 @@ $ xhost +local: && \
   -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
   -e DISPLAY=$DISPLAY \
   --privileged \
-  pinto0309/openvino2tensorflow:latest
+  ghcr.io/pinto0309/openvino2tensorflow:latest
 $ cd workdir
 ```
 **[↥ Back to top](#openvino2tensorflow)**
