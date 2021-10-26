@@ -28,7 +28,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           python setup.py sdist bdist_wheel
-          twine upload --repository testpypi dist/*
+          twine upload --repository pypi dist/*
         
       - name: Enable buildx
         uses: docker/setup-buildx-action@v1
