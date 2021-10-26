@@ -198,7 +198,7 @@ Work in progress now.
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
 You do not need to install any packages other than Docker.
 ```bash
-$ docker pull pinto0309/openvino2tensorflow
+$ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
 $ docker build -t pinto0309/openvino2tensorflow:latest .
 
