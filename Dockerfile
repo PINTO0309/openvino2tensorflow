@@ -34,6 +34,8 @@ RUN apt-get update && apt-get install -y \
 
 # Install dependencies (2) - Ubuntu18.04: numpy==1.19.5, Ubuntu20.04: numpy>=1.20.x
 RUN pip3 install --upgrade pip \
+    && pip install --upgrade pandas \
+    && pip install --upgrade numexpr \
     && pip install --upgrade tensorflowjs \
     && pip install --upgrade coremltools \
     && pip install --upgrade onnx \
