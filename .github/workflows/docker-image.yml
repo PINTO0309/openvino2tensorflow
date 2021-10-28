@@ -12,7 +12,7 @@ jobs:
       - name: downcase REPO
         run: echo "REPO=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
       - name: Get Tag
-        run: echo "TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
+        run: echo "TAG=${GITHUB_REF##*/}" >> ${GITHUB_ENV}
 
       - name: Setup Python
         uses: actions/setup-python@v2
