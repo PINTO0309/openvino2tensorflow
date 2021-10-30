@@ -14,6 +14,15 @@ jobs:
       - name: Get Tag
         run: echo "TAG=${GITHUB_REF##*/}" >> ${GITHUB_ENV}
 
+      - name: Check space before cleanup
+        run: df -h
+      - name: Clean space as per https://github.com/actions/virtual-environments/issues/709
+        run: |
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker rmi $(docker image ls -aq)
+          df -h
+
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
