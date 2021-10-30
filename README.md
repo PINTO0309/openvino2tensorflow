@@ -32,15 +32,15 @@ Work in progress now.
 - onnx_graphsurgeon
 - onnx-simplifier
 - onnxconverter-common
-- onnx2json
 - onnx-tensorrt
+- onnx2json
 - json2onnx
 - tf2onnx
+- torch2trt
 - onnx-tf
 - tensorflow-datasets
 - tf_slim
 - edgetpu_compiler
-- torch2trt
 - tflite2tensorflow
 - openvino2tensorflow
 - gdown
