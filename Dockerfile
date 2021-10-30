@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/tensorrt:21.07-py3
+FROM nvidia/cuda:11.4.2-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu2004
@@ -6,15 +6,15 @@ ARG TENSORFLOWVER=2.6.0
 ARG CPVER=cp38
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
-ARG TENSORRTVER=cuda11.3-trt8.0.1.6-ga-20210626
+ARG TENSORRTVER=cuda11.4-trt8.2.0.6-ea-20210922
 ARG APPVER
-ARG wkdir=/home/user
+ARG WKDIR=/home/user
 
 # dash -> bash
 RUN echo "dash dash/sh boolean false" | debconf-set-selections \
     && dpkg-reconfigure -p low dash
-COPY bashrc ${wkdir}/.bashrc
-WORKDIR ${wkdir}
+COPY bashrc ${WKDIR}/.bashrc
+WORKDIR ${WKDIR}
 
 # Install dependencies (1)
 RUN apt-get update && apt-get install -y \
@@ -32,28 +32,36 @@ RUN apt-get update && apt-get install -y \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies (2) - Ubuntu18.04: numpy==1.19.5, Ubuntu20.04: numpy>=1.20.x
+# python3 -> python
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# Install dependencies (2)
 RUN pip3 install --upgrade pip \
+    && pip install --upgrade numpy==1.19.5 \
     && pip install --upgrade tensorflowjs \
     && pip install --upgrade coremltools \
     && pip install --upgrade onnx \
+    && pip install --upgrade onnxruntime \
+    && pip install --upgrade onnx-simplifier \
+    && pip install --upgrade onnxconverter-common \
     && pip install --upgrade tf2onnx \
     && pip install --upgrade onnx-tf \
     && pip install --upgrade tensorflow-datasets \
     && pip install --upgrade openvino2tensorflow \
     && pip install --upgrade tflite2tensorflow \
-    && pip install --upgrade onnxruntime \
-    && pip install --upgrade onnx-simplifier \
     && pip install --upgrade gdown \
     && pip install --upgrade PyYAML \
     && pip install --upgrade matplotlib \
     && pip install --upgrade tf_slim \
-    && pip install --upgrade numpy==1.19.5 \
     && pip install --upgrade pandas \
     && pip install --upgrade numexpr \
     && pip install --upgrade onnx2json \
     && pip install --upgrade json2onnx \
-    && python3 -m pip install onnx_graphsurgeon --index-url https://pypi.ngc.nvidia.com \
+    && python3 -m pip install onnx_graphsurgeon \
+        --index-url https://pypi.ngc.nvidia.com \
+    && pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 \
+        -f https://download.pytorch.org/whl/cu113/torch_stable.html \
+    && pip install pycuda==2021.1 \
     && ldconfig \
     && pip cache purge \
     && apt clean \
@@ -111,8 +119,12 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
     && dpkg -i nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && apt-key add /var/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}/7fa2af80.pub \
     && apt-get update \
-    && apt-get install uff-converter-tf graphsurgeon-tf \
+    && apt-get install -y \
+        tensorrt uff-converter-tf graphsurgeon-tf \
+        python3-libnvinfer-dev onnx-graphsurgeon \
     && rm nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
+    && cd /usr/src/tensorrt/samples/trtexec \
+    && make \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -124,6 +136,23 @@ RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${AP
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install onnx-tensorrt
+RUN git clone --recursive https://github.com/onnx/onnx-tensorrt \
+    && cd onnx-tensorrt \
+    && git checkout 1f041ce6d7b30e9bce0aacb2243309edffc8fb3c \
+    && mkdir build && cd build \
+    && cmake .. -DTENSORRT_ROOT=/usr/src/tensorrt \
+    && make -j$(nproc) && make install
+
+# Install torch2trt
+RUN git clone https://github.com/NVIDIA-AI-IOT/torch2trt \
+    && cd torch2trt \
+    && git checkout 0400b38123d01cc845364870bdf0a0044ea2b3b2 \
+    # https://github.com/NVIDIA-AI-IOT/torch2trt/issues/619
+    && wget https://github.com/NVIDIA-AI-IOT/torch2trt/commit/8b9fb46ddbe99c2ddf3f1ed148c97435cbeb8fd3.patch \
+    && git apply 8b9fb46ddbe99c2ddf3f1ed148c97435cbeb8fd3.patch \
+    && python3 setup.py install
+
 # Download the ultra-small sample data set for INT8 calibration
 RUN mkdir sample_npy \
     && wget -O sample_npy/calibration_data_img_sample.npy https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/calibration_data_img_sample.npy
@@ -133,19 +162,20 @@ RUN apt clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a user who can sudo in the Docker container
-ENV username=user
+ENV USERNAME=user
 RUN echo "root:root" | chpasswd \
-    && adduser --disabled-password --gecos "" "${username}" \
-    && echo "${username}:${username}" | chpasswd \
-    && echo "%${username}    ALL=(ALL)   NOPASSWD:    ALL" >> /etc/sudoers.d/${username} \
-    && chmod 0440 /etc/sudoers.d/${username}
-USER ${username}
-RUN sudo chown ${username}:${username} ${wkdir}
+    && adduser --disabled-password --gecos "" "${USERNAME}" \
+    && echo "${USERNAME}:${USERNAME}" | chpasswd \
+    && echo "%${USERNAME}    ALL=(ALL)   NOPASSWD:    ALL" >> /etc/sudoers.d/${USERNAME} \
+    && chmod 0440 /etc/sudoers.d/${USERNAME}
+USER ${USERNAME}
+RUN sudo chown ${USERNAME}:${USERNAME} ${WKDIR}\
+    && sudo chmod 777 ${WKDIR}/.bashrc
 
 # OpenCL settings - https://github.com/intel/compute-runtime/releases
 RUN cd ${OPENVINOROOTDIR}/install_dependencies/ \
     && yes | sudo -E ./install_NEO_OCL_driver.sh \
-    && cd ${wkdir} \
+    && cd ${WKDIR} \
     && wget https://github.com/intel/compute-runtime/releases/download/21.29.20389/intel-gmmlib_21.2.1_amd64.deb \
     && wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.7862/intel-igc-core_1.0.7862_amd64.deb \
     && wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.7862/intel-igc-opencl_1.0.7862_amd64.deb \
@@ -156,3 +186,10 @@ RUN cd ${OPENVINOROOTDIR}/install_dependencies/ \
     && rm *.deb \
     && sudo apt clean \
     && sudo rm -rf /var/lib/apt/lists/*
+
+# Final processing of onnx-tensorrt install
+RUN echo "export PATH=${PATH}:/usr/src/tensorrt/bin:/onnx-tensorrt/build" >> ${HOME}/.bashrc \
+    && echo "cd ${HOME}/onnx-tensorrt" >> ${HOME}/.bashrc \
+    && echo "sudo python3 setup.py install" >> ${HOME}/.bashrc \
+    && echo "cd ${WKDIR}" >> ${HOME}/.bashrc \
+    && echo "cd ${HOME}/workdir" >> ${HOME}/.bashrc

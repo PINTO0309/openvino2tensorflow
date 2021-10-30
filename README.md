@@ -17,18 +17,38 @@ Work in progress now.
 ![render1629515758354](https://user-images.githubusercontent.com/33194443/130308925-f859a799-8013-4c57-b378-f405bdd2d39f.gif)
 
 ## 1. Environment
-- TensorFlow v2.6.0+
-- OpenVINO 2021.4.582+
 - Python 3.6+
-- tensorflowjs **`pip3 install --upgrade tensorflowjs`**
-- **[tensorrt](https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html)**
-- coremltools **`pip3 install --upgrade coremltools`**
-- onnx **`pip3 install --upgrade onnx`**
-- tf2onnx **`pip3 install --upgrade tf2onnx`**
-- tensorflow-datasets **`pip3 install --upgrade tensorflow-datasets`**
-- **[edgetpu_compiler](https://coral.ai/docs/edgetpu/compiler/#system-requirements)**
+- TensorFlow v2.6.0+
+- PyTorch v1.10.0+
+- TorchVision
+- TorchAudio
+- OpenVINO 2021.4.582+
+- TensorRT 8.2+
+- pycuda 2021.1
+- tensorflowjs
+- coremltools
+- onnx
+- onnxruntime
+- onnx_graphsurgeon
+- onnx-simplifier
+- onnxconverter-common
+- onnx2json
+- onnx-tensorrt
+- json2onnx
+- tf2onnx
+- onnx-tf
+- tensorflow-datasets
+- tf_slim
+- edgetpu_compiler
+- torch2trt
+- tflite2tensorflow
+- openvino2tensorflow
+- gdown
+- pandas
+- matplotlib
 - Intel-Media-SDK
 - Intel iHD GPU (iGPU) support
+- OpenCL
 - Docker
 
 **[↥ Back to top](#openvino2tensorflow)**
@@ -218,7 +238,6 @@ $ xhost +local: && \
   -e DISPLAY=$DISPLAY \
   --privileged \
   ghcr.io/pinto0309/openvino2tensorflow:latest
-$ cd workdir
 
 # If you need to convert to TF-TRT. And if you need to access the HostPC GUI and USB camera.
 $ xhost +local: && \
@@ -231,7 +250,6 @@ $ xhost +local: && \
   -e DISPLAY=$DISPLAY \
   --privileged \
   ghcr.io/pinto0309/openvino2tensorflow:latest
-$ cd workdir
 
 # If you are using iGPU (OpenCL). And if you need to access the HostPC GUI and USB camera.
 $ xhost +local: && \
@@ -245,7 +263,6 @@ $ xhost +local: && \
   -e DISPLAY=$DISPLAY \
   --privileged \
   ghcr.io/pinto0309/openvino2tensorflow:latest
-$ cd workdir
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
