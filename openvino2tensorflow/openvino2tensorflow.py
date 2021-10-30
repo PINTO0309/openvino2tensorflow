@@ -3689,16 +3689,25 @@ def convert(model_path,
                             wr_config[layer_id],
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                         )
-                        tf_layers_dict[layer_id] = tf.math.negative(inp)
+                        if not output_edgetpu:
+                            tf_layers_dict[layer_id] = tf.math.negative(inp)
+                        else:
+                            tf_layers_dict[layer_id] = tf.math.multiply(inp, -1.0)
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        if not output_edgetpu:
+                            inp = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                        else:
+                            inp = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], -1.0)
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
                             inp
                         )
                 else:
-                    tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    if not output_edgetpu:
+                        tf_layers_dict[layer_id] = tf.math.negative(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    else:
+                        tf_layers_dict[layer_id] = tf.math.multiply(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], -1.0)
 
             ### Maximum
             elif layer.attrib['type'] == 'Maximum':
