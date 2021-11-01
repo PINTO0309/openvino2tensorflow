@@ -11,7 +11,7 @@ if __name__ == "__main__":
     setup(
         name="openvino2tensorflow",
         scripts=scripts,
-        version="1.24.4",
+        version="1.24.5",
         description="This script converts the OpenVINO IR model to Tensorflow's saved_model, tflite, h5 and pb. in (NCHW) format",
         long_description=long_description,
         long_description_content_type="text/markdown",
