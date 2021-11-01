@@ -188,8 +188,11 @@ RUN cd ${OPENVINOROOTDIR}/install_dependencies/ \
     && sudo rm -rf /var/lib/apt/lists/*
 
 # Final processing of onnx-tensorrt install
-RUN echo "export PATH=${PATH}:/usr/src/tensorrt/bin:/onnx-tensorrt/build" >> ${HOME}/.bashrc \
+RUN echo 'GPU=$(python3 -c "import torch;print(torch.cuda.is_available())")' >> ${HOME}/.bashrc \
+    && echo 'if [ $GPU = "True" ]; then' >> ${HOME}/.bashrc \
+    && echo "export PATH=${PATH}:/usr/src/tensorrt/bin:/onnx-tensorrt/build" >> ${HOME}/.bashrc \
     && echo "cd ${HOME}/onnx-tensorrt" >> ${HOME}/.bashrc \
     && echo "sudo python3 setup.py install" >> ${HOME}/.bashrc \
+    && echo "fi" >> ${HOME}/.bashrc \
     && echo "cd ${WKDIR}" >> ${HOME}/.bashrc \
     && echo "cd ${HOME}/workdir" >> ${HOME}/.bashrc
