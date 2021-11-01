@@ -18,7 +18,7 @@ Work in progress now.
 
 ## 1. Environment
 - Python 3.6+
-- TensorFlow v2.6.0+
+- TensorFlow v2.7.0+
 - PyTorch v1.10.0+
 - TorchVision
 - TorchAudio
