@@ -121,9 +121,9 @@ def convert(
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
             tflite_model = converter.convert()
-            with open(f'{model_output_path}/model_dynamic_range_quant.tflite', 'wb') as w:
+            with open(f'{model_output_dir_path}/model_dynamic_range_quant.tflite', 'wb') as w:
                 w.write(tflite_model)
-            print(f'{Color.GREEN}Dynamic Range Quantization complete!{Color.RESET} - {model_output_path}/model_dynamic_range_quant.tflite')
+            print(f'{Color.GREEN}Dynamic Range Quantization complete!{Color.RESET} - {model_output_dir_path}/model_dynamic_range_quant.tflite')
         except Exception as e:
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
             import traceback
