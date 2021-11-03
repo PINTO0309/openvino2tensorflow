@@ -41,6 +41,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade tensorflowjs \
     && pip install --upgrade coremltools \
     && pip install --upgrade paddlepaddle \
+    && pip install --upgrade lap \
     && pip install --upgrade paddle2onnx \
     && pip install --upgrade onnx \
     && pip install --upgrade onnxruntime \
