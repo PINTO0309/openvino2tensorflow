@@ -27,6 +27,7 @@ Work in progress now.
 - pycuda 2021.1
 - tensorflowjs
 - coremltools
+- paddle2onnx
 - onnx
 - onnxruntime
 - onnx_graphsurgeon
