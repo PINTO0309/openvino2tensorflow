@@ -40,6 +40,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade numpy==1.19.5 \
     && pip install --upgrade tensorflowjs \
     && pip install --upgrade coremltools \
+    && pip install --upgrade paddle2onnx \
     && pip install --upgrade onnx \
     && pip install --upgrade onnxruntime \
     && pip install --upgrade onnx-simplifier \
