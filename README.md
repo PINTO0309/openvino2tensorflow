@@ -211,7 +211,8 @@ Work in progress now.
 |96|GatherElements|rank, add, shape, cast, floormod, range, tensor_scatter_nd_update, constant, transpose, meshgrid, expand_dims, concat, gather_nd|WIP|
 |97|ConvertLike|Cast||
 |98|ReduceL1|Abs, ReduceSum||
-|99|Result|Identity|Output|
+|99|ShuffleChannels|reshape, transpose||
+|100|Result|Identity|Output|
 
 **[↥ Back to top](#openvino2tensorflow)**
 

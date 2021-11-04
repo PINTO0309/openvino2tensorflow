@@ -292,6 +292,7 @@ def convert(model_path,
         'Cast': ['insert_before', 'insert_after'],
         'Concat': ['change_axis'],
         'SoftMax': ['change_axis'],
+        'ShuffleChannels': ['change_axis'],
     }
 
 
@@ -1951,7 +1952,7 @@ def convert(model_path,
                 elif len(np.asarray(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)) < 4:
                     pass
                 elif axis > 0:
-                    axis -= 1
+                    pass
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['type'] == 'Concat' and wr_config[layer_id]['replace_mode'] == 'change_axis':
@@ -5487,6 +5488,86 @@ def convert(model_path,
                     tf_layers_dict[layer_id] = tf.cast(
                         port1,
                         like
+                    )
+
+            ### ShuffleChannels
+            elif layer.attrib['type'] == 'ShuffleChannels':
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+
+                axis = None
+                if not data is None and 'axis' in data.attrib:
+                    axis = int(data.attrib['axis'])
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'ShuffleChannels' and wr_config[layer_id]['replace_mode'] == 'change_axis':
+                        axis = int(wr_config[layer_id]['values'])
+
+                if axis != 1 or len(np.asarray(port1.shape)) != 4:
+                    print('Operations other than axis=1 for ShuffleChannels or tensor dimensions other than 4 dimensions are not implemented.')
+                    sys.exit(-1)
+
+                if axis == 1 and len(np.asarray(port1.shape)) == 4:
+                    axis = -1
+                elif (axis == -1 or axis == len(np.asarray(port1.shape)) - 1) and \
+                    len(np.asarray(port1.shape)) == 4:
+                    axis = 1
+                elif len(np.asarray(port1.shape)) < 4:
+                    pass
+                elif axis > 0:
+                    pass
+
+                group = 1
+                if not data is None and 'group' in data.attrib:
+                    group = int(data.attrib['group'])
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            port1
+                        )
+                        shufflechannels_reshape = tf.reshape(
+                            inp,
+                            [inp.shape[0], inp.shape[1] * inp.shape[2], group, inp.shape[3] // group]
+                        )
+                        shufflechannels_transpose = tf.transpose(
+                            shufflechannels_reshape,
+                            perm=[0, 1, 3, 2]
+                        )
+                        tf_layers_dict[layer_id] = tf.reshape(
+                            shufflechannels_transpose,
+                            [inp.shape[0], inp.shape[1], inp.shape[2], inp.shape[3]]
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        shufflechannels_reshape = tf.reshape(
+                            port1,
+                            [port1.shape[0], port1.shape[1] * port1.shape[2], group, port1.shape[3] // group]
+                        )
+                        shufflechannels_transpose = tf.transpose(
+                            shufflechannels_reshape,
+                            perm=[0, 1, 3, 2]
+                        )
+                        inp = tf.reshape(
+                            shufflechannels_transpose,
+                            [port1.shape[0], port1.shape[1], port1.shape[2], port1.shape[3]]
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    shufflechannels_reshape = tf.reshape(
+                        port1,
+                        [port1.shape[0], port1.shape[1] * port1.shape[2], group, port1.shape[3] // group]
+                    )
+                    shufflechannels_transpose = tf.transpose(
+                        shufflechannels_reshape,
+                        perm=[0, 1, 3, 2]
+                    )
+                    tf_layers_dict[layer_id] = tf.reshape(
+                        shufflechannels_transpose,
+                        [port1.shape[0], port1.shape[1], port1.shape[2], port1.shape[3]]
                     )
 
             ### Result
