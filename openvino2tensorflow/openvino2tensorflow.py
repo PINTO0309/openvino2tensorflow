@@ -1080,7 +1080,7 @@ def convert(model_path,
                                         tf.minimum(0.0, tf.transpose(temp_alpha, perm=[0,2,3,1]) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
-                        if shared_axes.shape[0] == 1 and temp_alpha.shape[2] == 1 and temp_alpha.shape[3] == 1:
+                        if temp_alpha.shape[0] == 1 and temp_alpha.shape[2] == 1 and temp_alpha.shape[3] == 1:
                             shared_axes = [1, 2]
 
                         if wr_config and layer_id in wr_config and format_version >= 2:
