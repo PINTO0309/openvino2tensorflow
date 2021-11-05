@@ -1039,6 +1039,8 @@ def convert(model_path,
                 else:
                     shared_axes = None
 
+                temp_alpha = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
                 if alpha_len == 4:
                     if replace_prelu_and_minmax:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -1050,19 +1052,19 @@ def convert(model_path,
                                 try:
                                     tf_layers_dict[layer_id] = \
                                         tf.maximum(0.0, inp) + \
-                                            tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * inp)
+                                            tf.minimum(0.0, temp_alpha.transpose(0,2,3,1) * inp)
                                 except:
                                     tf_layers_dict[layer_id] = \
                                         tf.maximum(0.0, inp) + \
-                                            tf.minimum(0.0, tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], perm=[0,2,3,1]) * inp)
+                                            tf.minimum(0.0, tf.transpose(temp_alpha, perm=[0,2,3,1]) * inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 try:
                                     inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                        tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                        tf.minimum(0.0, temp_alpha.transpose(0,2,3,1) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 except:
                                     inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                        tf.minimum(0.0, tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], perm=[0,2,3,1]) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                        tf.minimum(0.0, tf.transpose(temp_alpha, perm=[0,2,3,1]) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -1071,13 +1073,16 @@ def convert(model_path,
                             try:
                                 tf_layers_dict[layer_id] = \
                                     tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                        tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                        tf.minimum(0.0, temp_alpha.transpose(0,2,3,1) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                             except:
                                 tf_layers_dict[layer_id] = \
                                     tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                        tf.minimum(0.0, tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], perm=[0,2,3,1]) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                        tf.minimum(0.0, tf.transpose(temp_alpha, perm=[0,2,3,1]) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
+                        if shared_axes.shape[0] == 1 and temp_alpha.shape[2] == 1 and temp_alpha.shape[3] == 1:
+                            shared_axes = [1, 2]
+
                         if wr_config and layer_id in wr_config and format_version >= 2:
                             if wr_config[layer_id]['replace_mode'] == 'insert_before':
                                 inp = extrapolation_of_layers(
@@ -1086,36 +1091,36 @@ def convert(model_path,
                                 )
                                 try:
                                     tf_layers_dict[layer_id] = PReLU(
-                                        alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
+                                        alpha_initializer=Constant(temp_alpha.transpose(0,2,3,1)),
                                         shared_axes=shared_axes
                                     )(inp)
                                 except:
                                     try:
                                         tf_layers_dict[layer_id] = PReLU(
-                                            alpha_initializer=Constant(tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], perm=[0,2,3,1])),
+                                            alpha_initializer=Constant(tf.transpose(temp_alpha, perm=[0,2,3,1])),
                                             shared_axes=shared_axes
                                         )(inp)
                                     except:
                                         tf_layers_dict[layer_id] = PReLU(
-                                            alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                            alpha_initializer=Constant(temp_alpha),
                                             shared_axes=shared_axes
                                         )(inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 try:
                                     inp = PReLU(
-                                        alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
+                                        alpha_initializer=Constant(temp_alpha.transpose(0,2,3,1)),
                                         shared_axes=shared_axes
                                     )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 except:
                                     try:
                                         inp = PReLU(
-                                            alpha_initializer=Constant(tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], perm=[0,2,3,1])),
+                                            alpha_initializer=Constant(tf.transpose(temp_alpha, perm=[0,2,3,1])),
                                             shared_axes=shared_axes
                                         )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                     except:
                                         inp = PReLU(
-                                            alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                            alpha_initializer=Constant(temp_alpha),
                                             shared_axes=shared_axes
                                         )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -1125,18 +1130,18 @@ def convert(model_path,
                         else:
                             try:
                                 tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(0,2,3,1)),
+                                    alpha_initializer=Constant(temp_alpha.transpose(0,2,3,1)),
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                             except:
                                 try:
                                     tf_layers_dict[layer_id] = PReLU(
-                                        alpha_initializer=Constant(tf.transpose(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], perm=[0,2,3,1])),
+                                        alpha_initializer=Constant(tf.transpose(temp_alpha, perm=[0,2,3,1])),
                                         shared_axes=shared_axes
                                     )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 except:
                                     tf_layers_dict[layer_id] = PReLU(
-                                        alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                        alpha_initializer=Constant(temp_alpha),
                                         shared_axes=shared_axes
                                     )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
@@ -1150,11 +1155,11 @@ def convert(model_path,
                                 )
                                 tf_layers_dict[layer_id] = \
                                     tf.maximum(0.0, inp) + \
-                                        tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * inp)
+                                        tf.minimum(0.0, temp_alpha * inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -1162,7 +1167,7 @@ def convert(model_path,
                         else:
                             tf_layers_dict[layer_id] = \
                                 tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -1172,13 +1177,13 @@ def convert(model_path,
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
                                 tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    alpha_initializer=Constant(temp_alpha),
                                     shared_axes=shared_axes
                                 )(inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = PReLU(
-                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    alpha_initializer=Constant(temp_alpha),
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -1188,12 +1193,12 @@ def convert(model_path,
                         else:
                             try:
                                 tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    alpha_initializer=Constant(temp_alpha),
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                             except:
                                 tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
+                                    alpha_initializer=Constant(temp_alpha),
                                     shared_axes=[1,2]
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
@@ -1208,11 +1213,11 @@ def convert(model_path,
                                 )
                                 tf_layers_dict[layer_id] = \
                                     tf.maximum(0.0, inp) + \
-                                        tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * inp)
+                                        tf.minimum(0.0, temp_alpha * inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -1220,7 +1225,7 @@ def convert(model_path,
                         else:
                             tf_layers_dict[layer_id] = \
                                 tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     elif output_edgetpu: # LeakyReLU -> Max/Min
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -1229,11 +1234,11 @@ def convert(model_path,
                                     wr_config[layer_id],
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
-                                tf_layers_dict[layer_id] = tf.maximum(0.0, inp) + tf.minimum(0.0, inp * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
+                                tf_layers_dict[layer_id] = tf.maximum(0.0, inp) + tf.minimum(0.0, inp * temp_alpha)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
@@ -1241,7 +1246,7 @@ def convert(model_path,
                         else:
                             tf_layers_dict[layer_id] = \
                                 tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                    tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -1251,12 +1256,12 @@ def convert(model_path,
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
                                 tf_layers_dict[layer_id] = LeakyReLU(
-                                    alpha=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                    alpha=temp_alpha
                                 )(inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = LeakyReLU(
-                                    alpha=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                    alpha=temp_alpha
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
@@ -1264,7 +1269,7 @@ def convert(model_path,
                                 )
                         else:
                             tf_layers_dict[layer_id] = LeakyReLU(
-                                    alpha=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                    alpha=temp_alpha
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
             ### Clamp
