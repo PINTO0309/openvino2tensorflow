@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
         python3-mock libpython3-dev libpython3-all-dev \
         g++ gcc cmake make pciutils cpio gosu wget \
         libgtk-3-dev libxtst-dev sudo apt-transport-https \
-        build-essential gnupg git xz-utils vim \
+        build-essential gnupg git xz-utils vim libyaml-cpp-dev \
         libva-drm2 libva-x11-2 vainfo libva-wayland2 libva-glx2 \
         libva-dev libdrm-dev xorg xorg-dev protobuf-compiler \
         openbox libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
