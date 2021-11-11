@@ -24,6 +24,7 @@ Work in progress now.
 - TorchAudio
 - OpenVINO 2021.4.582+
 - TensorRT 8.2+
+- trtexec
 - pycuda 2021.1
 - tensorflowjs
 - coremltools
