@@ -48,6 +48,10 @@ Work in progress now.
 - gdown
 - pandas
 - matplotlib
+- paddlepaddle
+- paddle2onnx
+- pycocotools
+- scipy
 - Intel-Media-SDK
 - Intel iHD GPU (iGPU) support
 - OpenCL
