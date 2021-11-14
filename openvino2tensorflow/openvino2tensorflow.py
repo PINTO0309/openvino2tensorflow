@@ -446,7 +446,8 @@ def convert(model_path,
                                                                             layer.attrib['type'] == 'GreaterEqual' or \
                                                                                 layer.attrib['type'] == 'Less' or \
                                                                                     layer.attrib['type'] == 'LessEqual' or \
-                                                                                        layer.attrib['type'] == 'SquaredDifference':
+                                                                                        layer.attrib['type'] == 'SquaredDifference' or \
+                                                                                            layer.attrib['type'] == 'PriorBoxClustered':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -5574,6 +5575,105 @@ def convert(model_path,
                         shufflechannels_transpose,
                         [port1.shape[0], port1.shape[1], port1.shape[2], port1.shape[3]]
                     )
+
+            ### PriorBoxClustered - WIP
+            elif layer.attrib['type'] == 'PriorBoxClustered':
+                clip = None
+                if not data is None and 'clip' in data.attrib:
+                    clip = data.attrib['clip']
+                    clip = True if clip.lower() == 'true' else False
+                height = None
+                if not data is None and 'height' in data.attrib:
+                    height = np.asarray(data.attrib['height'].replace(' ', '').split(','), dtype=np.float32)
+                width = None
+                if not data is None and 'width' in data.attrib:
+                    width = np.asarray(data.attrib['width'].replace(' ', '').split(','), dtype=np.float32)
+                img_h = None
+                if not data is None and 'img_h' in data.attrib:
+                    img_h = np.asarray(data.attrib['img_h'], dtype=np.float32)
+                img_w = None
+                if not data is None and 'img_w' in data.attrib:
+                    img_w = np.asarray(data.attrib['img_w'], dtype=np.float32)
+                offset = None
+                if not data is None and 'offset' in data.attrib:
+                    offset = np.asarray(data.attrib['offset'], dtype=np.float32)
+                step = None
+                if not data is None and 'step' in data.attrib:
+                    step = np.asarray(data.attrib['step'], dtype=np.float32)
+                step_h = None
+                if not data is None and 'step_h' in data.attrib:
+                    step_h = np.asarray(data.attrib['step_h'], dtype=np.float32)
+                step_w = None
+                if not data is None and 'step_w' in data.attrib:
+                    step_w = np.asarray(data.attrib['step_w'], dtype=np.float32)
+                variance = None
+                if not data is None and 'variance' in data.attrib:
+                    variance = np.asarray(data.attrib['variance'].replace(' ', '').split(','), dtype=np.float32)
+
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                layer_width = port1[1]
+                layer_height = port1[0]
+                img_width = port2[1]
+                img_height = port2[0]
+
+                num_priors = len(width)
+                if variance is None or len(variance) == 0:
+                    variance = [0.1]
+                var_size = len(variance)
+
+                step_w = step if step_w == 0 else step_w
+                step_h = step if step_h == 0 else step_h
+                if (step_w == 0 and step_h == 0):
+                    step_w = img_width / layer_width
+                    step_h = img_height / layer_height
+
+                out_shape = [2, 4 * layer_height * layer_width * num_priors]
+                dst_data = np.zeros((out_shape), dtype=np.float32).flatten()
+
+                for h in range(layer_height):
+                    for w in range(layer_width):
+                        center_x = (w + offset) * step_w
+                        center_y = (h + offset) * step_h
+                        for s in range(num_priors):
+                            box_width = width[s]
+                            box_height = height[s]
+                            xmin = (center_x - box_width / 2.0) / img_width
+                            ymin = (center_y - box_height / 2.0) / img_height
+                            xmax = (center_x + box_width / 2.0) / img_width
+                            ymax = (center_y + box_height / 2.0) / img_height
+                            if clip:
+                                xmin = min(max(xmin, 0.0), 1.0)
+                                ymin = min(max(ymin, 0.0), 1.0)
+                                xmax = min(max(xmax, 0.0), 1.0)
+                                ymax = min(max(ymax, 0.0), 1.0)
+                            def get_idx(cnt):
+                                return h * layer_width * num_priors * cnt + w * num_priors * cnt + s * cnt
+                            idx = get_idx(4)
+                            dst_data[idx + 0] = xmin
+                            dst_data[idx + 1] = ymin
+                            dst_data[idx + 2] = xmax
+                            dst_data[idx + 3] = ymax
+                            idx = get_idx(var_size)
+                            for j in range(var_size):
+                                dst_data[idx + j + out_shape[1]] = variance[j]
+
+                out = tf.constant(dst_data)
+                inp = tf.reshape(out, shape=out_shape)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
 
             ### Result
             elif layer.attrib['type'] == 'Result':
