@@ -66,7 +66,6 @@ def main():
     if ext != '.xml':
         print('The specified model is not \'.xml\' file')
         sys.exit(-1)
-    shutil.rmtree(output_path, ignore_errors=True)
     os.makedirs(output_path, exist_ok=True)
     dumpWeight(model, output_path)
 
