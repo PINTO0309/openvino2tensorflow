@@ -113,6 +113,7 @@ def convert(model_path,
     from tensorflow.keras.initializers import Constant
     from tensorflow.keras.activations import elu
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+    from tensorflow.python.framework.ops import EagerTensor
     if output_coreml:
         import coremltools as ct
     import json
@@ -5684,13 +5685,6 @@ def convert(model_path,
                 out = tf.constant(dst_data)
                 inp = tf.reshape(out, shape=out_shape)
 
-                # def const_to_layer(x):
-                #     return tf.Variable(x)
-                # inp = Lambda(const_to_layer)(inp)
-                # inp = Lambda(lambda x: tf.math.multiply(x, [1.0]))(inp)
-                # inp = inp * tf.cast(port1, dtype=tf.float32) / tf.cast(port1, dtype=tf.float32)
-                # inp = inp * tf.ones(tf.shape(inp), dtype=tf.float32)
-
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
@@ -5795,6 +5789,13 @@ def convert(model_path,
             import traceback
             traceback.print_exc()
             sys.exit(-1)
+
+    # output If the layer type is ndarray, output it to a file as a numpy binary file and remove it from the model output
+    np_outputs = [o for o in tf_outputs if isinstance(o, EagerTensor)]
+    for idx, n in enumerate(np_outputs):
+        np.save(f'{model_output_path}/{idx}', n)
+        print(f'{Color.YELLOW}WARNING:{Color.RESET} The numpy array (ndarray) cannot be specified as an output layer. Therefore, the tool outputs a sequentially numbered .npy binary file. .npy_file_path: {model_output_path}/{idx}.npy')
+    tf_outputs = [o for o in tf_outputs if not isinstance(o, EagerTensor)]
 
     model = Model(inputs=tf_inputs, outputs=tf_outputs)
 
