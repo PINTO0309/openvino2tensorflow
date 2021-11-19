@@ -293,6 +293,7 @@ def convert(model_path,
         'Concat': ['change_axis'],
         'SoftMax': ['change_axis'],
         'ShuffleChannels': ['change_axis'],
+        'StridedSlice': ['change_attributes']
     }
 
 
@@ -447,7 +448,8 @@ def convert(model_path,
                                                                                 layer.attrib['type'] == 'Less' or \
                                                                                     layer.attrib['type'] == 'LessEqual' or \
                                                                                         layer.attrib['type'] == 'SquaredDifference' or \
-                                                                                            layer.attrib['type'] == 'PriorBoxClustered':
+                                                                                            layer.attrib['type'] == 'PriorBoxClustered' or \
+                                                                                                layer.attrib['type'] == 'StridedSlice':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -2688,6 +2690,14 @@ def convert(model_path,
                         shrink_axis_mask[0], shrink_axis_mask[2], shrink_axis_mask[3], shrink_axis_mask[1]
                 shrink_axis_mask = np.argmin(shrink_axis_mask)
 
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'StridedSlice' and wr_config[layer_id]['replace_mode'] == 'change_attributes':
+                        begin_mask = int(wr_config[layer_id]['values'][0])
+                        end_mask = int(wr_config[layer_id]['values'][1])
+                        ellipsis_mask = int(wr_config[layer_id]['values'][2])
+                        new_axis_mask = int(wr_config[layer_id]['values'][3])
+                        shrink_axis_mask = int(wr_config[layer_id]['values'][4])
+
                 # begin, end, strides
                 begin   = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]])
                 end     = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]])
@@ -2740,6 +2750,18 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
                             inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = tf.strided_slice(
+                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                            begin=begin,
+                            end=end,
+                            strides=strides,
+                            begin_mask=begin_mask,
+                            end_mask=end_mask,
+                            ellipsis_mask=ellipsis_mask,
+                            new_axis_mask=new_axis_mask,
+                            shrink_axis_mask=shrink_axis_mask
                         )
 
                 else:
@@ -5661,6 +5683,13 @@ def convert(model_path,
 
                 out = tf.constant(dst_data)
                 inp = tf.reshape(out, shape=out_shape)
+
+                # def const_to_layer(x):
+                #     return tf.Variable(x)
+                # inp = Lambda(const_to_layer)(inp)
+                # inp = Lambda(lambda x: tf.math.multiply(x, [1.0]))(inp)
+                # inp = inp * tf.cast(port1, dtype=tf.float32) / tf.cast(port1, dtype=tf.float32)
+                # inp = inp * tf.ones(tf.shape(inp), dtype=tf.float32)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
