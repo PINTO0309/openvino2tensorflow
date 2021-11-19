@@ -146,7 +146,8 @@ def convert(model_path,
         'i64' : tf.int64,
         'f16' : tf.float16,
         'f32' : tf.float32,
-        'bf16': tf.bfloat16
+        'bf16': tf.bfloat16,
+        'boolean': tf.bool
     }
 
     # integer type table
@@ -5697,6 +5698,53 @@ def convert(model_path,
                         )
                 else:
                     tf_layers_dict[layer_id] = inp
+
+            ### CumSum
+            elif layer.attrib['type'] == 'CumSum':
+                exclusive = False
+                if not data is None and 'exclusive' in data.attrib:
+                    exclusive = data.attrib['exclusive']
+                    exclusive = True if exclusive.lower() == 'true' else False
+                reverse = False
+                if not data is None and 'reverse' in data.attrib:
+                    reverse = data.attrib['reverse']
+                    reverse = True if reverse.lower() == 'true' else False
+
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            port1
+                        )
+                        tf_layers_dict[layer_id] = tf.math.cumsum(
+                            inp,
+                            axis=port2,
+                            exclusive=exclusive,
+                            reverse=reverse
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.math.cumsum(
+                            port1,
+                            axis=port2,
+                            exclusive=exclusive,
+                            reverse=reverse
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    tf_layers_dict[layer_id] = tf.math.cumsum(
+                        port1,
+                        axis=port2,
+                        exclusive=exclusive,
+                        reverse=reverse
+                    )
 
             ### Result
             elif layer.attrib['type'] == 'Result':
