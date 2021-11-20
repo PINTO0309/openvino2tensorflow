@@ -451,7 +451,9 @@ def convert(model_path,
                                                                                     layer.attrib['type'] == 'LessEqual' or \
                                                                                         layer.attrib['type'] == 'SquaredDifference' or \
                                                                                             layer.attrib['type'] == 'PriorBoxClustered' or \
-                                                                                                layer.attrib['type'] == 'StridedSlice':
+                                                                                                layer.attrib['type'] == 'StridedSlice' or \
+                                                                                                    layer.attrib['type'] == 'Select' or \
+                                                                                                        layer.attrib['type'] == 'VariadicSplit':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -5711,7 +5713,11 @@ def convert(model_path,
                     reverse = True if reverse.lower() == 'true' else False
 
                 port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                port2 = None
+                try:
+                    port2 = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], dtype=tf.int32)[0]
+                except:
+                    port2 = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)], dtype=tf.int32)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
