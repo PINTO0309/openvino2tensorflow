@@ -324,6 +324,7 @@ usage: openvino2tensorflow
   [--edgetpu_num_segments EDGETPU_NUM_SEGMENTS]
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
+  [--disable_onnx_optimization]
   [--output_myriad]
   [--vpu_number_of_shaves VPU_NUMBER_OF_SHAVES]
   [--vpu_number_of_cmx_slices VPU_NUMBER_OF_CMX_SLICES]
@@ -414,6 +415,8 @@ optional arguments:
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
+  --disable_onnx_optimization
+                        Disable onnx optimization.
   --output_myriad
                         myriad inference engine blob output switch
   --vpu_number_of_shaves VPU_NUMBER_OF_SHAVES
@@ -485,6 +488,7 @@ usage: saved_model_to_tflite
   [--edgetpu_num_segments EDGETPU_NUM_SEGMENTS]
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
+  [--disable_onnx_optimization]
   [--disable_experimental_new_quantizer]
 
 optional arguments:
@@ -563,6 +567,8 @@ optional arguments:
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
+  --disable_onnx_optimization
+                        Disable onnx optimization.
   --disable_experimental_new_quantizer
                         Disable MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.
