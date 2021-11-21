@@ -6383,7 +6383,7 @@ def main():
     parser.add_argument('--edgetpu_num_segments', type=int, default=1, help='Partition the model into [num_segments] segments. Default: 1 (no partition)')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
-    parser.add_argument('--disable_onnx_optimization', action='store_true', help='Disable onnx optimization.')
+    parser.add_argument('--disable_onnx_optimization', action='store_true', help='Disable onnx optimization')
     parser.add_argument('--output_myriad', action='store_true', help='myriad inference engine blob output switch')
     parser.add_argument('--vpu_number_of_shaves', type=int, default=4, help='vpu number of shaves. Default: 4')
     parser.add_argument('--vpu_number_of_cmx_slices', type=int, default=4, help='vpu number of cmx slices. Default: 4')
