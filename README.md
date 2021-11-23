@@ -219,7 +219,8 @@ Work in progress now.
 |99|ShuffleChannels|reshape, transpose||
 |100|PriorBoxClustered|Constant||
 |101|CumSum|cumsum||
-|102|Result|Identity|Output|
+|102|PriorBox|Constant||
+|103|Result|Identity|Output|
 
 **[↥ Back to top](#openvino2tensorflow)**
 

@@ -119,6 +119,7 @@ def convert(model_path,
         import coremltools as ct
     import json
     import pprint
+    import math
 
     # for unpacking binary buffer
     format_config = {
@@ -451,10 +452,11 @@ def convert(model_path,
                                                                                 layer.attrib['type'] == 'Less' or \
                                                                                     layer.attrib['type'] == 'LessEqual' or \
                                                                                         layer.attrib['type'] == 'SquaredDifference' or \
-                                                                                            layer.attrib['type'] == 'PriorBoxClustered' or \
-                                                                                                layer.attrib['type'] == 'StridedSlice' or \
-                                                                                                    layer.attrib['type'] == 'Select' or \
-                                                                                                        layer.attrib['type'] == 'VariadicSplit':
+                                                                                            layer.attrib['type'] == 'PriorBox' or \
+                                                                                                layer.attrib['type'] == 'PriorBoxClustered' or \
+                                                                                                    layer.attrib['type'] == 'StridedSlice' or \
+                                                                                                        layer.attrib['type'] == 'Select' or \
+                                                                                                            layer.attrib['type'] == 'VariadicSplit':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -5603,9 +5605,261 @@ def convert(model_path,
                         [port1.shape[0], port1.shape[1], port1.shape[2], port1.shape[3]]
                     )
 
+            ### PriorBox - WIP
+            elif layer.attrib['type'] == 'PriorBox':
+                aspect_ratio = None
+                if not data is None and 'aspect_ratio' in data.attrib:
+                    aspect_ratio = np.asarray(data.attrib['aspect_ratio'].replace(' ', '').split(','), dtype=np.float32)
+                clip = False
+                if not data is None and 'clip' in data.attrib:
+                    clip = data.attrib['clip']
+                    clip = True if clip.lower() == 'true' else False
+                densities = []
+                if not data is None and 'density' in data.attrib and data.attrib['density'].replace(' ', ''):
+                    densities = np.asarray(data.attrib['density'].replace(' ', '').split(','), dtype=np.float32)
+                fixed_ratio = []
+                if not data is None and 'fixed_ratio' in data.attrib and data.attrib['fixed_ratio'].replace(' ', ''):
+                    fixed_ratio = np.asarray(data.attrib['fixed_ratio'].replace(' ', '').split(','), dtype=np.float32)
+                fixed_size = []
+                if not data is None and 'fixed_size' in data.attrib and data.attrib['fixed_size'].replace(' ', ''):
+                    fixed_size = np.asarray(data.attrib['fixed_size'].replace(' ', '').split(','), dtype=np.float32)
+                flip = False
+                if not data is None and 'flip' in data.attrib:
+                    flip = data.attrib['flip']
+                    flip = True if flip.lower() == 'true' else False
+                max_size = []
+                if not data is None and 'max_size' in data.attrib:
+                    max_size = np.asarray(data.attrib['max_size'].replace(' ', '').split(','), dtype=np.float32)
+                min_size = []
+                if not data is None and 'min_size' in data.attrib:
+                    min_size = np.asarray(data.attrib['min_size'].replace(' ', '').split(','), dtype=np.float32)
+                offset = None
+                if not data is None and 'offset' in data.attrib:
+                    offset = np.asarray(data.attrib['offset'], dtype=np.float32)
+                scale_all_sizes = True
+                if not data is None and 'scale_all_sizes' in data.attrib:
+                    scale_all_sizes = data.attrib['scale_all_sizes']
+                    scale_all_sizes = True if scale_all_sizes.lower() == 'true' else False
+                step = 0.0
+                if not data is None and 'step' in data.attrib:
+                    step = np.asarray(data.attrib['step'], dtype=np.float32)
+                variance = None
+                if not data is None and 'variance' in data.attrib:
+                    variance = np.asarray(data.attrib['variance'].replace(' ', '').split(','), dtype=np.float32)
+
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] # output_size
+                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] # image_size
+
+                layer_width = port1[1]
+                layer_height = port1[0]
+                img_width = port2[1]
+                img_height = port2[0]
+
+                def normalized_aspect_ratio(aspect_ratio, flip):
+                    unique_ratios = []
+                    for ratio in aspect_ratio:
+                        val = (round(ratio * 1e6) / 1e6)
+                        if val not in unique_ratios:
+                            unique_ratios.append(val)
+                        if flip:
+                            val = (round(1 / ratio * 1e6) / 1e6)
+                            if val not in unique_ratios:
+                                unique_ratios.append(val)
+                    unique_ratios.append(1.0)
+                    return unique_ratios
+
+                num_priors = 0
+                total_aspect_ratios = len(normalized_aspect_ratio(aspect_ratio, flip))
+                if scale_all_sizes:
+                    num_priors = total_aspect_ratios * len(min_size) + len(max_size)
+                else:
+                    num_priors = total_aspect_ratios + len(min_size) - 1
+
+                if fixed_size:
+                    num_priors = total_aspect_ratios * len(fixed_size)
+
+                for density in densities:
+                    rounded_density = int(density)
+                    density_2d = (rounded_density * rounded_density - 1)
+                    if fixed_ratio:
+                        num_priors += len(fixed_ratio) * density_2d
+                    else:
+                        num_priors += total_aspect_ratios * density_2d
+
+                out_shape = [2, 4 * layer_height * layer_width * num_priors]
+                dst_data = np.zeros((out_shape), dtype=np.float32).flatten()
+
+                aspect_ratios = [1.0]
+                for ratio in aspect_ratio:
+                    exist = False
+                    for existed_value in aspect_ratios:
+                        exist = exist or (abs(ratio - existed_value) < 1e-6)
+                    if not exist:
+                        aspect_ratios.append(ratio)
+                        if flip:
+                            aspect_ratios.append(1.0 / ratio)
+
+                if variance is None or len(variance) == 0:
+                    variance = [0.1]
+
+                if not scale_all_sizes:
+                    if step == -1.0:
+                        step = 1.0 * img_height / layer_height
+                    else:
+                        step *= img_height
+                    for size in min_size:
+                        size *= img_height
+
+                idx = 0
+                IWI = tf.constant([1], dtype=tf.int64) / img_width
+                IHI = tf.constant([1], dtype=tf.int64) / img_height
+                if step == 0:
+                    step_x = img_width / layer_width
+                    step_y = img_height / layer_height
+                else:
+                    step_x = step
+                    step_y = step
+
+                def clip_great(x, threshold):
+                    if x < threshold:
+                        return x
+                    else:
+                        return threshold
+
+                def clip_less(x, threshold):
+                    if x > threshold:
+                        return x
+                    else:
+                        return threshold
+
+                def calculate_data(dst_data, idx, center_x, center_y, box_width, box_height, clip):
+                    if clip:
+                        # order: xmin, ymin, xmax, ymax
+                        dst_data[idx] = clip_less((center_x - box_width) * IWI, 0)
+                        idx += 1
+                        dst_data[idx] = clip_less((center_y - box_height) * IHI, 0)
+                        idx += 1
+                        dst_data[idx] = clip_great((center_x + box_width) * IWI, 1)
+                        idx += 1
+                        dst_data[idx] = clip_great((center_y + box_height) * IHI, 1)
+                        idx += 1
+                    else:
+                        dst_data[idx] = (center_x - box_width) * IWI
+                        idx += 1
+                        dst_data[idx] = (center_y - box_height) * IHI
+                        idx += 1
+                        dst_data[idx] = (center_x + box_width) * IWI
+                        idx += 1
+                        dst_data[idx] = (center_y + box_height) * IHI
+                        idx += 1
+
+                for h in range(layer_height):
+                    for w in range(layer_width):
+                        if step == 0:
+                            center_x = (w + 0.5) * step_x
+                            center_y = (h + 0.5) * step_y
+                        else:
+                            center_x = (offset + w) * step
+                            center_y = (offset + h) * step
+
+                        for s in range(len(fixed_size)):
+                            fixed_size_ = fixed_size[s]
+                            box_width = fixed_size_ * 0.5
+                            box_height = fixed_size_ * 0.5
+
+                            if not fixed_ratio is None and len(fixed_ratio) > 0:
+                                for ar in fixed_ratio:
+                                    density_ = int(density[s])
+                                    shift = int(fixed_size[s] / density_)
+                                    ar = math.sqrt(ar)
+                                    box_width_ratio = fixed_size[s] * 0.5 * ar
+                                    box_height_ratio = fixed_size[s] * 0.5 / ar
+                                    for r in range(density_):
+                                        for c in range(density_):
+                                            center_x_temp = center_x - fixed_size_ / 2 + shift / 2.0 + c * shift
+                                            center_y_temp = center_y - fixed_size_ / 2 + shift / 2.0 + r * shift
+                                            calculate_data(idx, center_x_temp, center_y_temp, box_width_ratio, box_height_ratio, True)
+                            else:
+                                if not density is None and len(density) > 0:
+                                    density_ = int(density[s])
+                                    shift = int(fixed_size[s] / density_)
+                                    for r in range(density_):
+                                        for c in range(density_):
+                                            center_x_temp = center_x - fixed_size_ / 2 + shift / 2.0 + c * shift
+                                            center_y_temp = center_y - fixed_size_ / 2 + shift / 2.0 + r * shift
+                                            calculate_data(dst_data, idx, center_x_temp, center_y_temp, box_width, box_height, True)
+                                # Rest of priors
+                                for ar in aspect_ratios:
+                                    if (abs(ar - 1.0) < 1e-6):
+                                        continue
+
+                                    density_ = int(density[s])
+                                    shift = int(fixed_size[s] / density_)
+                                    ar = math.sqrt(ar)
+                                    box_width_ratio = fixed_size[s] * 0.5 * ar
+                                    box_height_ratio = fixed_size[s] * 0.5 / ar
+                                    for r in range(density_):
+                                        for c in range(density_):
+                                            center_x_temp = center_x - fixed_size_ / 2 + shift / 2.0 + c * shift
+                                            center_y_temp = center_y - fixed_size_ / 2 + shift / 2.0 + r * shift
+                                            calculate_data(dst_data, idx, center_x_temp, center_y_temp, box_width_ratio, box_height_ratio, True)
+
+                        for ms_idx in range(len(min_size)):
+                            box_width = min_size[ms_idx] * 0.5
+                            box_height = min_size[ms_idx] * 0.5
+                            calculate_data(dst_data, idx, center_x, center_y, box_width, box_height, False)
+
+                            if len(max_size) > ms_idx:
+                                box_width = math.sqrt(min_size[ms_idx] * max_size[ms_idx]) * 0.5
+                                box_height = math.sqrt(min_size[ms_idx] * max_size[ms_idx]) * 0.5
+                                calculate_data(dst_data, idx, center_x, center_y, box_width, box_height, False)
+
+                            if scale_all_sizes or (not scale_all_sizes and (ms_idx == len(min_size) - 1)):
+                                s_idx = 0
+                                if scale_all_sizes:
+                                    s_idx = ms_idx
+                                else:
+                                    s_idx = 0
+                                for ar in aspect_ratios:
+                                    if (abs(ar - 1.0) < 1e-6):
+                                        continue
+                                    ar = math.sqrt(ar)
+                                    box_width = min_size[s_idx] * 0.5 * ar
+                                    box_height = min_size[s_idx] * 0.5 / ar
+                                    calculate_data(dst_data, idx, center_x, center_y, box_width, box_height, False)
+
+                if clip:
+                    for i in (layer_height * layer_width * num_priors * 4):
+                        dst_data[i] = min(max(dst_data[i], 0.0), 1.0)
+
+                channel_size = out_shape[1]
+                if len(variance) == 1:
+                    for i in range(channel_size):
+                        dst_data[i + channel_size] = variance[0]
+                else:
+                    for i in range(layer_height * layer_width * num_priors):
+                        for j in range(4):
+                            dst_data[i * 4 + j + channel_size] = variance[j]
+
+                out = tf.constant(dst_data)
+                inp = tf.reshape(out, shape=out_shape)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                else:
+                    tf_layers_dict[layer_id] = inp
+
             ### PriorBoxClustered - WIP
             elif layer.attrib['type'] == 'PriorBoxClustered':
-                clip = None
+                clip = False
                 if not data is None and 'clip' in data.attrib:
                     clip = data.attrib['clip']
                     clip = True if clip.lower() == 'true' else False
@@ -5637,8 +5891,8 @@ def convert(model_path,
                 if not data is None and 'variance' in data.attrib:
                     variance = np.asarray(data.attrib['variance'].replace(' ', '').split(','), dtype=np.float32)
 
-                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)] # output_size
+                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)] # image_size
 
                 layer_width = port1[1]
                 layer_height = port1[0]
