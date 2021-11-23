@@ -3683,7 +3683,7 @@ def convert(model_path,
                     axis = -1
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
-                    if wr_config[layer_id]['type'] == 'Softmax' and wr_config[layer_id]['replace_mode'] == 'change_axis':
+                    if wr_config[layer_id]['type'] == 'SoftMax' and wr_config[layer_id]['replace_mode'] == 'change_axis':
                         axis = int(wr_config[layer_id]['values'])
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
