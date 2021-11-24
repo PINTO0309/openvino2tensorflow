@@ -3107,6 +3107,8 @@ def convert(model_path,
                     if len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape) < len(temp.shape):
                         for idx, dim in enumerate(temp):
                             indices.append(dim)
+                    elif len(temp.shape) == 1:
+                        indices = temp
                     else:
                         shape = tf.shape(temp)
                         for idx, dim in enumerate(shape):
@@ -3131,22 +3133,30 @@ def convert(model_path,
                                 batch_dims=batch_dims
                             )
                         else:
-                            if indices == [0] and axis == 0:
-                                try:
-                                    tmp = tf.squeeze(
-                                        inp,
-                                        axis=axis
-                                    )
-                                    if tmp.type_spec.shape == []:
-                                        tf_layers_dict[layer_id] = tf.expand_dims(tmp, axis=0)
-                                except:
+                            try:
+                                if indices == [0] and axis == 0:
+                                    try:
+                                        tmp = tf.squeeze(
+                                            inp,
+                                            axis=axis
+                                        )
+                                        if tmp.type_spec.shape == []:
+                                            tf_layers_dict[layer_id] = tf.expand_dims(tmp, axis=0)
+                                    except:
+                                        tf_layers_dict[layer_id] = tf.gather(
+                                            inp,
+                                            indices,
+                                            axis=axis,
+                                            batch_dims=batch_dims
+                                        )
+                                else:
                                     tf_layers_dict[layer_id] = tf.gather(
                                         inp,
                                         indices,
                                         axis=axis,
                                         batch_dims=batch_dims
                                     )
-                            else:
+                            except:
                                 tf_layers_dict[layer_id] = tf.gather(
                                     inp,
                                     indices,
@@ -3168,22 +3178,30 @@ def convert(model_path,
                                 batch_dims=batch_dims
                             )
                         else:
-                            if indices == [0] and axis == 0:
-                                try:
-                                    inp = tf.squeeze(
-                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                        axis=axis
-                                    )
-                                    if tf_layers_dict[layer_id].type_spec.shape == []:
-                                        inp = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
-                                except:
+                            try:
+                                if indices == [0] and axis == 0:
+                                    try:
+                                        inp = tf.squeeze(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            axis=axis
+                                        )
+                                        if tf_layers_dict[layer_id].type_spec.shape == []:
+                                            inp = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
+                                    except:
+                                        inp = tf.gather(
+                                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                            indices,
+                                            axis=axis,
+                                            batch_dims=batch_dims
+                                        )
+                                else:
                                     inp = tf.gather(
                                         tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                         indices,
                                         axis=axis,
                                         batch_dims=batch_dims
                                     )
-                            else:
+                            except:
                                 inp = tf.gather(
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                     indices,
@@ -3210,22 +3228,35 @@ def convert(model_path,
                             batch_dims=batch_dims
                         )
                     else:
-                        if indices == [0] and axis == 0:
-                            try:
-                                tf_layers_dict[layer_id] = tf.squeeze(
-                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                    axis=axis
-                                )
-                                if tf_layers_dict[layer_id].type_spec.shape == []:
-                                    tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
-                            except:
+                        try:
+                            if indices == [0] and axis == 0:
+                                try:
+                                    tf_layers_dict[layer_id] = tf.squeeze(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        axis=axis
+                                    )
+                                    if tf_layers_dict[layer_id].type_spec.shape == []:
+                                        tf_layers_dict[layer_id] = tf.expand_dims(tf_layers_dict[layer_id], axis=0)
+                                except:
+                                    tf_layers_dict[layer_id] = tf.gather(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        indices,
+                                        axis=axis,
+                                        batch_dims=batch_dims
+                                    )
+                            else:
                                 tf_layers_dict[layer_id] = tf.gather(
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                     indices,
                                     axis=axis,
                                     batch_dims=batch_dims
                                 )
-                        else:
+
+                                if batch_dims is None and axis == 0 and tf_layers_dict[layer_id].shape[0] == 1:
+                                    tf_layers_dict[layer_id] = tf_layers_dict[layer_id][0]
+                                elif batch_dims is None and (axis == -1 or axis == (len(tf_layers_dict[layer_id].shape) - 1)) and tf_layers_dict[layer_id].shape[-1] == 1:
+                                    tf_layers_dict[layer_id] = tf.squeeze(tf_layers_dict[layer_id], axis=axis)
+                        except:
                             tf_layers_dict[layer_id] = tf.gather(
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                                 indices,
