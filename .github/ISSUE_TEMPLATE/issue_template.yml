@@ -4,7 +4,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Anything that does not follow the issue template will be closed immediately.
+        Please provide as much detail as possible to convey the history of your problem. Sloppy issues will be closed immediately.
   - type: dropdown
     id: issue-type
     attributes:
@@ -66,7 +66,7 @@ body:
     id: Framework
     attributes:
       label: Framework
-      description: What framework are you using? If "other", please provide more details in the "Description" section above.
+      description: What framework are you using? If "Other", please provide more details in the "Description" section above.
       multiple: true
       options:
         - OpenVINO
