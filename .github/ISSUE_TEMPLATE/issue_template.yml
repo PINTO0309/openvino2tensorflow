@@ -83,7 +83,7 @@ body:
     validations:
       required: true
   - type: textarea
-    id: Download-URL-for-ONNX/OpenVINO-IR
+    id: Download-URL-for-ONNX-OpenVINO-IR
     attributes:
       label: Download URL for ONNX / OpenVINO IR
       description: Please include the URL where you quoted the ONNX file or OpenVINO IR(.xml/.bin).
@@ -105,7 +105,7 @@ body:
     validations:
       required: true
   - type: textarea
-    id: URL-or-source-code-for-simple-inference-testing-code
+    id: url-or-source-code-for-simple-inference-testing-code
     attributes:
       label: Source code for simple inference testing code
       description: Please copy and paste source code for simple inference testing code.
