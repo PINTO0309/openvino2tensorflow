@@ -3100,8 +3100,11 @@ def convert(model_path,
                         batch_dims = None
                 indices = []
                 if type(temp) == np.ndarray:
-                    for idx, dim in enumerate(temp):
-                        indices.append(dim)
+                    if temp.ndim == 1:
+                        for idx, dim in enumerate(temp):
+                            indices.append(dim)
+                    else:
+                        indices = temp
                 else:
                     # TODO
                     if len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape) < len(temp.shape):
