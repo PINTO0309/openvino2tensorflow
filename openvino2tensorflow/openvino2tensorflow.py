@@ -4733,11 +4733,13 @@ def convert(model_path,
                 axis = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
                 input_shape_len = len(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape)
 
-                if input_shape_len >= 4:
+                if input_shape_len == 4:
                     if axis == 1:
                         axis = -1
                     elif axis >= 2:
                         axis -= 1
+                else:
+                    pass
 
                 num_or_size_splits = None
                 if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]) == np.ndarray:
