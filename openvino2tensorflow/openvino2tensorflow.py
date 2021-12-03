@@ -297,7 +297,8 @@ def convert(model_path,
         'Concat': ['change_axis'],
         'SoftMax': ['change_axis'],
         'ShuffleChannels': ['change_axis'],
-        'StridedSlice': ['change_attributes']
+        'StridedSlice': ['change_attributes'],
+        'MaxPool': ['change_padding_mode']
     }
 
 
@@ -1571,7 +1572,46 @@ def convert(model_path,
                     # end 1 = right
                     begin = [int(data.attrib['pads_begin'].split(',')[0]), int(data.attrib['pads_end'].split(',')[0])]
                     end   = [int(data.attrib['pads_begin'].split(',')[1]), int(data.attrib['pads_end'].split(',')[1])]
-                    orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+
+                    changed_padding_mode = None
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['type'] == 'MaxPool' and wr_config[layer_id]['replace_mode'] == 'change_padding_mode':
+                            changed_padding_mode = wr_config[layer_id]['values']
+
+
+                    if not changed_padding_mode:
+                        if begin == [1,1] and end == [1,1]:
+                            orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+                        else:
+                            # paddings = tf.constant([[0,0],[2,2],[2,2],[0,0]])
+                            # D0: [before, after]
+                            # D1: [before, after]
+                            # D2: [before, after]
+                            # D3: [before, after]
+                            # [D0, D1, D2, D3]
+                            pads = np.asarray([[0,0],begin,end,[0,0]], dtype=np.int32)
+                            orig = tf.pad(
+                                temp,
+                                paddings=pads,
+                                mode='SYMMETRIC'
+                            )
+                    else:
+                        # changed_padding_mode in ['ZERO', 'SYMMETRIC', 'REFLECT']
+                        if changed_padding_mode.upper() == 'ZERO':
+                            orig = tf.keras.layers.ZeroPadding2D([begin, end])(temp)
+                        else:
+                            # paddings = tf.constant([[0,0],[2,2],[2,2],[0,0]])
+                            # D0: [before, after]
+                            # D1: [before, after]
+                            # D2: [before, after]
+                            # D3: [before, after]
+                            # [D0, D1, D2, D3]
+                            pads = np.asarray([[0,0],begin,end,[0,0]], dtype=np.int32)
+                            orig = tf.pad(
+                                temp,
+                                paddings=pads,
+                                mode=changed_padding_mode.upper()
+                            )
                 else:
                     if temp.shape[0] == 1 and temp.shape[2] == 1 and temp.shape[3] == 1:
                         orig = tf.transpose(temp, perm=(0,2,3,1))
@@ -1601,6 +1641,13 @@ def convert(model_path,
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
                             wr_config[layer_id],
                             inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = tf.nn.max_pool(
+                            orig,
+                            ksize=kernel_size,
+                            strides=strides,
+                            padding=padding
                         )
 
                 else:
