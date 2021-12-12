@@ -220,7 +220,8 @@ Work in progress now.
 |100|PriorBoxClustered|Constant||
 |101|CumSum|cumsum||
 |102|PriorBox|Constant||
-|103|Result|Identity|Output|
+|103|ReverseSequence|reverse||
+|104|Result|Identity|Output|
 
 **[↥ Back to top](#openvino2tensorflow)**
 
