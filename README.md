@@ -221,7 +221,8 @@ Work in progress now.
 |101|CumSum|cumsum||
 |102|PriorBox|Constant||
 |103|ReverseSequence|reverse||
-|104|Result|Identity|Output|
+|104|ExtractImagePatches|extract_patches||
+|105|Result|Identity|Output|
 
 **[↥ Back to top](#openvino2tensorflow)**
 

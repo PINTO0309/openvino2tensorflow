@@ -299,7 +299,7 @@ def convert(model_path,
         'ShuffleChannels': ['change_axis'],
         'StridedSlice': ['change_attributes'],
         'MaxPool': ['change_padding_mode'],
-        'PReLU': ['change_shared_axes']
+        'PReLU': ['change_shared_axes'],
         'ReverseSequence': ['change_batch_axis', 'change_seq_axis']
     }
 
@@ -6185,9 +6185,9 @@ def convert(model_path,
                 batch_axis = 0
                 if not data is None and 'batch_axis' in data.attrib:
                     batch_axis = int(data.attrib['batch_axis'])
-                seq_axis = 1
+                seq_axis = [1]
                 if not data is None and 'seq_axis' in data.attrib:
-                    seq_axis = int(data.attrib['seq_axis'])
+                    seq_axis = [int(data.attrib['seq_axis']) + 1]
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['type'] == 'ReverseSequence' and wr_config[layer_id]['replace_mode'] == 'change_batch_axis':
@@ -6197,10 +6197,6 @@ def convert(model_path,
 
                 if batch_axis > 0:
                     print(f'{Color.RED}ERROR:{Color.RESET} Only zero "batch_axis" is supported. layer_id: {layer_id}, batch_axis: {batch_axis}')
-                    sys.exit(-1)
-
-                if port2.size > 1 or port1.shape[seq_axis] != port2[0]:
-                    print(f'{Color.RED}ERROR:{Color.RESET} The value of sequence in ReverseSequence must match the value of dimension in "seq_axis". layer_id: {layer_id}, seq_axis: {seq_axis}, sequence_values: {port2}')
                     sys.exit(-1)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
@@ -6215,7 +6211,7 @@ def convert(model_path,
                         )
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                         inp = tf.reverse(
-                            inp,
+                            port1,
                             seq_axis
                         )
                         tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -6231,6 +6227,73 @@ def convert(model_path,
                     tf_layers_dict[layer_id] = tf.reverse(
                         port1,
                         seq_axis
+                    )
+
+            ### ExtractImagePatches
+            elif layer.attrib['type'] == 'ExtractImagePatches':
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+
+                auto_pad = None
+                if not data is None and 'auto_pad' in data.attrib:
+                    auto_pad = data.attrib['auto_pad']
+                    if auto_pad == 'same_upper' or auto_pad == 'same_upper':
+                        auto_pad = 'SAME'
+                    else:
+                        auto_pad = auto_pad.upper()
+                rates = None
+                if not data is None and 'rates' in data.attrib:
+                    rates = [int(val) for val in data.attrib['rates'].replace(' ', '').split(',')]
+                    rates = [1, rates[0], rates[1], 1]
+                sizes = None
+                if not data is None and 'sizes' in data.attrib:
+                    sizes = [int(val) for val in data.attrib['sizes'].replace(' ', '').split(',')]
+                    sizes = [1, sizes[0], sizes[1], 1]
+                strides = None
+                if not data is None and 'strides' in data.attrib:
+                    strides = [int(val) for val in data.attrib['strides'].replace(' ', '').split(',')]
+                    strides = [1, strides[0], strides[1], 1]
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            port1
+                        )
+                        tf_layers_dict[layer_id] = tf.image.extract_patches(
+                            inp,
+                            sizes=sizes,
+                            strides=strides,
+                            rates=rates,
+                            padding=auto_pad
+                        )
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.image.extract_patches(
+                            port1,
+                            sizes=sizes,
+                            strides=strides,
+                            rates=rates,
+                            padding=auto_pad
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = tf.image.extract_patches(
+                            port1,
+                            sizes=sizes,
+                            strides=strides,
+                            rates=rates,
+                            padding=auto_pad
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.image.extract_patches(
+                        port1,
+                        sizes=sizes,
+                        strides=strides,
+                        rates=rates,
+                        padding=auto_pad
                     )
 
             ### Result
