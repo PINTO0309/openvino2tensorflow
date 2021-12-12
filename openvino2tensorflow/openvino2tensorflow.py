@@ -300,6 +300,7 @@ def convert(model_path,
         'StridedSlice': ['change_attributes'],
         'MaxPool': ['change_padding_mode'],
         'PReLU': ['change_shared_axes']
+        'ReverseSequence': ['change_batch_axis', 'change_seq_axis']
     }
 
 
@@ -458,7 +459,8 @@ def convert(model_path,
                                                                                                 layer.attrib['type'] == 'PriorBoxClustered' or \
                                                                                                     layer.attrib['type'] == 'StridedSlice' or \
                                                                                                         layer.attrib['type'] == 'Select' or \
-                                                                                                            layer.attrib['type'] == 'VariadicSplit':
+                                                                                                            layer.attrib['type'] == 'VariadicSplit' or \
+                                                                                                                layer.attrib['type'] == 'ReverseSequence':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -5746,6 +5748,19 @@ def convert(model_path,
                             wr_config[layer_id],
                             inp
                         )
+                    else:
+                        shufflechannels_reshape = tf.reshape(
+                            port1,
+                            [port1.shape[0], port1.shape[1] * port1.shape[2], group, port1.shape[3] // group]
+                        )
+                        shufflechannels_transpose = tf.transpose(
+                            shufflechannels_reshape,
+                            perm=[0, 1, 3, 2]
+                        )
+                        tf_layers_dict[layer_id] = tf.reshape(
+                            shufflechannels_transpose,
+                            [port1.shape[0], port1.shape[1], port1.shape[2], port1.shape[3]]
+                        )
                 else:
                     shufflechannels_reshape = tf.reshape(
                         port1,
@@ -6160,6 +6175,62 @@ def convert(model_path,
                         axis=port2,
                         exclusive=exclusive,
                         reverse=reverse
+                    )
+
+            ### ReverseSequence
+            elif layer.attrib['type'] == 'ReverseSequence':
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                port2 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                batch_axis = 0
+                if not data is None and 'batch_axis' in data.attrib:
+                    batch_axis = int(data.attrib['batch_axis'])
+                seq_axis = 1
+                if not data is None and 'seq_axis' in data.attrib:
+                    seq_axis = int(data.attrib['seq_axis'])
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'ReverseSequence' and wr_config[layer_id]['replace_mode'] == 'change_batch_axis':
+                        batch_axis = int(wr_config[layer_id]['values'])
+                    elif wr_config[layer_id]['type'] == 'ReverseSequence' and wr_config[layer_id]['replace_mode'] == 'change_seq_axis':
+                        seq_axis = int(wr_config[layer_id]['values'])
+
+                if batch_axis > 0:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Only zero "batch_axis" is supported. layer_id: {layer_id}, batch_axis: {batch_axis}')
+                    sys.exit(-1)
+
+                if port2.size > 1 or port1.shape[seq_axis] != port2[0]:
+                    print(f'{Color.RED}ERROR:{Color.RESET} The value of sequence in ReverseSequence must match the value of dimension in "seq_axis". layer_id: {layer_id}, seq_axis: {seq_axis}, sequence_values: {port2}')
+                    sys.exit(-1)
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            port1
+                        )
+                        tf_layers_dict[layer_id] = tf.reverse(
+                            inp,
+                            seq_axis
+                        )
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.reverse(
+                            inp,
+                            seq_axis
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = tf.reverse(
+                            port1,
+                            seq_axis
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.reverse(
+                        port1,
+                        seq_axis
                     )
 
             ### Result
