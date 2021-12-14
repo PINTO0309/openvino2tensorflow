@@ -26,6 +26,8 @@ from pathlib import Path
 import xml.etree.ElementTree as et
 import logging
 import warnings
+
+from tensorflow.python.framework.ops import _run_using_default_session
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=Warning)
@@ -6235,11 +6237,11 @@ def convert(model_path,
 
                 auto_pad = None
                 if not data is None and 'auto_pad' in data.attrib:
-                    auto_pad = data.attrib['auto_pad']
-                    if auto_pad == 'same_upper' or auto_pad == 'same_upper':
-                        auto_pad = 'SAME'
-                    else:
-                        auto_pad = auto_pad.upper()
+                    # same_upper, same_lower, valid
+                    auto_pad = data.attrib['auto_pad'].upper()
+                if auto_pad is not None and auto_pad != 'VALID':
+                    print(f'{Color.RED}ERROR:{Color.RESET} For now, only "VALID" is supported for auto_pad. layer_id: {layer_id}, auto_pad: {auto_pad}')
+                    sys.exit(-1)
                 rates = None
                 if not data is None and 'rates' in data.attrib:
                     rates = [int(val) for val in data.attrib['rates'].replace(' ', '').split(',')]
@@ -6253,24 +6255,47 @@ def convert(model_path,
                     strides = [int(val) for val in data.attrib['strides'].replace(' ', '').split(',')]
                     strides = [1, strides[0], strides[1], 1]
 
+                def pseudo_extract_image_patches(arr, ksizes, strides, rates, padding):
+                    sizes = [1, ksizes[1]*rates[1] - (rates[1]-1), ksizes[2]*rates[2] - (rates[2]-1), 1]
+                    if padding == 'SAME':
+                        extra_i = max(0, (arr.shape[1]-1) // strides[1] * strides[1] + sizes[1] - arr.shape[1])
+                        extra_j = max(0, (arr.shape[2]-1) // strides[2] * strides[2] + sizes[2] - arr.shape[2])
+                        arr = np.pad(arr, [(0,0), (extra_i//2, extra_i//2 + extra_i%2), (extra_j//2, extra_j//2 + extra_j%2), (0,0)])
+                    elif padding != 'VALID':
+                        raise Exception('Padding type "%s" is not supported' % padding)
+                    def make_range(in_size, k_size, rate, stride):
+                        return range(0, in_size - (k_size*rate - rate), stride)
+                    indexes_i = make_range(arr.shape[1], ksizes[1], rates[1], strides[1])
+                    indexes_j = make_range(arr.shape[2], ksizes[2], rates[2], strides[2])
+                    batch_size = arr.shape[0]
+                    channel_size = ksizes[1]*ksizes[2]*arr.shape[3]
+                    return tf.concat([tf.concat([tf.reshape(arr[:, i : sizes[1]+i : rates[1], j : sizes[2]+j : rates[2], :], [batch_size, 1, 1, channel_size]) for j in indexes_j], axis=2) for i in indexes_i], axis=1)
+
+                image_patches_func = None
+                # If the batch size is 1 and rates is [1,1], replace extract_image_patches with the standard operation.
+                if port1.shape[0] == 1 and rates is not None and (rates[0] + rates[1]) == 2:
+                    image_patches_func = pseudo_extract_image_patches
+                else:
+                    image_patches_func = tf.image.extract_patches
+
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
                         inp = extrapolation_of_layers(
                             wr_config[layer_id],
                             port1
                         )
-                        tf_layers_dict[layer_id] = tf.image.extract_patches(
+                        tf_layers_dict[layer_id] = image_patches_func(
                             inp,
-                            sizes=sizes,
+                            ksizes=sizes,
                             strides=strides,
                             rates=rates,
                             padding=auto_pad
                         )
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = tf.image.extract_patches(
+                        inp = image_patches_func(
                             port1,
-                            sizes=sizes,
+                            ksizes=sizes,
                             strides=strides,
                             rates=rates,
                             padding=auto_pad
@@ -6280,17 +6305,17 @@ def convert(model_path,
                             inp
                         )
                     else:
-                        tf_layers_dict[layer_id] = tf.image.extract_patches(
+                        tf_layers_dict[layer_id] = image_patches_func(
                             port1,
-                            sizes=sizes,
+                            ksizes=sizes,
                             strides=strides,
                             rates=rates,
                             padding=auto_pad
                         )
                 else:
-                    tf_layers_dict[layer_id] = tf.image.extract_patches(
+                    tf_layers_dict[layer_id] = image_patches_func(
                         port1,
-                        sizes=sizes,
+                        ksizes=sizes,
                         strides=strides,
                         rates=rates,
                         padding=auto_pad
