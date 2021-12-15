@@ -34,6 +34,7 @@ Work in progress now.
 - onnx_graphsurgeon
 - onnx-simplifier
 - onnxconverter-common
+- onnxmltools
 - onnx-tensorrt
 - onnx2json
 - json2onnx
