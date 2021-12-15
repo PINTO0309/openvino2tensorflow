@@ -48,6 +48,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade onnx \
     && pip install --upgrade onnxruntime \
     && pip install --upgrade onnx-simplifier \
+    && pip install --upgrade onnxmltools \
     && pip install --upgrade onnxconverter-common \
     && pip install --upgrade tf2onnx \
     && pip install --upgrade onnx-tf \
