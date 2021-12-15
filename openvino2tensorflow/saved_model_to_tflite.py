@@ -413,6 +413,8 @@ def convert(
 
     # ONNX convert
     if output_onnx:
+        import onnx
+        import onnxoptimizer
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
@@ -426,6 +428,14 @@ def convert(
                 ],
                 stderr=subprocess.PIPE
             ).decode('utf-8')
+            try:
+                onnx_model = onnx.load(f'{model_output_path}/model_float32.onnx')
+                onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
+                onnx.save(onnx_model, f'{model_output_path}/model_float32.onnx')
+            except Exception as e:
+                print(f'{Color.YELLOW}WARNING:{Color.RESET}', e)
+                import traceback
+                traceback.print_exc()
             print(result)
             print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_dir_path}/model_float32.onnx')
         except subprocess.CalledProcessError as e:
@@ -438,8 +448,6 @@ def convert(
                 print(f'{Color.REVERCE}ONNX optimization started{Color.RESET}', '=' * 59)
 
                 # onnxoptimizer
-                import onnx
-                import onnxoptimizer
                 onnx_model = onnx.load(f'{model_output_dir_path}/model_float32.onnx')
                 passes = [
                     "extract_constant_to_initializer",

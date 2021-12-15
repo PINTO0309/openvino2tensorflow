@@ -6237,11 +6237,10 @@ def convert(model_path,
 
                 auto_pad = None
                 if not data is None and 'auto_pad' in data.attrib:
-                    # same_upper, same_lower, valid
+                    # same_upper, same_lower, valid - WIP Padding handling needs to be reviewed.
                     auto_pad = data.attrib['auto_pad'].upper()
-                if auto_pad is not None and auto_pad != 'VALID':
-                    print(f'{Color.RED}ERROR:{Color.RESET} For now, only "VALID" is supported for auto_pad. layer_id: {layer_id}, auto_pad: {auto_pad}')
-                    sys.exit(-1)
+                    if auto_pad == 'SAME_UPPER' or auto_pad == 'SAME_LOWER':
+                        auto_pad = 'SAME'
                 rates = None
                 if not data is None and 'rates' in data.attrib:
                     rates = [int(val) for val in data.attrib['rates'].replace(' ', '').split(',')]
@@ -6273,7 +6272,7 @@ def convert(model_path,
 
                 image_patches_func = None
                 # If the batch size is 1 and rates is [1,1], replace extract_image_patches with the standard operation.
-                if port1.shape[0] == 1 and rates is not None and (rates[0] + rates[1]) == 2:
+                if port1.shape[0] == 1 and rates is not None and (rates[0] + rates[1]) == 2 and auto_pad == 'VALID':
                     image_patches_func = pseudo_extract_image_patches
                 else:
                     image_patches_func = tf.image.extract_patches
@@ -6841,6 +6840,8 @@ def convert(model_path,
 
     # ONNX convert
     if output_onnx:
+        import onnx
+        import onnxoptimizer
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
@@ -6854,6 +6855,14 @@ def convert(model_path,
                 ],
                 stderr=subprocess.PIPE
             ).decode('utf-8')
+            try:
+                onnx_model = onnx.load(f'{model_output_path}/model_float32.onnx')
+                onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
+                onnx.save(onnx_model, f'{model_output_path}/model_float32.onnx')
+            except Exception as e:
+                print(f'{Color.YELLOW}WARNING:{Color.RESET}', e)
+                import traceback
+                traceback.print_exc()
             print(result)
             print(f'{Color.GREEN}ONNX convertion complete!{Color.RESET} - {model_output_path}/model_float32.onnx')
         except subprocess.CalledProcessError as e:
@@ -6866,8 +6875,6 @@ def convert(model_path,
                 print(f'{Color.REVERCE}ONNX optimization started{Color.RESET}', '=' * 59)
 
                 # onnxoptimizer
-                import onnx
-                import onnxoptimizer
                 onnx_model = onnx.load(f'{model_output_path}/model_float32.onnx')
                 passes = [
                     "extract_constant_to_initializer",
