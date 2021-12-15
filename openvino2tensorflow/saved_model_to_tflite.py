@@ -429,9 +429,9 @@ def convert(
                 stderr=subprocess.PIPE
             ).decode('utf-8')
             try:
-                onnx_model = onnx.load(f'{model_output_path}/model_float32.onnx')
+                onnx_model = onnx.load(f'{model_output_dir_path}/model_float32.onnx')
                 onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
-                onnx.save(onnx_model, f'{model_output_path}/model_float32.onnx')
+                onnx.save(onnx_model, f'{model_output_dir_path}/model_float32.onnx')
             except Exception as e:
                 print(f'{Color.YELLOW}WARNING:{Color.RESET}', e)
                 import traceback
