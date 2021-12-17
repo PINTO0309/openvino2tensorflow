@@ -90,6 +90,13 @@ body:
     validations:
       required: true
   - type: textarea
+    id: Convert-script
+    attributes:
+      label: Convert Script
+      description: Please include the convert script.
+    validations:
+      required: true
+  - type: textarea
     id: what-happened
     attributes:
       label: Description
