@@ -28,6 +28,7 @@ import logging
 import warnings
 
 from tensorflow.python.framework.ops import _run_using_default_session
+from tensorflow.python.keras.backend import ndim
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=Warning)
@@ -1061,6 +1062,10 @@ def convert(model_path,
                     shared_axes = None
 
                 temp_alpha = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                if alpha_len > 1 and temp_alpha.size == 1:
+                    temp_alpha = np.squeeze(temp_alpha)
+                    alpha_len = 1
 
                 if alpha_len == 4 and temp_alpha.shape[0] == 1 and temp_alpha.shape[2] == 1 and temp_alpha.shape[3] == 1:
                     shared_axes = [1, 2]
