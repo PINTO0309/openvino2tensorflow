@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-### tensorflow==2.3.1
 
 import tensorflow.compat.v1 as tf
 import shutil

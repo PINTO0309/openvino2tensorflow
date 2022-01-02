@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-### tensorflow==2.3.1
+
 import os
 import sys
 import argparse
