@@ -7,7 +7,7 @@ python3 openvino2tensorflow.py \
 --output_saved_model \
 --output_pb \
 --output_weight_quant_tflite \
---output_float16_quant_tflit \
+--output_float16_quant_tflite \
 --output_no_quant_float32_tflite
 
 python3 openvino2tensorflow.py \
