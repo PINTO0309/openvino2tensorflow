@@ -6,7 +6,7 @@ ARG TENSORFLOWVER=2.7.0
 ARG CPVER=cp38
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
-ARG TENSORRTVER=cuda11.4-trt8.2.1.8-ga-20211117
+ARG TENSORRTVER=cuda11.4-trt8.2.2.1-ga-20211214
 ARG APPVER
 ARG WKDIR=/home/user
 
@@ -65,7 +65,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade json2onnx \
     && python3 -m pip install onnx_graphsurgeon \
         --index-url https://pypi.ngc.nvidia.com \
-    && pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 \
+    && pip install torch==1.10.1+cu113 torchvision==0.11.2+cu113 torchaudio==0.10.1+cu113 \
         -f https://download.pytorch.org/whl/cu113/torch_stable.html \
     && pip install pycuda==2021.1 \
     && pip install scikit-image \
