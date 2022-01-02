@@ -96,7 +96,6 @@ def convert(model_path,
             replace_swish_and_hardswish,
             optimizing_hardswish_for_edgetpu,
             replace_prelu_and_minmax,
-            yolact,
             restricted_resize_image_mode,
             weight_replacement_config,
             use_experimental_new_quantizer,
@@ -2376,59 +2375,35 @@ def convert(model_path,
 
                         else:
                             # Others
-                            if yolact:
-                                if mode == 'linear':
-                                    x = Lambda(
-                                        upsampling2d_bilinear,
-                                        arguments={
-                                            'upsampling_factor_height': 2,
-                                            'upsampling_factor_width':  2
-                                        }
-                                    )(inp)
-                                    inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
-                                elif mode == 'nearest':
-                                    x = Lambda(
-                                        upsampling2d_nearest,
-                                        arguments={
-                                            'upsampling_factor_height': 2,
-                                            'upsampling_factor_width':  2
-                                        }
-                                    )(inp)
-                                    inp = tf.slice(x, [0, 1, 1, 0], [-1, -1, -1, -1])
+                            if mode == 'linear':
+                                if output_edgetpu:
+                                    inp = tf.compat.v1.image.resize(
+                                        inp,
+                                        [out_height, out_width],
+                                        method='bilinear'
+                                    )
                                 else:
-                                    print(f'The Interpolate - {mode} is not yet implemented.')
-                                    sys.exit(-1)
-
+                                    inp = tf.image.resize(
+                                        inp,
+                                        [out_height, out_width],
+                                        method='bilinear'
+                                    )
+                            elif mode == 'nearest':
+                                if output_edgetpu:
+                                    inp = tf.compat.v1.image.resize(
+                                        inp,
+                                        [out_height, out_width],
+                                        method='nearest'
+                                    )
+                                else:
+                                    inp = tf.image.resize(
+                                        inp,
+                                        [out_height, out_width],
+                                        method='nearest'
+                                    )
                             else:
-                                if mode == 'linear':
-                                    if output_edgetpu:
-                                        inp = tf.compat.v1.image.resize(
-                                            inp,
-                                            [out_height, out_width],
-                                            method='bilinear'
-                                        )
-                                    else:
-                                        inp = tf.image.resize(
-                                            inp,
-                                            [out_height, out_width],
-                                            method='bilinear'
-                                        )
-                                elif mode == 'nearest':
-                                    if output_edgetpu:
-                                        inp = tf.compat.v1.image.resize(
-                                            inp,
-                                            [out_height, out_width],
-                                            method='nearest'
-                                        )
-                                    else:
-                                        inp = tf.image.resize(
-                                            inp,
-                                            [out_height, out_width],
-                                            method='nearest'
-                                        )
-                                else:
-                                    print(f'The Interpolate - {mode} is not yet implemented.')
-                                    sys.exit(-1)
+                                print(f'The Interpolate - {mode} is not yet implemented.')
+                                sys.exit(-1)
                     else:
                         if mode == 'linear':
                             inp = tf.image.resize(
@@ -6970,7 +6945,6 @@ def main():
     parser.add_argument('--replace_swish_and_hardswish', action='store_true', help='Replace swish and hard-swish with each other')
     parser.add_argument('--optimizing_hardswish_for_edgetpu', action='store_true', help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', action='store_true', help='Replace prelu and minimum/maximum with each other')
-    parser.add_argument('--yolact', action='store_true', help='Specify when converting the Yolact model')
     parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
@@ -7018,7 +6992,6 @@ def main():
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
-    yolact = args.yolact
     restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
     use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
@@ -7122,7 +7095,7 @@ def main():
             output_onnx, onnx_opset, use_onnx_optimization, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
+            restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
             optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 

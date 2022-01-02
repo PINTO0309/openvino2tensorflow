@@ -335,7 +335,6 @@ usage: openvino2tensorflow
   [--replace_swish_and_hardswish]
   [--optimizing_hardswish_for_edgetpu]
   [--replace_prelu_and_minmax]
-  [--yolact]
   [--restricted_resize_image_mode]
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
   [--disable_experimental_new_quantizer]
@@ -433,8 +432,6 @@ optional arguments:
                         Optimizing hardswish for edgetpu
   --replace_prelu_and_minmax
                         Replace prelu and minimum/maximum with each other
-  --yolact
-                        Specify when converting the Yolact model
   --restricted_resize_image_mode
                         Specify this if the upsampling contains OPs that are
                         not scaled by integer multiples. Optimization for
