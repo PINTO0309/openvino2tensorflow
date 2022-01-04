@@ -54,3 +54,5 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.REPO }}:latest
           build-args: APPVER=${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
