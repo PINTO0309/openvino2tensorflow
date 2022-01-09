@@ -302,7 +302,9 @@ def convert(model_path,
         'StridedSlice': ['change_attributes'],
         'MaxPool': ['change_padding_mode'],
         'PReLU': ['change_shared_axes'],
-        'ReverseSequence': ['change_batch_axis', 'change_seq_axis']
+        'ReverseSequence': ['change_batch_axis', 'change_seq_axis'],
+        'Squeeze': ['insert_before', 'insert_after'],
+        'Unsqueeze': ['insert_before', 'insert_after'],
     }
 
 
@@ -411,6 +413,16 @@ def convert(model_path,
                 input,
                 dtype=cast_type_ov_tf[param]
             )
+        elif layer_type == 'Squeeze':
+            tf_layer = tf.squeeze(
+                input,
+                axis=param
+            )
+        elif layer_type == 'Unsqueeze':
+            tf_layer = tf.expand_dims(
+                input,
+                axis=param
+            )
         return tf_layer
 
 
@@ -462,7 +474,8 @@ def convert(model_path,
                                                                                                     layer.attrib['type'] == 'StridedSlice' or \
                                                                                                         layer.attrib['type'] == 'Select' or \
                                                                                                             layer.attrib['type'] == 'VariadicSplit' or \
-                                                                                                                layer.attrib['type'] == 'ReverseSequence':
+                                                                                                                layer.attrib['type'] == 'ReverseSequence' or \
+                                                                                                                    layer.attrib['type'] == 'Range':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -4491,9 +4504,7 @@ def convert(model_path,
                 except:
                     pass
 
-                if len(input_shape) == 1 and len(indices) == 1 and indices == [0]:
-                    inp = tf.identity(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                elif len(input_shape) > 1 and len(indices) > 1:
+                if len(input_shape) > 1 and len(indices) > 1:
                     print('The multi-dimensional indices specification in Unsqueeze is not yet implemented.')
                     sys.exit(-1)
                 else:
@@ -5534,12 +5545,12 @@ def convert(model_path,
                     spatial_scale = data.attrib['spatial_scale']
                 image = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                 boxes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                box_indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                box_indices = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)], tf.int32)
 
                 # roi_width = max(spatial_scale * (x_2 - x_1), 1.0)
                 # roi_height = max(spatial_scale * (y_2 - y_1), 1.0)
 
-                crop_and_resize =tf.image.crop_and_resize(
+                crop_and_resize = tf.image.crop_and_resize(
                     image=image,
                     boxes=boxes,
                     # box_indices=tf.zeros([tf.shape(boxes)[0]], dtype=tf.int32),
