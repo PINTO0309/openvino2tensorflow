@@ -5849,7 +5849,7 @@ def convert(model_path,
                     else:
                         num_priors += total_aspect_ratios * density_2d
 
-                out_shape = [2, 4 * layer_height * layer_width * num_priors] # truth:[2, 4*1*2*4] -> now:[2, 24]
+                out_shape = [2, 4 * layer_height * layer_width * num_priors]
                 dst_data = np.zeros((out_shape), dtype=np.float32).flatten()
 
                 aspect_ratios = [1.0]
