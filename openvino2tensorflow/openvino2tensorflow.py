@@ -6346,15 +6346,21 @@ def convert(model_path,
                         'layer_id': layer_id,
                     }
                     for edge_index in range(len(tf_edges[layer_id])):
-                        if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]) != np.ndarray:
+                        # if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]) != np.ndarray:
+                        if tf.keras.backend.is_keras_tensor(tf_layers_dict[layer_id]):
                             layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
                         else:
-                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
+                            layer_structure[f'input_layer{edge_index}_shape'] = f'layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
+                            layer_structure[f'input_layer{edge_index}_value'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
                 except:
                     pass
 
                 if layer.attrib['type'] != 'Split' and layer.attrib['type'] != 'VariadicSplit' and layer.attrib['type'] != 'TopK' and layer.attrib['type'] != 'NonMaxSuppression':
-                    layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
+                    if tf.keras.backend.is_keras_tensor(tf_layers_dict[layer_id]):
+                        layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
+                    else:
+                        layer_structure['tf_layers_dict_shape'] = tf_layers_dict[layer_id].shape
+                        layer_structure['tf_layers_dict'] = tf_layers_dict[layer_id]
 
                     if layer.attrib['type'] == 'Concat' or layer.attrib['type'] == 'SoftMax' or layer.attrib['type'] == 'Squeeze' or \
                         layer.attrib['type'] == 'ReduceMean' or layer.attrib['type'] == 'ReduceMax' or layer.attrib['type'] == 'ReduceMin' or \
