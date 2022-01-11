@@ -5768,7 +5768,7 @@ def convert(model_path,
                         [port1.shape[0], port1.shape[1], port1.shape[2], port1.shape[3]]
                     )
 
-            ### PriorBox - WIP
+            ### PriorBox
             elif layer.attrib['type'] == 'PriorBox':
                 aspect_ratio = None
                 if not data is None and 'aspect_ratio' in data.attrib:
@@ -5776,7 +5776,7 @@ def convert(model_path,
                 clip = False
                 if not data is None and 'clip' in data.attrib:
                     clip = data.attrib['clip']
-                    clip = True if clip.lower() == 'true' else False
+                    clip = True if clip.lower() == 'true' or clip == "1" else False
                 densities = []
                 if not data is None and 'density' in data.attrib and data.attrib['density'].replace(' ', ''):
                     densities = np.asarray(data.attrib['density'].replace(' ', '').split(','), dtype=np.float32)
@@ -5789,7 +5789,7 @@ def convert(model_path,
                 flip = False
                 if not data is None and 'flip' in data.attrib:
                     flip = data.attrib['flip']
-                    flip = True if flip.lower() == 'true' else False
+                    flip = True if flip.lower() == 'true' or flip == "1" else False
                 max_size = []
                 if not data is None and 'max_size' in data.attrib:
                     max_size = np.asarray(data.attrib['max_size'].replace(' ', '').split(','), dtype=np.float32)
@@ -5849,7 +5849,7 @@ def convert(model_path,
                     else:
                         num_priors += total_aspect_ratios * density_2d
 
-                out_shape = [2, 4 * layer_height * layer_width * num_priors]
+                out_shape = [2, 4 * layer_height * layer_width * num_priors] # truth:[2, 4*1*2*4] -> now:[2, 24]
                 dst_data = np.zeros((out_shape), dtype=np.float32).flatten()
 
                 aspect_ratios = [1.0]
