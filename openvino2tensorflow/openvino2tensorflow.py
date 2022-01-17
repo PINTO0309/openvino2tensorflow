@@ -4968,8 +4968,30 @@ def convert(model_path,
                 data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                 try:
                     axes = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                    if len(data.shape) == 4:
+                        # NCHW : NHWC
+                        if type(axes) == np.ndarray and len(axes.shape) == 1 and axes == [1]:
+                            axes = 3
+                        elif type(axes) == np.ndarray and len(axes.shape) == 1 and axes == [2] or axes == [3]:
+                            axes = axes - 1
+                        else:
+                            axes = axes
+                    elif len(data.shape) == 5:
+                        # NCDHW : NDHWC
+                        if type(axes) == np.ndarray and len(axes.shape) == 1 and axes == [1]:
+                            axes = 4
+                        elif type(axes) == np.ndarray and len(axes.shape) == 1 and axes == [2] or axes == [3] or axes == [4]:
+                            axes = axes - 1
+                        else:
+                            axes = axes
+                        print(f'{Color.YELLOW}WARNING:{Color.RESET} It is possible that the MVN axes are not accurately predicted. Check if the dimension of the transformed Mean operation axis is correct. layer_id: {layer_id}')
+                    else:
+                        # 2D, 3D, 6D+
+                        axes = axes
+                        print(f'{Color.YELLOW}WARNING:{Color.RESET} It is possible that the MVN axes are not accurately predicted. Check if the dimension of the transformed Mean operation axis is correct. layer_id: {layer_id}')
                 except:
                     pass
+
                 if across_channels:
                     mean = tf.math.reduce_mean(data, axis=tf.constant([-1], dtype=tf.int32), keepdims=True)
                     var = tf.math.reduce_variance(data, axis=tf.constant([-1], dtype=tf.int32), keepdims=True)
@@ -4978,9 +5000,9 @@ def convert(model_path,
                     var = tf.math.reduce_variance(data, axis=tf.cast(axes, dtype=tf.int32), keepdims=True)
 
                 if normalize_variance:
-                    if eps_mode == 'inside_sqrt':
+                    if eps_mode is not None and eps_mode == 'inside_sqrt':
                         mvn = (data - mean) / tf.math.sqrt(var + eps)
-                    elif eps_mode == 'outside_sqrt':
+                    elif eps_mode is not None and eps_mode == 'outside_sqrt':
                         mvn = (data - mean) / (tf.math.sqrt(var) + eps)
                     else:
                         mvn = (data - mean) / tf.math.sqrt(var + eps)
