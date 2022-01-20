@@ -31,6 +31,7 @@ Work in progress now.
 - paddle2onnx
 - onnx
 - onnxruntime
+- onnxruntime-extensions
 - onnx_graphsurgeon
 - onnx-simplifier
 - onnxconverter-common
