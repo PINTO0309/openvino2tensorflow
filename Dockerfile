@@ -47,6 +47,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade paddle2onnx \
     && pip install --upgrade onnx \
     && pip install --upgrade onnxruntime \
+    && pip install --upgrade onnxruntime-extensions \
     && pip install --upgrade onnx-simplifier \
     && pip install --upgrade onnxmltools \
     && pip install --upgrade onnxconverter-common \
