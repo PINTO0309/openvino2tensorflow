@@ -329,6 +329,7 @@ usage: openvino2tensorflow
   [--edgetpu_num_segments EDGETPU_NUM_SEGMENTS]
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
+  [--onnx_extra_opset ONNX_EXTRA_OPSET]
   [--disable_onnx_optimization]
   [--output_myriad]
   [--vpu_number_of_shaves VPU_NUMBER_OF_SHAVES]
@@ -419,8 +420,12 @@ optional arguments:
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
+  --onnx_extra_opset ONNX_EXTRA_OPSET
+                        The name of the onnx 'extra_opset' to enable.
+                        Default: ''
+                        'com.microsoft:1' or 'ai.onnx.contrib:1' or 'ai.onnx.ml:1'
   --disable_onnx_optimization
-                        Disable onnx optimization.
+                        Disable onnx optimization
   --output_myriad
                         myriad inference engine blob output switch
   --vpu_number_of_shaves VPU_NUMBER_OF_SHAVES
@@ -490,6 +495,7 @@ usage: saved_model_to_tflite
   [--edgetpu_num_segments EDGETPU_NUM_SEGMENTS]
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
+  [--onnx_extra_opset ONNX_EXTRA_OPSET]
   [--disable_onnx_optimization]
   [--disable_experimental_new_quantizer]
 
@@ -569,8 +575,12 @@ optional arguments:
                         onnx model output switch
   --onnx_opset ONNX_OPSET
                         onnx opset version number
+  --onnx_extra_opset ONNX_EXTRA_OPSET
+                        The name of the onnx 'extra_opset' to enable.
+                        Default: ''
+                        'com.microsoft:1' or 'ai.onnx.contrib:1' or 'ai.onnx.ml:1'
   --disable_onnx_optimization
-                        Disable onnx optimization.
+                        Disable onnx optimization
   --disable_experimental_new_quantizer
                         Disable MLIRs new quantization feature during INT8 quantization
                         in TensorFlowLite.

@@ -89,6 +89,7 @@ def convert(model_path,
             edgetpu_num_segments,
             output_onnx,
             onnx_opset,
+            onnx_extra_opset,
             use_onnx_optimization,
             output_myriad,
             vpu_number_of_shaves,
@@ -6864,14 +6865,28 @@ def convert(model_path,
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
-            result = subprocess.check_output(
+            onnx_convert_command = None
+            if not onnx_extra_opset:
+                onnx_convert_command = \
                 [
                     'python3',
                     '-m', 'tf2onnx.convert',
                     '--saved-model', model_output_path,
                     '--opset', str(onnx_opset),
                     '--output', f'{model_output_path}/model_float32.onnx'
-                ],
+                ]
+            else:
+                onnx_convert_command = \
+                [
+                    'python3',
+                    '-m', 'tf2onnx.convert',
+                    '--saved-model', model_output_path,
+                    '--opset', str(onnx_opset),
+                    '--output', f'{model_output_path}/model_float32.onnx',
+                    '--extra_opset', onnx_extra_opset
+                ]
+            result = subprocess.check_output(
+                onnx_convert_command,
                 stderr=subprocess.PIPE
             ).decode('utf-8')
             try:
@@ -6977,6 +6992,7 @@ def main():
     parser.add_argument('--edgetpu_num_segments', type=int, default=1, help='Partition the model into [num_segments] segments. Default: 1 (no partition)')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
+    parser.add_argument('--onnx_extra_opset', type=str, default='', help='The name of the onnx extra_opset to enable. Default: \'\'. "com.microsoft:1" or "ai.onnx.contrib:1" or "ai.onnx.ml:1"')
     parser.add_argument('--disable_onnx_optimization', action='store_true', help='Disable onnx optimization')
     parser.add_argument('--output_myriad', action='store_true', help='myriad inference engine blob output switch')
     parser.add_argument('--vpu_number_of_shaves', type=int, default=4, help='vpu number of shaves. Default: 4')
@@ -7024,6 +7040,7 @@ def main():
     edgetpu_num_segments = args.edgetpu_num_segments
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
+    onnx_extra_opset = args.onnx_extra_opset
     use_onnx_optimization = not args.disable_onnx_optimization
     output_myriad = args.output_myriad
     vpu_number_of_shaves = args.vpu_number_of_shaves
@@ -7131,7 +7148,7 @@ def main():
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg, npy_load_default_path, load_dest_file_path_for_the_calib_npy,
             output_tfjs, output_tftrt_float32, output_tftrt_float16, tftrt_maximum_cached_engines, output_coreml,
             output_edgetpu, edgetpu_compiler_timeout, edgetpu_num_segments,
-            output_onnx, onnx_opset, use_onnx_optimization, output_myriad,
+            output_onnx, onnx_opset, onnx_extra_opset, use_onnx_optimization, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,

@@ -67,6 +67,7 @@ def convert(
     edgetpu_num_segments,
     output_onnx,
     onnx_opset,
+    onnx_extra_opset,
     use_onnx_optimization,
     use_experimental_new_quantizer
     ):
@@ -418,14 +419,28 @@ def convert(
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
-            result = subprocess.check_output(
+            onnx_convert_command = None
+            if not onnx_extra_opset:
+                onnx_convert_command = \
                 [
                     'python3',
                     '-m', 'tf2onnx.convert',
                     '--saved-model', saved_model_dir_path,
                     '--opset', str(onnx_opset),
                     '--output', f'{model_output_dir_path}/model_float32.onnx'
-                ],
+                ]
+            else:
+                onnx_convert_command = \
+                [
+                    'python3',
+                    '-m', 'tf2onnx.convert',
+                    '--saved-model', saved_model_dir_path,
+                    '--opset', str(onnx_opset),
+                    '--output', f'{model_output_dir_path}/model_float32.onnx',
+                    '--extra_opset', onnx_extra_opset
+                ]
+            result = subprocess.check_output(
+                onnx_convert_command,
                 stderr=subprocess.PIPE
             ).decode('utf-8')
             try:
@@ -506,6 +521,7 @@ def main():
     parser.add_argument('--edgetpu_num_segments', type=int, default=1, help='Partition the model into [num_segments] segments. Default: 1 (no partition)')
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
+    parser.add_argument('--onnx_extra_opset', type=str, default='', help='The name of the onnx extra_opset to enable. Default: \'\'. "com.microsoft:1" or "ai.onnx.contrib:1" or "ai.onnx.ml:1"')
     parser.add_argument('--disable_onnx_optimization', action='store_true', help='Disable onnx optimization.')
     parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
 
@@ -548,6 +564,7 @@ def main():
     edgetpu_num_segments = args.edgetpu_num_segments
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
+    onnx_extra_opset = args.onnx_extra_opset
     use_onnx_optimization = not args.disable_onnx_optimization
     use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
 
@@ -646,6 +663,7 @@ def main():
         edgetpu_num_segments,
         output_onnx,
         onnx_opset,
+        onnx_extra_opset,
         use_onnx_optimization,
         use_experimental_new_quantizer
     )
