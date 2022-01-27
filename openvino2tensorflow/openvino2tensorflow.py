@@ -6347,6 +6347,45 @@ def convert(
                         padding=auto_pad
                     )
 
+            ### LogSoftmax
+            elif layer.attrib['type'] == 'LogSoftmax':
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+
+                axis = None
+                if not data is None and 'axis' in data.attrib:
+                    axis = int(data.attrib['axis'])
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'LogSoftmax' and wr_config[layer_id]['replace_mode'] == 'change_axis':
+                        axis = int(wr_config[layer_id]['values'])
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        inp = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            port1
+                        )
+                        tf_layers_dict[layer_id] = \
+                            (inp - tf.math.reduce_max(inp, axis)) - \
+                                tf.math.log(tf.math.reduce_sum(tf.math.exp(inp - tf.math.reduce_max(inp, axis)), axis))
+
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = \
+                            (port1 - tf.math.reduce_max(port1, axis)) - \
+                                tf.math.log(tf.math.reduce_sum(tf.math.exp(port1 - tf.math.reduce_max(port1, axis)), axis))
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = \
+                            (port1 - tf.math.reduce_max(port1, axis)) - \
+                                tf.math.log(tf.math.reduce_sum(tf.math.exp(port1 - tf.math.reduce_max(port1, axis)), axis))
+                else:
+                    tf_layers_dict[layer_id] = \
+                        (port1 - tf.math.reduce_max(port1, axis)) - \
+                            tf.math.log(tf.math.reduce_sum(tf.math.exp(port1 - tf.math.reduce_max(port1, axis)), axis))
+
             ### Result
             elif layer.attrib['type'] == 'Result':
                 tf_layers_dict[layer_id] = tf.identity(
