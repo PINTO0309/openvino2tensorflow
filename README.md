@@ -343,6 +343,7 @@ usage: openvino2tensorflow
   [--optimizing_barracuda]
   [--layerids_of_the_terminating_output LAYERIDS_OF_THE_TERMINATING_OUTPUT]
   [--keep_input_tensor_in_nchw]
+  [--non_verbose]
 
 optional arguments:
   -h, --help
@@ -460,6 +461,8 @@ optional arguments:
                         Does not convert the input to NHWC, but keeps the NCHW format.
                         Transpose is inserted right after the input layer, and
                         the model internals are handled by NHWC. Only 4D input is supported.
+  --non_verbose
+                        Do not show all the weight information of each layer in the conversion log.
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 

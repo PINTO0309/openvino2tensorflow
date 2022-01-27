@@ -58,51 +58,54 @@ class Color:
     BG_DEFAULT     = '\033[49m'
     RESET          = '\033[0m'
 
-def convert(model_path,
-            model_output_path,
-            output_saved_model,
-            output_h5,
-            output_weight_and_json,
-            output_pb,
-            output_no_quant_float32_tflite,
-            output_dynamic_range_quant_tflite,
-            output_weight_quant_tflite,
-            output_float16_quant_tflite,
-            output_integer_quant_tflite,
-            output_full_integer_quant_tflite,
-            output_integer_quant_type,
-            string_formulas_for_normalization,
-            calib_ds_type,
-            ds_name_for_tfds_for_calibration,
-            split_name_for_tfds_for_calibration,
-            download_dest_folder_path_for_the_calib_tfds,
-            tfds_download_flg,
-            npy_load_default_path,
-            load_dest_file_path_for_the_calib_npy,
-            output_tfjs,
-            output_tftrt_float32,
-            output_tftrt_float16,
-            tftrt_maximum_cached_engines,
-            output_coreml,
-            output_edgetpu,
-            edgetpu_compiler_timeout,
-            edgetpu_num_segments,
-            output_onnx,
-            onnx_opset,
-            onnx_extra_opset,
-            use_onnx_optimization,
-            output_myriad,
-            vpu_number_of_shaves,
-            vpu_number_of_cmx_slices,
-            replace_swish_and_hardswish,
-            optimizing_hardswish_for_edgetpu,
-            replace_prelu_and_minmax,
-            restricted_resize_image_mode,
-            weight_replacement_config,
-            use_experimental_new_quantizer,
-            optimizing_barracuda,
-            layerids_of_the_terminating_output,
-            keep_input_tensor_in_nchw):
+def convert(
+    model_path,
+    model_output_path,
+    output_saved_model,
+    output_h5,
+    output_weight_and_json,
+    output_pb,
+    output_no_quant_float32_tflite,
+    output_dynamic_range_quant_tflite,
+    output_weight_quant_tflite,
+    output_float16_quant_tflite,
+    output_integer_quant_tflite,
+    output_full_integer_quant_tflite,
+    output_integer_quant_type,
+    string_formulas_for_normalization,
+    calib_ds_type,
+    ds_name_for_tfds_for_calibration,
+    split_name_for_tfds_for_calibration,
+    download_dest_folder_path_for_the_calib_tfds,
+    tfds_download_flg,
+    npy_load_default_path,
+    load_dest_file_path_for_the_calib_npy,
+    output_tfjs,
+    output_tftrt_float32,
+    output_tftrt_float16,
+    tftrt_maximum_cached_engines,
+    output_coreml,
+    output_edgetpu,
+    edgetpu_compiler_timeout,
+    edgetpu_num_segments,
+    output_onnx,
+    onnx_opset,
+    onnx_extra_opset,
+    use_onnx_optimization,
+    output_myriad,
+    vpu_number_of_shaves,
+    vpu_number_of_cmx_slices,
+    replace_swish_and_hardswish,
+    optimizing_hardswish_for_edgetpu,
+    replace_prelu_and_minmax,
+    restricted_resize_image_mode,
+    weight_replacement_config,
+    use_experimental_new_quantizer,
+    optimizing_barracuda,
+    layerids_of_the_terminating_output,
+    keep_input_tensor_in_nchw,
+    verbose
+):
 
     print(f'{Color.REVERCE}TensorFlow/Keras model building process starts{Color.RESET}', '=' * 38)
 
@@ -628,13 +631,23 @@ def convert(model_path,
                         else:
                             pass
 
-                        layer_structure_print(
-                            {
-                                'layer_type': layer.attrib['type'],
-                                'layer_id': layer_id,
-                                'tf_layers_dict': tf_layers_dict[layer_id].shape
-                            }
-                        )
+                        if verbose:
+                            layer_structure_print(
+                                {
+                                    'layer_type': layer.attrib['type'],
+                                    'layer_id': layer_id,
+                                    'tf_layers_dict_shape': tf_layers_dict[layer_id].shape,
+                                    'tf_layers_dict_value': tf_layers_dict[layer_id],
+                                }
+                            )
+                        else:
+                            layer_structure_print(
+                                {
+                                    'layer_type': layer.attrib['type'],
+                                    'layer_id': layer_id,
+                                    'tf_layers_dict_shape': tf_layers_dict[layer_id].shape,
+                                }
+                            )
 
             ### Convolution
             elif layer.attrib['type'] == 'Convolution':
@@ -6371,10 +6384,17 @@ def convert(model_path,
                     for edge_index in range(len(tf_edges[layer_id])):
                         # if type(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]) != np.ndarray:
                         if tf.keras.backend.is_keras_tensor(tf_layers_dict[layer_id]):
-                            layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
+                            if not isinstance(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)], np.ndarray):
+                                layer_structure[f'input_layer{edge_index}'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
+                            else:
+                                if verbose:
+                                    layer_structure[f'input_layer{edge_index}_value'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
+                                else:
+                                    layer_structure[f'input_layer{edge_index}_shape'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
                         else:
                             layer_structure[f'input_layer{edge_index}_shape'] = f'layer_id={tf_edges[layer_id][edge_index]}: Const(ndarray).shape {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)].shape}'
-                            layer_structure[f'input_layer{edge_index}_value'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
+                            if verbose:
+                                layer_structure[f'input_layer{edge_index}_value'] = f'layer_id={tf_edges[layer_id][edge_index]}: {tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, edge_index)]}'
                 except:
                     pass
 
@@ -7006,6 +7026,7 @@ def main():
     parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
     parser.add_argument('--layerids_of_the_terminating_output', type=str, default='', help='A comma-separated list of layer IDs to be used as output layers. Default: \'\'')
     parser.add_argument('--keep_input_tensor_in_nchw', action='store_true', help='Does not convert the input to NHWC, but keeps the NCHW format. Transpose is inserted right after the input layer, and the model internals are handled by NHWC. Only 4D input is supported.')
+    parser.add_argument('--non_verbose', action='store_true', help='Do not show all the weight information of each layer in the conversion log')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
     model_output_path = args.model_output_path.rstrip('/')
@@ -7057,6 +7078,7 @@ def main():
     if layerids_of_the_terminating_output_tmp:
         layerids_of_the_terminating_output = [ids.strip() for ids in layerids_of_the_terminating_output_tmp.split(',')]
     keep_input_tensor_in_nchw = args.keep_input_tensor_in_nchw
+    verbose = not args.non_verbose
 
     if not output_saved_model and \
         not output_h5 and \
@@ -7152,7 +7174,7 @@ def main():
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
             restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
-            optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw)
+            optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw, verbose)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
