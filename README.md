@@ -462,7 +462,8 @@ optional arguments:
                         Transpose is inserted right after the input layer, and
                         the model internals are handled by NHWC. Only 4D input is supported.
   --non_verbose
-                        Do not show all the weight information of each layer in the conversion log.
+                        Do not show all the weight information of each layer in the
+                        conversion log.
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
