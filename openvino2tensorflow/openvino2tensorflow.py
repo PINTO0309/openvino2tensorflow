@@ -6386,6 +6386,39 @@ def convert(
                         (port1 - tf.math.reduce_max(port1, axis)) - \
                             tf.math.log(tf.math.reduce_sum(tf.math.exp(port1 - tf.math.reduce_max(port1, axis)), axis))
 
+            ### Einsum
+            elif layer.attrib['type'] == 'Einsum':
+                ports = []
+                port_idx = 0
+                while True:
+                    try:
+                        ports.append(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, port_idx)])
+                        port_idx += 1
+                    except:
+                        break
+                equation = None
+                if not data is None and 'equation' in data.attrib:
+                    equation = data.attrib['equation']
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'Einsum' and wr_config[layer_id]['replace_mode'] == 'change_equation':
+                        equation = wr_config[layer_id]['values']
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.einsum(equation, *ports)
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = tf.einsum(equation, *ports)
+                else:
+                    tf_layers_dict[layer_id] =tf.einsum(equation, *ports)
+
             ### Result
             elif layer.attrib['type'] == 'Result':
                 tf_layers_dict[layer_id] = tf.identity(
