@@ -309,6 +309,7 @@ def convert(
         'ReverseSequence': ['change_batch_axis', 'change_seq_axis'],
         'Squeeze': ['insert_before', 'insert_after'],
         'Unsqueeze': ['insert_before', 'insert_after'],
+        'Einsum': ['change_equation'],
     }
 
 
@@ -479,7 +480,8 @@ def convert(
                                                                                                         layer.attrib['type'] == 'Select' or \
                                                                                                             layer.attrib['type'] == 'VariadicSplit' or \
                                                                                                                 layer.attrib['type'] == 'ReverseSequence' or \
-                                                                                                                    layer.attrib['type'] == 'Range':
+                                                                                                                    layer.attrib['type'] == 'Range' or \
+                                                                                                                        layer.attrib['type'] == 'Einsum':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
