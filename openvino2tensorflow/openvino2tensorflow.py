@@ -193,6 +193,13 @@ def convert(
     tf_outputs = []
     layer_id_port_dict = {}
 
+    def is_integer_num(n):
+        if isinstance(n, int):
+            return True
+        if isinstance(n, float):
+            return n.is_integer()
+        return False
+
     def get_num_of_outputs_per_layer_id(tf_edges):
         output_count_by_layer_id_tmp = {}
         for key in tf_edges.keys():
@@ -4422,10 +4429,41 @@ def convert(
             ### Power
             elif layer.attrib['type'] == 'Power':
                 # No broadcast
-                inp = tf.math.pow(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                )
+                port0 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                port1 = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+
+                if output_edgetpu and isinstance(port1, np.ndarray) and port1.size == 1:
+                    port1 = port1.squeeze()
+                    if port1 > 2.0:
+                        port1 = float(port1)
+                        if is_integer_num(port1):
+                            port1 = int(port1) - 1
+                            for i in range(port1):
+                                if i == 0:
+                                    inp = tf.math.multiply(
+                                        port0,
+                                        (port0 * 1.0)
+                                    )
+                                else:
+                                    inp = tf.math.multiply(
+                                        inp,
+                                        (port0 * 1.0)
+                                    )
+                        else:
+                            inp = tf.math.pow(
+                                port0,
+                                port1
+                            )
+                    else:
+                        inp = tf.math.pow(
+                            port0,
+                            port1
+                        )
+                else:
+                    inp = tf.math.pow(
+                        port0,
+                        port1
+                    )
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
