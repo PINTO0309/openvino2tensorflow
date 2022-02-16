@@ -17,8 +17,8 @@ Work in progress now.
 ![render1629515758354](https://user-images.githubusercontent.com/33194443/130308925-f859a799-8013-4c57-b378-f405bdd2d39f.gif)
 
 ## 1. Environment
-- Python 3.6+
-- TensorFlow v2.7.0+
+- Python 3.8+
+- TensorFlow v2.8.0+
 - PyTorch v1.10.0+
 - TorchVision
 - TorchAudio
