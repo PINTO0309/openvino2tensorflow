@@ -2294,8 +2294,11 @@ def convert(
                     h = x.shape[1] * upsampling_factor_height
                     w = x.shape[2] * upsampling_factor_width
                     if output_edgetpu:
-                        print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                        if verbose:
+                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_bilinear) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
                         return tf.compat.v1.image.resize_bilinear(x, (h, w))
+                    elif output_coreml:
+                        return tf.compat.v1.image.resize_bilinear(x, (h, w), align_corners=True)
                     else:
                         return tf.image.resize(x, [h, w], method='bilinear')
 
@@ -2303,7 +2306,10 @@ def convert(
                     h = x.shape[1] * upsampling_factor_height
                     w = x.shape[2] * upsampling_factor_width
                     if output_edgetpu:
-                        print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                        if verbose:
+                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                        return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
+                    elif output_coreml:
                         return tf.compat.v1.image.resize_nearest_neighbor(x, (h, w))
                     else:
                         return tf.image.resize(x, [h, w], method='nearest')
@@ -2317,8 +2323,11 @@ def convert(
                     unstack_img_list = tf.unstack(x, axis=1)
                     for i in unstack_img_list:
                         if output_edgetpu:
-                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            if verbose:
+                                print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
                             resized_list.append(tf.compat.v1.image.resize_bilinear(x, (h, w)))
+                        elif output_coreml:
+                            resized_list.append(tf.compat.v1.image.resize_bilinear(x, (h, w), align_corners=True))
                         else:
                             resized_list.append(tf.image.resize(i, [h, w], method='bilinear'))
                     stack_img_hw = tf.stack(resized_list, axis=1)
@@ -2327,8 +2336,11 @@ def convert(
                     unstack_img_list = tf.unstack(stack_img_hw, axis=3)
                     for i in unstack_img_list:
                         if output_edgetpu:
-                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            if verbose:
+                                print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
                             resized_list.append(tf.compat.v1.image.resize_bilinear(x, (d, h)))
+                        elif output_coreml:
+                            resized_list.append(tf.compat.v1.image.resize_bilinear(x, (d, h), align_corners=True))
                         else:
                             resized_list.append(tf.image.resize(i, [d, h], method='bilinear'))
                     stack_img_dh = tf.stack(resized_list, axis=3)
@@ -2343,7 +2355,10 @@ def convert(
                     unstack_img_list = tf.unstack(x, axis=1)
                     for i in unstack_img_list:
                         if output_edgetpu:
-                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            if verbose:
+                                print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            resized_list.append(tf.compat.v1.image.resize_nearest_neighbor(x, (h, w)))
+                        elif output_coreml:
                             resized_list.append(tf.compat.v1.image.resize_nearest_neighbor(x, (h, w)))
                         else:
                             resized_list.append(tf.image.resize(i, [h, w], method='nearest'))
@@ -2353,7 +2368,10 @@ def convert(
                     unstack_img_list = tf.unstack(stack_img_hw, axis=3)
                     for i in unstack_img_list:
                         if output_edgetpu:
-                            print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            if verbose:
+                                print(f'{Color.YELLOW}WARNING:{Color.RESET} The weights after Upsampling (tf.compat.v1.image.resize_nearest_neighbor) are shifted to the upper left. If you do not need to generate EdgeTPU models, set --output_edgetpu False and run again. OP: {x.name}')
+                            resized_list.append(tf.compat.v1.image.resize_nearest_neighbor(x, (d, h)))
+                        elif output_coreml:
                             resized_list.append(tf.compat.v1.image.resize_nearest_neighbor(x, (d, h)))
                         else:
                             resized_list.append(tf.image.resize(i, [d, h], method='nearest'))
@@ -7247,6 +7265,10 @@ def main():
             print('\'tensorflow-datasets\' is not installed. Please run the following command to install \'tensorflow-datasets\'.')
             print('pip3 install --upgrade tensorflow-datasets')
             sys.exit(-1)
+
+    if output_coreml and output_edgetpu:
+        print(f'{Color.RED}ERROR:{Color.RESET} output_coreml and output_edgetpu cannot be True at the same time.')
+        sys.exit(-1)
 
     if output_integer_quant_type == 'int8' or output_integer_quant_type == 'uint8':
         pass
