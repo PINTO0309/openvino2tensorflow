@@ -28,12 +28,10 @@ RUN apt-get update && apt-get install -y \
         libva-dev libdrm-dev xorg xorg-dev protobuf-compiler \
         openbox libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
         libtbb2 libtbb-dev libopenblas-dev libopenmpi-dev \
+        python-is-python3 \
     && sed -i 's/# set linenumbers/set linenumbers/g' /etc/nanorc \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
-
-# python3 -> python
-RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # Install dependencies (2)
 RUN pip3 install --upgrade pip \
