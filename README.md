@@ -24,13 +24,14 @@ Work in progress now.
 - TorchAudio
 - OpenVINO 2021.4.582+
 - TensorRT 8.2+
+- MXNet
 - trtexec
 - pycuda 2021.1
 - tensorflowjs
 - coremltools
 - paddle2onnx
 - onnx
-- onnxruntime
+- onnxruntime-gpu (CUDA, TensorRT)
 - onnxruntime-extensions
 - onnx_graphsurgeon
 - onnx-simplifier
@@ -57,7 +58,11 @@ Work in progress now.
 - Intel-Media-SDK
 - Intel iHD GPU (iGPU) support
 - OpenCL
-- Docker
+- gluoncv
+- TVM
+- LLVM
+- NNPACK
+- WSL2 OpenCL
 
 **[↥ Back to top](#openvino2tensorflow)**
 
@@ -236,7 +241,7 @@ You do not need to install any packages other than Docker. It consumes 24GB of s
 ```bash
 $ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
-$ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest .
+$ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest --build-arg APPVER=v1.29.0 .
 
 # If you don't need to access the GUI of the HostPC and the USB camera.
 $ docker run -it --rm \
