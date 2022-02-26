@@ -59,7 +59,7 @@ Work in progress now.
 - Intel iHD GPU (iGPU) support
 - OpenCL
 - gluoncv
-- TVM
+- TVM (ONNX, CUDA, TensorRT, TensorFlow, PyTorch)
 - LLVM
 - NNPACK
 - WSL2 OpenCL
