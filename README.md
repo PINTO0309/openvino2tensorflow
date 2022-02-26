@@ -237,7 +237,7 @@ Work in progress now.
 
 ## 4. Setup
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
-You do not need to install any packages other than Docker. It consumes 24GB of storage.
+You do not need to install any packages other than Docker. It consumes 26.7GB of storage.
 ```bash
 $ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
