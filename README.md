@@ -450,7 +450,7 @@ optional arguments:
               Replace prelu and minimum/maximum with each other
   --replace_argmax
               Replace 'ArgMax (TopK)' with a primitive operation.
-              Optimizes 'ArgMax (TopK)' to EdgeTPU. If you have 'ArgMax (TopK)' at the end of your model,
+              Optimizes 'ArgMax' to EdgeTPU. If you have 'ArgMax' at the end of your model,
               use the '--replace_argmax_indices_to_float32' option together.
   --replace_argmax_indices_to_float32
               Enabling this option may allow full mapping to EdgeTPU when 'ArgMax (TopK)'
