@@ -449,13 +449,13 @@ optional arguments:
   --replace_prelu_and_minmax
               Replace prelu and minimum/maximum with each other
   --replace_argmax
-              Replace 'ArgMax' with a primitive operation.
-              Optimizes 'ArgMax' to EdgeTPU. If you have 'ArgMax' at the end of your model,
+              Replace 'ArgMax (TopK)' with a primitive operation.
+              Optimizes 'ArgMax (TopK)' to EdgeTPU. If you have 'ArgMax (TopK)' at the end of your model,
               use the '--replace_argmax_indices_to_float32' option together.
   --replace_argmax_indices_to_float32
-              Enabling this option may allow full mapping to EdgeTPU when 'ArgMax'
+              Enabling this option may allow full mapping to EdgeTPU when 'ArgMax (TopK)'
               is at the end of the model for tasks such as SemanticSegmentation.
-              If you apply it to 'ArgMax', which is located in the middle of the model,
+              If you apply it to 'ArgMax (TopK)', which is located in the middle of the model,
               the model transformation is more likely to fail.
   --restricted_resize_image_mode
               Specify this if the upsampling contains OPs that are
