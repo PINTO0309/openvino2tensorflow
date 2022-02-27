@@ -453,8 +453,8 @@ optional arguments:
               Optimizes 'ArgMax' to EdgeTPU. If you have 'ArgMax' at the end of your model,
               use the '--replace_argmax_indices_to_float32' option together.
   --replace_argmax_indices_to_float32
-              Enabling this option may allow full mapping to EdgeTPU when 'ArgMax' is at the end of
-              the model for tasks such as SemanticSegmentation.
+              Enabling this option may allow full mapping to EdgeTPU when 'ArgMax'
+              is at the end of the model for tasks such as SemanticSegmentation.
               If you apply it to 'ArgMax', which is located in the middle of the model,
               the model transformation is more likely to fail.
   --restricted_resize_image_mode
