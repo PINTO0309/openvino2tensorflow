@@ -98,6 +98,8 @@ def convert(
     replace_swish_and_hardswish,
     optimizing_hardswish_for_edgetpu,
     replace_prelu_and_minmax,
+    replace_argmax,
+    replace_argmax_indices_to_float32,
     restricted_resize_image_mode,
     weight_replacement_config,
     use_experimental_new_quantizer,
@@ -3037,6 +3039,49 @@ def convert(
                 # sort = data.attrib['sort']
                 layer_id_values  = layer_id_port_dict[layer_id]['layer_id:port'][0]
                 layer_id_indices = layer_id_port_dict[layer_id]['layer_id:port'][1]
+
+                def _nnapi_scalar(value, dtype):
+                    return tf.constant(value, dtype=dtype, shape=(1,))
+
+                def _alternative_argmax(
+                    input_tensor,
+                    axis=-1,
+                    output_type = tf.dtypes.float32,
+                    name = None,
+                    keepdims = False,
+                    epsilon = None,
+                    replace_argmax_indices_to_float32 = False
+                ):
+                    safe_axis = axis
+                    if safe_axis < 0:
+                        safe_axis = len(input_tensor.shape) + safe_axis
+                    reduction_size = input_tensor.shape[axis]
+                    axis_max = tf.math.reduce_max(input_tensor, axis=axis, keepdims=True)
+                    zero_if_max = tf.subtract(axis_max, input_tensor)
+                    eps = epsilon if epsilon else 1e-6
+                    if input_tensor.dtype.is_floating:
+                        zero_if_max_else_eps = tf.math.minimum(_nnapi_scalar(eps, input_tensor.dtype), zero_if_max)
+                        zero_if_max_else_one = zero_if_max_else_eps * _nnapi_scalar(1 / eps, input_tensor.dtype)
+                    elif input_tensor.dtype.is_integer:
+                        zero_if_max_else_one = tf.math.minimum(_nnapi_scalar(1, input_tensor.dtype), zero_if_max)
+                    else:
+                        raise ValueError('Please specify epsilon for unknown input data type')
+
+                    zero_if_max_else_one = tf.cast(zero_if_max_else_one, dtype=output_type)
+                    zero_if_max_else_one = zero_if_max_else_one
+                    one_if_max_else_zero = tf.math.subtract(_nnapi_scalar(1, output_type), zero_if_max_else_one)
+                    rev_index = tf.range(reduction_size, 0, -1, dtype=output_type)
+                    for index in range(safe_axis + 1, len(input_tensor.shape)):
+                        rev_index = tf.expand_dims(rev_index, axis=index - safe_axis)
+                    rev_index = rev_index
+                    rev_index_if_max_else_zero = tf.math.multiply(one_if_max_else_zero, rev_index)
+                    reverse_argmax = tf.math.reduce_max(rev_index_if_max_else_zero, axis=axis, keepdims=keepdims, name=name)
+                    if not replace_argmax_indices_to_float32:
+                        return tf.cast(tf.math.subtract(_nnapi_scalar(reduction_size, output_type), reverse_argmax, name=name), dtype=tf.int32)
+                    else:
+                        return tf.math.subtract(_nnapi_scalar(reduction_size, output_type), reverse_argmax, name=name)
+
+                k = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)])
                 try:
                     if wr_config and layer_id in wr_config and format_version >= 2:
                         if wr_config[layer_id]['replace_mode'] == 'insert_before':
@@ -3044,46 +3089,135 @@ def convert(
                                 wr_config[layer_id],
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                             )
-                            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                                tf.math.top_k(
-                                    inp,
-                                    k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
-                                    sorted=True
-                                )
+                            if k != 1:
+                                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                    tf.math.top_k(
+                                        inp,
+                                        k=k,
+                                        sorted=True
+                                    )
+                            else:
+                                if not replace_argmax:
+                                    tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                        tf.math.top_k(
+                                            inp,
+                                            k=k,
+                                            sorted=True
+                                        )
+                                else:
+                                    tf_layers_dict[layer_id_indices] = _alternative_argmax(
+                                        input_tensor=inp,
+                                        axis=-1,
+                                        output_type=tf.float32,
+                                        keepdims=True,
+                                        replace_argmax_indices_to_float32=replace_argmax_indices_to_float32
+                                    )
+                                    tf_layers_dict[layer_id_values] = tf.reduce_max(
+                                        inp,
+                                        axis=-1
+                                    )
+
                         elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                             print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
                             sys.exit(-1)
+
                     else:
-                        tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                            tf.math.top_k(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]),
-                                sorted=True
-                            )
+                        if k != 1:
+                            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                tf.math.top_k(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    k=k,
+                                    sorted=True
+                                )
+                        else:
+                            if not replace_argmax:
+                                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                    tf.math.top_k(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        k=k,
+                                        sorted=True
+                                    )
+                            else:
+                                tf_layers_dict[layer_id_indices] = _alternative_argmax(
+                                    input_tensor=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    axis=-1,
+                                    output_type=tf.float32,
+                                    keepdims=True,
+                                    replace_argmax_indices_to_float32=replace_argmax_indices_to_float32
+                                )
+                                tf_layers_dict[layer_id_values] = tf.reduce_max(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    axis=-1
+                                )
 
                 except:
+                    k = int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0])
                     if wr_config and layer_id in wr_config and format_version >= 2:
                         if wr_config[layer_id]['replace_mode'] == 'insert_before':
                             inp = extrapolation_of_layers(
                                 wr_config[layer_id],
                                 tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                             )
-                            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                                tf.math.top_k(
-                                    inp,
-                                    k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
-                                    sorted=True
-                                )
+                            if k != 1:
+                                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                    tf.math.top_k(
+                                        inp,
+                                        k=k,
+                                        sorted=True
+                                    )
+                            else:
+                                if not replace_argmax:
+                                    tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                        tf.math.top_k(
+                                            inp,
+                                            k=k,
+                                            sorted=True
+                                        )
+                                else:
+                                    tf_layers_dict[layer_id_indices] = _alternative_argmax(
+                                        input_tensor=inp,
+                                        axis=-1,
+                                        output_type=tf.float32,
+                                        keepdims=True,
+                                        replace_argmax_indices_to_float32=replace_argmax_indices_to_float32
+                                    )
+                                    tf_layers_dict[layer_id_values] = tf.reduce_max(
+                                        inp,
+                                        axis=-1
+                                    )
+
                         elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                             print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
                             sys.exit(-1)
+
                     else:
-                        tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
-                            tf.math.top_k(
-                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                                k=int(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)][0]),
-                                sorted=True
-                            )
+                        if k != 1:
+                            tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                tf.math.top_k(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    k=k,
+                                    sorted=True
+                                )
+                        else:
+                            if not replace_argmax:
+                                tf_layers_dict[layer_id_values], tf_layers_dict[layer_id_indices] = \
+                                    tf.math.top_k(
+                                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                        k=k,
+                                        sorted=True
+                                    )
+                            else:
+                                tf_layers_dict[layer_id_indices] = _alternative_argmax(
+                                    input_tensor=tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    axis=-1,
+                                    output_type=tf.float32,
+                                    keepdims=True,
+                                    replace_argmax_indices_to_float32=replace_argmax_indices_to_float32
+                                )
+                                tf_layers_dict[layer_id_values] = tf.reduce_max(
+                                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                    axis=-1
+                                )
 
             ### Transpose
             elif layer.attrib['type'] == 'Transpose':
@@ -7150,6 +7284,8 @@ def main():
     parser.add_argument('--replace_swish_and_hardswish', action='store_true', help='Replace swish and hard-swish with each other')
     parser.add_argument('--optimizing_hardswish_for_edgetpu', action='store_true', help='Optimizing hardswish for edgetpu')
     parser.add_argument('--replace_prelu_and_minmax', action='store_true', help='Replace prelu and minimum/maximum with each other')
+    parser.add_argument('--replace_argmax', action='store_true', help='Replace ArgMax with a primitive operation')
+    parser.add_argument('--replace_argmax_indices_to_float32', action='store_true', help='Enabling this option may allow full mapping to EdgeTPU when ArgMax is at the end of the model for tasks such as SemanticSegmentation. If you apply it to ArgMax, which is located in the middle of the model, the model transformation is more likely to fail.')
     parser.add_argument('--restricted_resize_image_mode', action='store_true', help='Specify this if the upsampling contains OPs that are not scaled by integer multiples. Optimization for EdgeTPU will be disabled.')
     parser.add_argument('--weight_replacement_config', type=str, default='', help='Replaces the value of Const for each layer_id defined in json. Specify the path to the json file. "weight_replacement_config.json"')
     parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
@@ -7199,6 +7335,8 @@ def main():
     replace_swish_and_hardswish = args.replace_swish_and_hardswish
     optimizing_hardswish_for_edgetpu = args.optimizing_hardswish_for_edgetpu
     replace_prelu_and_minmax = args.replace_prelu_and_minmax
+    replace_argmax = args.replace_argmax
+    replace_argmax_indices_to_float32 = args.replace_argmax_indices_to_float32
     restricted_resize_image_mode = args.restricted_resize_image_mode
     weight_replacement_config = args.weight_replacement_config
     use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
@@ -7232,6 +7370,7 @@ def main():
 
     if output_edgetpu:
         output_full_integer_quant_tflite = True
+        replace_argmax = True
 
     from pkg_resources import working_set
     package_list = []
@@ -7306,7 +7445,7 @@ def main():
             output_edgetpu, edgetpu_compiler_timeout, edgetpu_num_segments,
             output_onnx, onnx_opset, onnx_extra_opset, use_onnx_optimization, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
-            replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
+            replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax, replace_argmax, replace_argmax_indices_to_float32,
             restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
             optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw, verbose)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)

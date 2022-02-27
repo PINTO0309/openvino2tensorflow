@@ -344,6 +344,8 @@ usage: openvino2tensorflow
   [--replace_swish_and_hardswish]
   [--optimizing_hardswish_for_edgetpu]
   [--replace_prelu_and_minmax]
+  [--replace_argmax]
+  [--replace_argmax_indices_to_float32]
   [--restricted_resize_image_mode]
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
   [--disable_experimental_new_quantizer]
@@ -354,123 +356,132 @@ usage: openvino2tensorflow
 
 optional arguments:
   -h, --help
-                        show this help message and exit
+              show this help message and exit
   --model_path MODEL_PATH
-                        input IR model path (.xml)
+              input IR model path (.xml)
   --model_output_path MODEL_OUTPUT_PATH
-                        The output folder path of the converted model file
+              The output folder path of the converted model file
   --output_saved_model
-                        saved_model output switch
+              saved_model output switch
   --output_h5
-                        .h5 output switch
+              .h5 output switch
   --output_weight_and_json
-                        weight of h5 and json output switch
+              weight of h5 and json output switch
   --output_pb
-                        .pb output switch
+              .pb output switch
   --output_no_quant_float32_tflite
-                        float32 tflite output switch
+              float32 tflite output switch
   --output_dynamic_range_quant_tflite
-                        dynamic range quant tflite output switch
+              dynamic range quant tflite output switch
   --output_weight_quant_tflite
-                        weight quant tflite output switch
+              weight quant tflite output switch
   --output_float16_quant_tflite
-                        float16 quant tflite output switch
+              float16 quant tflite output switch
   --output_integer_quant_tflite
-                        integer quant tflite output switch
+              integer quant tflite output switch
   --output_full_integer_quant_tflite
-                        full integer quant tflite output switch
+              full integer quant tflite output switch
   --output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE
-                        Input and output types when doing Integer Quantization
-                        ('int8 (default)' or 'uint8')
+              Input and output types when doing Integer Quantization
+              ('int8 (default)' or 'uint8')
   --string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION
-                        String formulas for normalization. It is evaluated by
-                        Pythons eval() function.
-                        Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
+              String formulas for normalization. It is evaluated by
+              Pythons eval() function.
+              Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
   --calib_ds_type CALIB_DS_TYPE
-                        Types of data sets for calibration. tfds or numpy
-                        Default: numpy
+              Types of data sets for calibration. tfds or numpy
+              Default: numpy
   --ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION
-                        Dataset name for TensorFlow Datasets for calibration.
-                        https://www.tensorflow.org/datasets/catalog/overview
+              Dataset name for TensorFlow Datasets for calibration.
+              https://www.tensorflow.org/datasets/catalog/overview
   --split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION
-                        Split name for TensorFlow Datasets for calibration.
-                        https://www.tensorflow.org/datasets/catalog/overview
+              Split name for TensorFlow Datasets for calibration.
+              https://www.tensorflow.org/datasets/catalog/overview
   --download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS
-                        Download destination folder path for the calibration
-                        dataset. Default: $HOME/TFDS
+              Download destination folder path for the calibration
+              dataset. Default: $HOME/TFDS
   --tfds_download_flg
-                        True to automatically download datasets from
-                        TensorFlow Datasets. True or False
+              True to automatically download datasets from
+              TensorFlow Datasets. True or False
   --load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY
-                        The path from which to load the .npy file containing
-                        the numpy binary version of the calibration data.
-                        Default: sample_npy/calibration_data_img_sample.npy
+              The path from which to load the .npy file containing
+              the numpy binary version of the calibration data.
+              Default: sample_npy/calibration_data_img_sample.npy
   --output_tfjs
-                        tfjs model output switch
+              tfjs model output switch
   --output_tftrt_float32
-                        tftrt float32 model output switch
+              tftrt float32 model output switch
   --output_tftrt_float16
-                        tftrt float16 model output switch
+              tftrt float16 model output switch
   --tftrt_maximum_cached_engines
-                        Specifies the quantity of tftrt_maximum_cached_engines for TFTRT.
-                        Default: 10000
+              Specifies the quantity of tftrt_maximum_cached_engines for TFTRT.
+              Default: 10000
   --output_coreml
-                        coreml model output switch
+              coreml model output switch
   --output_edgetpu
-                        edgetpu model output switch
+              edgetpu model output switch
   --edgetpu_compiler_timeout
-                        edgetpu_compiler timeout for one compilation process in seconds.
-                        Default: 3600
+              edgetpu_compiler timeout for one compilation process in seconds.
+              Default: 3600
   --edgetpu_num_segments
-                        Partition the model into 'num_segments' segments.
-                        Default: 1 (no partition)
+              Partition the model into 'num_segments' segments.
+              Default: 1 (no partition)
   --output_onnx
-                        onnx model output switch
+              onnx model output switch
   --onnx_opset ONNX_OPSET
-                        onnx opset version number
+              onnx opset version number
   --onnx_extra_opset ONNX_EXTRA_OPSET
-                        The name of the onnx 'extra_opset' to enable.
-                        Default: ''
-                        'com.microsoft:1' or 'ai.onnx.contrib:1' or 'ai.onnx.ml:1'
+              The name of the onnx 'extra_opset' to enable.
+              Default: ''
+              'com.microsoft:1' or 'ai.onnx.contrib:1' or 'ai.onnx.ml:1'
   --disable_onnx_optimization
-                        Disable onnx optimization
+              Disable onnx optimization
   --output_myriad
-                        myriad inference engine blob output switch
+              myriad inference engine blob output switch
   --vpu_number_of_shaves VPU_NUMBER_OF_SHAVES
-                        vpu number of shaves. Default: 4
+              vpu number of shaves. Default: 4
   --vpu_number_of_cmx_slices VPU_NUMBER_OF_CMX_SLICES
-                        vpu number of cmx slices. Default: 4
+              vpu number of cmx slices. Default: 4
   --replace_swish_and_hardswish
-                        Replace swish and hard-swish with each other
+              Replace swish and hard-swish with each other
   --optimizing_hardswish_for_edgetpu
-                        Optimizing hardswish for edgetpu
+              Optimizing hardswish for edgetpu
   --replace_prelu_and_minmax
-                        Replace prelu and minimum/maximum with each other
+              Replace prelu and minimum/maximum with each other
+  --replace_argmax
+              Replace 'ArgMax' with a primitive operation.
+              Optimizes 'ArgMax' to EdgeTPU. If you have 'ArgMax' at the end of your model,
+              use the '--replace_argmax_indices_to_float32' option together.
+  --replace_argmax_indices_to_float32
+              Enabling this option may allow full mapping to EdgeTPU when 'ArgMax' is at the end of
+              the model for tasks such as SemanticSegmentation.
+              If you apply it to 'ArgMax', which is located in the middle of the model,
+              the model transformation is more likely to fail.
   --restricted_resize_image_mode
-                        Specify this if the upsampling contains OPs that are
-                        not scaled by integer multiples. Optimization for
-                        EdgeTPU will be disabled.
+              Specify this if the upsampling contains OPs that are
+              not scaled by integer multiples. Optimization for
+              EdgeTPU will be disabled.
   --weight_replacement_config WEIGHT_REPLACEMENT_CONFIG
-                        Replaces the value of Const for each layer_id defined
-                        in json. Specify the path to the json file.
-                        'weight_replacement_config.json'
+              Replaces the value of Const for each layer_id defined
+              in json. Specify the path to the json file.
+              'weight_replacement_config.json'
   --disable_experimental_new_quantizer
-                        Disable MLIRs new quantization feature during INT8 quantization
-                        in TensorFlowLite.
+              Disable MLIRs new quantization feature during INT8 quantization
+              in TensorFlowLite.
   --optimizing_barracuda
-                        Generates ONNX by replacing Barracuda unsupported layers
-                        with standard layers. For example, GatherND.
+              Generates ONNX by replacing Barracuda unsupported layers
+              with standard layers. For example, GatherND.
   --layerids_of_the_terminating_output LAYERIDS_OF_THE_TERMINATING_OUTPUT
-                        A comma-separated list of layerIDs to be used as output layers.
-                        e.g. --layerids_of_the_terminating_output 100,201,560
-                        Default: ''
+              A comma-separated list of layerIDs to be used as output layers.
+              e.g. --layerids_of_the_terminating_output 100,201,560
+              Default: ''
   --keep_input_tensor_in_nchw
-                        Does not convert the input to NHWC, but keeps the NCHW format.
-                        Transpose is inserted right after the input layer, and
-                        the model internals are handled by NHWC. Only 4D input is supported.
+              Does not convert the input to NHWC, but keeps the NCHW format.
+              Transpose is inserted right after the input layer, and
+              the model internals are handled by NHWC. Only 4D input is supported.
   --non_verbose
-                        Do not show all the weight information of each layer in the
-                        conversion log.
+              Do not show all the weight information of each layer in the
+              conversion log.
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
