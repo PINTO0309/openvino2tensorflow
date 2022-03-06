@@ -6800,6 +6800,7 @@ def convert(
             print(f'{Color.RED}ERROR:{Color.RESET} The trace log is below.')
             import traceback
             traceback.print_exc()
+            print(f'{Color.RED}ERROR:{Color.RESET} Please refer to 6-7 in the README first. https://github.com/PINTO0309/openvino2tensorflow')
             sys.exit(-1)
 
     # output If the layer type is ndarray, output it to a file as a numpy binary file and remove it from the model output
