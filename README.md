@@ -968,7 +968,7 @@ $ view_npy --npy_file_path sample_npy/calibration_data_img_sample.npy
 ```
 Press the **`Q`** button to display the next image. **`calibration_data_img_sample.npy`** contains 20 images extracted from the MS-COCO data set.
 
-![ezgif com-gif-maker](https://user-images.githubusercontent.com/33194443/109318923-aba15480-7891-11eb-84aa-034f77125f34.gif)
+![aaa](https://user-images.githubusercontent.com/33194443/156924464-027535bc-6070-4c73-9925-c94000887a53.png)
 
 **[↥ Back to top](#openvino2tensorflow)**
 
