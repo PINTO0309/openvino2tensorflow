@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 '''
-tensorflow==2.5.0+
+tensorflow==2.8.0+
 
 python3 openvino2tensorflow.py \
 --model_path openvino/448x448/FP32/Resnet34_3inputs_448x448_20200609.xml \
@@ -8,14 +8,16 @@ python3 openvino2tensorflow.py \
 --output_pb \
 --output_weight_quant_tflite \
 --output_float16_quant_tflite \
---output_no_quant_float32_tflite
+--output_no_quant_float32_tflite \
+--non_verbose
 
 python3 openvino2tensorflow.py \
 --model_path debug/openvino/yolox_nano/320x320/FP32/yolox_nano_320x320.xml \
 --output_saved_model \
 --output_pb \
 --output_no_quant_float32_tflite \
---weight_replacement_config debug/weight_replacement_config_yolox_nano.json
+--weight_replacement_config debug/weight_replacement_config_yolox_nano.json \
+--non_verbose
 '''
 import os
 import sys
@@ -172,6 +174,22 @@ def convert(
         tf.int64
     ]
 
+    # numpy type convertion table
+    cast_type_np_tf = {
+        'uint8'   : tf.uint8,
+        'uint16'  : tf.uint16,
+        'uint32'  : tf.uint32,
+        'uint64'  : tf.uint64,
+        'int8'    : tf.int8,
+        'int16'   : tf.int16,
+        'int32'   : tf.int32,
+        'int64'   : tf.int64,
+        'float16' : tf.float16,
+        'float32' : tf.float32,
+        'float64' : tf.float64,
+        'bool'    : tf.bool
+    }
+
     # pad type conversion table
     pad_type_ov_tf = {
         'constant' : 'CONSTANT',
@@ -319,6 +337,8 @@ def convert(
         'Squeeze': ['insert_before', 'insert_after'],
         'Unsqueeze': ['insert_before', 'insert_after'],
         'Einsum': ['change_equation'],
+        'Add': ['insert_before', 'insert_after'],
+        'Multiply': ['insert_before', 'insert_after'],
     }
 
 
@@ -437,6 +457,16 @@ def convert(
                 input,
                 axis=param
             )
+        elif layer_type == 'Add':
+            tf_layer = tf.math.add(
+                input,
+                param
+            )
+        elif layer_type == 'Multiply':
+            tf_layer = tf.math.multiply(
+                input,
+                param
+            )
         return tf_layer
 
 
@@ -490,7 +520,8 @@ def convert(
                                                                                                             layer.attrib['type'] == 'VariadicSplit' or \
                                                                                                                 layer.attrib['type'] == 'ReverseSequence' or \
                                                                                                                     layer.attrib['type'] == 'Range' or \
-                                                                                                                        layer.attrib['type'] == 'Einsum':
+                                                                                                                        layer.attrib['type'] == 'Einsum' or \
+                                                                                                                            layer.attrib['type'] == 'ScatterUpdate':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -2820,9 +2851,18 @@ def convert(
                 # begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask
                 begin_mask       = np.asarray([int(val) for val in begin_mask.split(',')])
                 end_mask         = np.asarray([int(val) for val in end_mask.split(',')])
-                ellipsis_mask    = np.asarray([int(val) for val in ellipsis_mask.split(',')])
-                new_axis_mask    = np.asarray([int(val) for val in new_axis_mask.split(',')])
-                shrink_axis_mask = np.asarray([int(val) for val in shrink_axis_mask.split(',')])
+                if ellipsis_mask:
+                    ellipsis_mask = np.asarray([int(val) for val in ellipsis_mask.split(',')])
+                else:
+                    ellipsis_mask = np.asarray([0 for i in range(len(begin_mask))])
+                if new_axis_mask:
+                    new_axis_mask    = np.asarray([int(val) for val in new_axis_mask.split(',')])
+                else:
+                    new_axis_mask = np.asarray([0 for i in range(len(begin_mask))])
+                if shrink_axis_mask:
+                    shrink_axis_mask = np.asarray([int(val) for val in shrink_axis_mask.split(',')])
+                else:
+                    shrink_axis_mask = np.asarray([0 for i in range(len(begin_mask))])
 
                 if type(begin_mask) == np.ndarray and len(begin_mask) == 4:
                     begin_mask[0], begin_mask[1], begin_mask[2], begin_mask[3] = \
@@ -6610,6 +6650,52 @@ def convert(
                         tf_layers_dict[layer_id] = tf.einsum(equation, *ports)
                 else:
                     tf_layers_dict[layer_id] =tf.einsum(equation, *ports)
+
+            ### ScatterUpdate
+            elif layer.attrib['type'] == 'ScatterUpdate':
+                data = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                indices = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                updates = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]
+                axis = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 3)]
+
+                if isinstance(data, np.ndarray):
+                    # data = tf.constant(data, dtype=cast_type_np_tf[str(data.dtype)])
+                    data = tf.Variable(data, dtype=cast_type_np_tf[str(data.dtype)], trainable=False)
+                if isinstance(indices, np.ndarray):
+                    # indices = tf.constant(indices, dtype=cast_type_np_tf[str(indices.dtype)])
+                    indices = tf.Variable(indices, dtype=cast_type_np_tf[str(indices.dtype)], trainable=False)
+                if isinstance(updates, np.ndarray):
+                    # updates = tf.constant(updates, dtype=cast_type_np_tf[str(updates.dtype)])
+                    updates = tf.Variable(updates, dtype=cast_type_np_tf[str(updates.dtype)], trainable=False)
+
+                print(f"{Color.YELLOW}WARNING:{Color.RESET} TensorFlow's ScatterUpdate ignores axis, which may result in incorrect processing results. layer_id: {layer_id}, axis: {axis}")
+
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                        print(f'{Color.RED}ERROR:{Color.RESET} Extrapolation of operations to {layer.attrib["type"]} {wr_config[layer_id]["replace_mode"]} is not supported. layer_id: {layer_id}')
+                        sys.exit(-1)
+                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                        inp = tf.compat.v1.scatter_update(
+                            data,
+                            indices,
+                            updates,
+                        )
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+                    else:
+                        tf_layers_dict[layer_id] = tf.compat.v1.scatter_update(
+                            data,
+                            indices,
+                            updates,
+                        )
+                else:
+                    tf_layers_dict[layer_id] = tf.compat.v1.scatter_update(
+                        data,
+                        indices,
+                        updates,
+                    )
 
             ### Result
             elif layer.attrib['type'] == 'Result':
