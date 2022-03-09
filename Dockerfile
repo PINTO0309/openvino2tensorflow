@@ -210,7 +210,7 @@ RUN echo "root:root" | chpasswd \
     && echo "%${USERNAME}    ALL=(ALL)   NOPASSWD:    ALL" >> /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 USER ${USERNAME}
-RUN sudo chown ${USERNAME}:${USERNAME} ${WKDIR}\
+RUN sudo chown ${USERNAME}:${USERNAME} ${WKDIR} \
     && sudo chmod 777 ${WKDIR}/.bashrc
 
 # OpenCL settings - https://github.com/intel/compute-runtime/releases
