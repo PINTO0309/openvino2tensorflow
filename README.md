@@ -31,7 +31,7 @@ Work in progress now.
 - coremltools
 - paddle2onnx
 - onnx
-- onnxruntime-gpu (CUDA, TensorRT)
+- onnxruntime-gpu (CUDA, TensorRT, OpenVINO)
 - onnxruntime-extensions
 - onnx_graphsurgeon
 - onnx-simplifier
