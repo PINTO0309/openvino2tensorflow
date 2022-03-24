@@ -72,6 +72,7 @@ RUN pip3 install --upgrade pip \
         -f https://download.pytorch.org/whl/cu113/torch_stable.html \
     && pip install pycuda==2021.1 \
     && pip install scikit-image \
+    && pip performance-monitor \
     && ldconfig \
     && pip cache purge \
     && apt clean \
