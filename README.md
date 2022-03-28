@@ -338,6 +338,7 @@ usage: openvino2tensorflow
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
   [--onnx_extra_opset ONNX_EXTRA_OPSET]
+  [--disable_onnx_nchw_conversion]
   [--disable_onnx_optimization]
   [--output_myriad]
   [--vpu_number_of_shaves VPU_NUMBER_OF_SHAVES]
@@ -435,6 +436,8 @@ optional arguments:
               The name of the onnx 'extra_opset' to enable.
               Default: ''
               'com.microsoft:1' or 'ai.onnx.contrib:1' or 'ai.onnx.ml:1'
+  --disable_onnx_nchw_conversion
+              Disable NCHW conversion
   --disable_onnx_optimization
               Disable onnx optimization
   --output_myriad
@@ -519,94 +522,97 @@ usage: saved_model_to_tflite
   [--output_onnx]
   [--onnx_opset ONNX_OPSET]
   [--onnx_extra_opset ONNX_EXTRA_OPSET]
+  [--disable_onnx_nchw_conversion]
   [--disable_onnx_optimization]
   [--disable_experimental_new_quantizer]
 
 optional arguments:
   -h, --help
-                        show this help message and exit
+              show this help message and exit
   --saved_model_dir_path SAVED_MODEL_DIR_PATH
-                        Input saved_model dir path
+              Input saved_model dir path
   --signature_def SIGNATURE_DEF
-                        Specifies the signature name to load from saved_model
+              Specifies the signature name to load from saved_model
   --input_shapes INPUT_SHAPES
-                        Overwrites an undefined input dimension (None or -1).
-                        Specify the input shape in [n,h,w,c] format.
-                        For non-4D tensors, specify [a,b,c,d,e], [a,b], etc.
-                        A comma-separated list if there are multiple inputs.
-                        (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
+              Overwrites an undefined input dimension (None or -1).
+              Specify the input shape in [n,h,w,c] format.
+              For non-4D tensors, specify [a,b,c,d,e], [a,b], etc.
+              A comma-separated list if there are multiple inputs.
+              (e.g.) --input_shapes [1,256,256,3],[1,64,64,3],[1,2,16,16,3]
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
-                        The output folder path of the converted model file
+              The output folder path of the converted model file
   --output_no_quant_float32_tflite
-                        float32 tflite output switch
+              float32 tflite output switch
   --output_dynamic_range_quant_tflite
-                        dynamic range quant tflite output switch
+              dynamic range quant tflite output switch
   --output_weight_quant_tflite
-                        weight quant tflite output switch
+              weight quant tflite output switch
   --output_float16_quant_tflite
-                        float16 quant tflite output switch
+              float16 quant tflite output switch
   --output_integer_quant_tflite
-                        integer quant tflite output switch
+              integer quant tflite output switch
   --output_full_integer_quant_tflite
-                        full integer quant tflite output switch
+              full integer quant tflite output switch
   --output_integer_quant_type OUTPUT_INTEGER_QUANT_TYPE
-                        Input and output types when doing Integer Quantization
-                        ('int8 (default)' or 'uint8')
+              Input and output types when doing Integer Quantization
+              ('int8 (default)' or 'uint8')
   --string_formulas_for_normalization STRING_FORMULAS_FOR_NORMALIZATION
-                        String formulas for normalization. It is evaluated by
-                        Pythons eval() function.
-                        Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
+              String formulas for normalization. It is evaluated by
+              Pythons eval() function.
+              Default: '(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]'
   --calib_ds_type CALIB_DS_TYPE
-                        Types of data sets for calibration. tfds or numpy
-                        Default: numpy
+              Types of data sets for calibration. tfds or numpy
+              Default: numpy
   --ds_name_for_tfds_for_calibration DS_NAME_FOR_TFDS_FOR_CALIBRATION
-                        Dataset name for TensorFlow Datasets for calibration.
-                        https://www.tensorflow.org/datasets/catalog/overview
+              Dataset name for TensorFlow Datasets for calibration.
+              https://www.tensorflow.org/datasets/catalog/overview
   --split_name_for_tfds_for_calibration SPLIT_NAME_FOR_TFDS_FOR_CALIBRATION
-                        Split name for TensorFlow Datasets for calibration.
-                        https://www.tensorflow.org/datasets/catalog/overview
+              Split name for TensorFlow Datasets for calibration.
+              https://www.tensorflow.org/datasets/catalog/overview
   --download_dest_folder_path_for_the_calib_tfds DOWNLOAD_DEST_FOLDER_PATH_FOR_THE_CALIB_TFDS
-                        Download destination folder path for the calibration
-                        dataset. Default: $HOME/TFDS
+              Download destination folder path for the calibration
+              dataset. Default: $HOME/TFDS
   --tfds_download_flg
-                        True to automatically download datasets from
-                        TensorFlow Datasets. True or False
+              True to automatically download datasets from
+              TensorFlow Datasets. True or False
   --load_dest_file_path_for_the_calib_npy LOAD_DEST_FILE_PATH_FOR_THE_CALIB_NPY
-                        The path from which to load the .npy file containing
-                        the numpy binary version of the calibration data.
-                        Default: sample_npy/calibration_data_img_sample.npy
+              The path from which to load the .npy file containing
+              the numpy binary version of the calibration data.
+              Default: sample_npy/calibration_data_img_sample.npy
   --output_tfjs
-                        tfjs model output switch
+              tfjs model output switch
   --output_tftrt_float32
-                        tftrt float32 model output switch
+              tftrt float32 model output switch
   --output_tftrt_float16
-                        tftrt float16 model output switch
+              tftrt float16 model output switch
   --tftrt_maximum_cached_engines
-                        Specifies the quantity of tftrt_maximum_cached_engines for TFTRT.
-                        Default: 10000
+              Specifies the quantity of tftrt_maximum_cached_engines for TFTRT.
+              Default: 10000
   --output_coreml
-                        coreml model output switch
+              coreml model output switch
   --output_edgetpu
-                        edgetpu model output switch
+              edgetpu model output switch
   --edgetpu_compiler_timeout
-                        edgetpu_compiler timeout for one compilation process in seconds.
-                        Default: 3600
+              edgetpu_compiler timeout for one compilation process in seconds.
+              Default: 3600
   --edgetpu_num_segments
-                        Partition the model into 'num_segments' segments.
-                        Default: 1 (no partition)
+              Partition the model into 'num_segments' segments.
+              Default: 1 (no partition)
   --output_onnx
-                        onnx model output switch
+              onnx model output switch
   --onnx_opset ONNX_OPSET
-                        onnx opset version number
+              onnx opset version number
   --onnx_extra_opset ONNX_EXTRA_OPSET
-                        The name of the onnx 'extra_opset' to enable.
-                        Default: ''
-                        'com.microsoft:1' or 'ai.onnx.contrib:1' or 'ai.onnx.ml:1'
+              The name of the onnx 'extra_opset' to enable.
+              Default: ''
+              'com.microsoft:1' or 'ai.onnx.contrib:1' or 'ai.onnx.ml:1'
+  --disable_onnx_nchw_conversion
+              Disable NCHW conversion
   --disable_onnx_optimization
-                        Disable onnx optimization
+              Disable onnx optimization
   --disable_experimental_new_quantizer
-                        Disable MLIRs new quantization feature during INT8 quantization
-                        in TensorFlowLite.
+              Disable MLIRs new quantization feature during INT8 quantization
+              in TensorFlowLite.
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
@@ -621,17 +627,17 @@ usage: pb_to_saved_model
 
 optional arguments:
   -h, --help
-                        show this help message and exit
+              show this help message and exit
   --pb_file_path PB_FILE_PATH
-                        Input .pb file path (.pb)
+              Input .pb file path (.pb)
   --inputs INPUTS
-                        (e.g.1) input:0,input:1,input:2
-                        (e.g.2) images:0,input:0,param:0
+              (e.g.1) input:0,input:1,input:2
+              (e.g.2) images:0,input:0,param:0
   --outputs OUTPUTS
-                        (e.g.1) output:0,output:1,output:2
-                        (e.g.2) Identity:0,Identity:1,output:0
+              (e.g.1) output:0,output:1,output:2
+              (e.g.2) Identity:0,Identity:1,output:0
   --model_output_path MODEL_OUTPUT_PATH
-                        The output folder path of the converted model file
+              The output folder path of the converted model file
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
@@ -646,17 +652,17 @@ usage: pb_to_tflite
 
 optional arguments:
   -h, --help
-                        show this help message and exit
+              show this help message and exit
   --pb_file_path PB_FILE_PATH
-                        Input .pb file path (.pb)
+              Input .pb file path (.pb)
   --inputs INPUTS
-                        (e.g.1) input,input_1,input_2
-                        (e.g.2) images,input,param
+              (e.g.1) input,input_1,input_2
+              (e.g.2) images,input,param
   --outputs OUTPUTS
-                        (e.g.1) output,output_1,output_2
-                        (e.g.2) Identity,Identity_1,output
+              (e.g.1) output,output_1,output_2
+              (e.g.2) Identity,Identity_1,output
   --model_output_path MODEL_OUTPUT_PATH
-                        The output folder path of the converted model file
+              The output folder path of the converted model file
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
@@ -670,13 +676,13 @@ usage: saved_model_to_pb
 
 optional arguments:
   -h, --help
-                        show this help message and exit
+              show this help message and exit
   --saved_model_dir_path SAVED_MODEL_DIR_PATH
-                        Input saved_model dir path
+              Input saved_model dir path
   --model_output_dir_path MODEL_OUTPUT_DIR_PATH
-                        The output folder path of the converted model file (.pb)
+              The output folder path of the converted model file (.pb)
   --signature_name SIGNATURE_NAME
-                        Signature name to be extracted from saved_model
+              Signature name to be extracted from saved_model
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
@@ -689,11 +695,11 @@ usage: ir_weight_extractor
 
 optional arguments:
   -h, --help
-                        show this help message and exit
+              show this help message and exit
   -m MODEL, --model MODEL
-                        input IR model path
+              input IR model path
   -o OUTPUT_PATH, --output_path OUTPUT_PATH
-                        weights output folder path
+              weights output folder path
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 

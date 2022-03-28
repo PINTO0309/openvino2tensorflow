@@ -93,6 +93,7 @@ def convert(
     output_onnx,
     onnx_opset,
     onnx_extra_opset,
+    use_onnx_nchw_conversion,
     use_onnx_optimization,
     output_myriad,
     vpu_number_of_shaves,
@@ -7236,6 +7237,8 @@ def convert(
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
+            loaded = tf.saved_model.load(model_output_path).signatures['serving_default']
+            inputs = ",".join(map(str, [inp.name for inp in loaded.inputs if 'unknown' not in inp.name])).rstrip(',')
             onnx_convert_command = None
             if not onnx_extra_opset:
                 onnx_convert_command = \
@@ -7246,6 +7249,13 @@ def convert(
                     '--opset', str(onnx_opset),
                     '--output', f'{model_output_path}/model_float32.onnx'
                 ]
+                if use_onnx_nchw_conversion:
+                    onnx_convert_command.append(
+                        '--inputs-as-nchw'
+                    )
+                    onnx_convert_command.append(
+                        f'{inputs}'
+                    )
             else:
                 onnx_convert_command = \
                 [
@@ -7256,6 +7266,13 @@ def convert(
                     '--output', f'{model_output_path}/model_float32.onnx',
                     '--extra_opset', onnx_extra_opset
                 ]
+                if use_onnx_nchw_conversion:
+                    onnx_convert_command.append(
+                        '--inputs-as-nchw'
+                    )
+                    onnx_convert_command.append(
+                        f'{inputs}'
+                    )
             result = subprocess.check_output(
                 onnx_convert_command,
                 stderr=subprocess.PIPE
@@ -7364,6 +7381,7 @@ def main():
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
     parser.add_argument('--onnx_extra_opset', type=str, default='', help='The name of the onnx extra_opset to enable. Default: \'\'. "com.microsoft:1" or "ai.onnx.contrib:1" or "ai.onnx.ml:1"')
+    parser.add_argument('--disable_onnx_nchw_conversion', action='store_true', help='Disable onnx NCHW conversion.')
     parser.add_argument('--disable_onnx_optimization', action='store_true', help='Disable onnx optimization')
     parser.add_argument('--output_myriad', action='store_true', help='myriad inference engine blob output switch')
     parser.add_argument('--vpu_number_of_shaves', type=int, default=4, help='vpu number of shaves. Default: 4')
@@ -7415,6 +7433,7 @@ def main():
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
     onnx_extra_opset = args.onnx_extra_opset
+    use_onnx_nchw_conversion = not args.disable_onnx_nchw_conversion
     use_onnx_optimization = not args.disable_onnx_optimization
     output_myriad = args.output_myriad
     vpu_number_of_shaves = args.vpu_number_of_shaves
@@ -7530,7 +7549,7 @@ def main():
             download_dest_folder_path_for_the_calib_tfds, tfds_download_flg, npy_load_default_path, load_dest_file_path_for_the_calib_npy,
             output_tfjs, output_tftrt_float32, output_tftrt_float16, tftrt_maximum_cached_engines, output_coreml,
             output_edgetpu, edgetpu_compiler_timeout, edgetpu_num_segments,
-            output_onnx, onnx_opset, onnx_extra_opset, use_onnx_optimization, output_myriad,
+            output_onnx, onnx_opset, onnx_extra_opset, use_onnx_nchw_conversion, use_onnx_optimization, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax, replace_argmax, replace_argmax_indices_to_float32,
             restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,

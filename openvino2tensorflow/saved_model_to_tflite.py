@@ -68,6 +68,7 @@ def convert(
     output_onnx,
     onnx_opset,
     onnx_extra_opset,
+    use_onnx_nchw_conversion,
     use_onnx_optimization,
     use_experimental_new_quantizer
     ):
@@ -419,6 +420,8 @@ def convert(
         import subprocess
         try:
             print(f'{Color.REVERCE}ONNX convertion started{Color.RESET}', '=' * 61)
+            loaded = tf.saved_model.load(saved_model_dir_path).signatures['serving_default']
+            inputs = ",".join(map(str, [inp.name for inp in loaded.inputs if 'unknown' not in inp.name])).rstrip(',')
             onnx_convert_command = None
             if not onnx_extra_opset:
                 onnx_convert_command = \
@@ -429,6 +432,13 @@ def convert(
                     '--opset', str(onnx_opset),
                     '--output', f'{model_output_dir_path}/model_float32.onnx'
                 ]
+                if use_onnx_nchw_conversion:
+                    onnx_convert_command.append(
+                        '--inputs-as-nchw'
+                    )
+                    onnx_convert_command.append(
+                        f'{inputs}'
+                    )
             else:
                 onnx_convert_command = \
                 [
@@ -439,6 +449,13 @@ def convert(
                     '--output', f'{model_output_dir_path}/model_float32.onnx',
                     '--extra_opset', onnx_extra_opset
                 ]
+                if use_onnx_nchw_conversion:
+                    onnx_convert_command.append(
+                        '--inputs-as-nchw'
+                    )
+                    onnx_convert_command.append(
+                        f'{inputs}'
+                    )
             result = subprocess.check_output(
                 onnx_convert_command,
                 stderr=subprocess.PIPE
@@ -522,6 +539,7 @@ def main():
     parser.add_argument('--output_onnx', action='store_true', help='onnx model output switch')
     parser.add_argument('--onnx_opset', type=int, default=13, help='onnx opset version number')
     parser.add_argument('--onnx_extra_opset', type=str, default='', help='The name of the onnx extra_opset to enable. Default: \'\'. "com.microsoft:1" or "ai.onnx.contrib:1" or "ai.onnx.ml:1"')
+    parser.add_argument('--disable_onnx_nchw_conversion', action='store_true', help='Disable onnx NCHW conversion.')
     parser.add_argument('--disable_onnx_optimization', action='store_true', help='Disable onnx optimization.')
     parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
 
@@ -565,6 +583,7 @@ def main():
     output_onnx = args.output_onnx
     onnx_opset = args.onnx_opset
     onnx_extra_opset = args.onnx_extra_opset
+    use_onnx_nchw_conversion = not args.disable_onnx_nchw_conversion
     use_onnx_optimization = not args.disable_onnx_optimization
     use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
 
@@ -664,6 +683,7 @@ def main():
         output_onnx,
         onnx_opset,
         onnx_extra_opset,
+        use_onnx_nchw_conversion,
         use_onnx_optimization,
         use_experimental_new_quantizer
     )
