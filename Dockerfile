@@ -185,19 +185,19 @@ RUN wget https://apt.llvm.org/llvm.sh \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# NNPACK
-RUN git clone --recursive https://github.com/Maratyszcza/NNPACK.git \
-    && cd NNPACK \
-    && git checkout c07e3a0400713d546e0dea2d5466dd22ea389c73 \
-    && sed -i "s|gnu99|gnu99 -fPIC|g" CMakeLists.txt \
-    && sed -i "s|gnu++11|gnu++11 -fPIC|g" CMakeLists.txt \
-    && mkdir build \
-    && cd build \
-    && cmake -G Ninja -D BUILD_SHARED_LIBS=ON .. \
-    && ninja \
-    && ninja install \
-    && sh -c "echo '/usr/local/lib' > /etc/ld.so.conf.d/nnpack.conf" \
-    && ldconfig
+# # NNPACK
+# RUN git clone --recursive https://github.com/Maratyszcza/NNPACK.git \
+#     && cd NNPACK \
+#     && git checkout c07e3a0400713d546e0dea2d5466dd22ea389c73 \
+#     && sed -i "s|gnu99|gnu99 -fPIC|g" CMakeLists.txt \
+#     && sed -i "s|gnu++11|gnu++11 -fPIC|g" CMakeLists.txt \
+#     && mkdir build \
+#     && cd build \
+#     && cmake -G Ninja -D BUILD_SHARED_LIBS=ON .. \
+#     && ninja \
+#     && ninja install \
+#     && sh -c "echo '/usr/local/lib' > /etc/ld.so.conf.d/nnpack.conf" \
+#     && ldconfig
 
 # Clear caches
 RUN apt clean \
@@ -249,7 +249,7 @@ RUN git clone --recursive https://github.com/apache/tvm \
         -DUSE_LLVM=ON \
         -DUSE_MKLDNN=ON \
         -DUSE_OPENMP=ON \
-        -DUSE_NNPACK=ON \
+        -DUSE_NNPACK=OFF \
         # -DUSE_TFLITE=/usr/local/lib/libtensorflow-lite.a \
         # -DUSE_EDGETPU=OFF \
         -DUSE_CUDNN=ON \
