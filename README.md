@@ -12,7 +12,7 @@ Work in progress now.
 
 **I'm continuing to add more layers of support and bug fixes on a daily basis. If you have a model that you are having trouble converting, please share the `.bin` and `.xml` with the issue. I will try to convert as much as possible.**
 
-[![Downloads](https://static.pepy.tech/personalized-badge/openvino2tensorflow?period=total&units=none&left_color=grey&right_color=brightgreen&left_text=Downloads)](https://pepy.tech/project/openvino2tensorflow) ![GitHub](https://img.shields.io/github/license/PINTO0309/openvino2tensorflow?color=2BAF2B) [![PyPI](https://img.shields.io/pypi/v/openvino2tensorflow?color=2BAF2B)](https://pypi.org/project/openvino2tensorflow/)
+[![Downloads](https://static.pepy.tech/personalized-badge/openvino2tensorflow?period=total&units=none&left_color=grey&right_color=brightgreen&left_text=Downloads)](https://pepy.tech/project/openvino2tensorflow) ![GitHub](https://img.shields.io/github/license/PINTO0309/openvino2tensorflow?color=2BAF2B) [![PyPI](https://img.shields.io/pypi/v/openvino2tensorflow?color=2BAF2B)](https://pypi.org/project/openvino2tensorflow/) [![CodeQL](https://github.com/PINTO0309/openvino2tensorflow/workflows/CodeQL/badge.svg)](https://github.com/PINTO0309/openvino2tensorflow/actions?query=workflow%3ACodeQL)
 
 ![render1629515758354](https://user-images.githubusercontent.com/33194443/130308925-f859a799-8013-4c57-b378-f405bdd2d39f.gif)
 
