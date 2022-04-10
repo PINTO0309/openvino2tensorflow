@@ -62,6 +62,10 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade numexpr \
     && pip install --upgrade onnx2json \
     && pip install --upgrade json2onnx \
+    && pip install --upgrade sne4onnx \
+    && pip install --upgrade snd4onnx \
+    && pip install --upgrade snc4onnx \
+    && pip install --upgrade scs4onnx \
     && pip install --upgrade gluoncv \
     && pip install --upgrade dgl \
     && pip install --upgrade cmake \
