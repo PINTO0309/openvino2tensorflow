@@ -41,6 +41,14 @@ Work in progress now.
 - onnx2json
 - json2onnx
 - tf2onnx
+- sne4onnx
+- snd4onnx
+- snc4onnx
+- scs4onnx
+- sog4onnx
+- sam4onnx
+- soc4onnx
+- scc4onnx
 - torch2trt
 - onnx-tf
 - tensorflow-datasets
