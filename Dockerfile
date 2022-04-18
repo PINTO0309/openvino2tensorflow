@@ -66,6 +66,10 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade snd4onnx \
     && pip install --upgrade snc4onnx \
     && pip install --upgrade scs4onnx \
+    && pip install --upgrade sog4onnx \
+    && pip install --upgrade sam4onnx \
+    && pip install --upgrade soc4onnx \
+    && pip install --upgrade scc4onnx \
     && pip install --upgrade gluoncv \
     && pip install --upgrade dgl \
     && pip install --upgrade cmake \
