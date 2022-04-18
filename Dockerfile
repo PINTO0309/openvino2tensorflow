@@ -86,13 +86,6 @@ RUN pip3 install --upgrade pip \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install sclblonnx non-version check custom .ver
-RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/sclblonnx-0.1.9_nvc-py3-none-any.whl \
-    && pip3 install sclblonnx-0.1.9_nvc-py3-none-any.whl \
-    && rm sclblonnx-0.1.9_nvc-py3-none-any.whl \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install custom tflite_runtime, flatc, edgetpu-compiler
 RUN wget https://github.com/PINTO0309/openvino2tensorflow/releases/download/${APPVER}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
     && chmod +x tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
