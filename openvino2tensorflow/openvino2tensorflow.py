@@ -199,6 +199,11 @@ def convert(
         'edge'     : 'REFLECT'
     }
 
+    # op_type to ignore garbage output with opset=8
+    ignore_garbage_output_op_types = [
+        'MaxPool',
+    ]
+
     # Read IR weight data
     with open(model_path+'.bin', 'rb') as f:
         binWeight = f.read()
@@ -490,7 +495,7 @@ def convert(
             if layer.attrib['id'] == to_layer:
                 output_layer_ports = layer.find('output')
 
-                if layer.attrib['type'] != 'Result' and len(output_layer_ports) >= 2:
+                if layer.attrib['type'] != 'Result' and len(output_layer_ports) >= 2 and layer.attrib['type'] not in ignore_garbage_output_op_types:
                     for port in output_layer_ports:
                         tf_edges.setdefault('{}:{}'.format(to_layer, port.attrib['id']), []).append(from_layer)
                     added_key_list.append(to_layer)
@@ -528,7 +533,7 @@ def convert(
         for layer in layers:
             if layer.attrib['id'] == from_layer:
                 output_layer_ports = layer.find('output')
-                if len(output_layer_ports) >= 2:
+                if len(output_layer_ports) >= 2 and layer.attrib['type'] not in ignore_garbage_output_op_types:
                     flg = 'not_found'
                     for key in tf_edges.keys():
                         if to_layer in key and from_layer in tf_edges[key] and '{}:{}'.format(from_layer, from_layer_port) not in tf_edges[key]:
@@ -4720,8 +4725,14 @@ def convert(
                 y = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                 if type(x) == np.ndarray:
                     x = x.astype(np.float32)
+                    if x.ndim == 4:
+                        # 4D - NCHW->NHWC
+                        x = x.transpose([0,2,3,1])
                 if type(y) == np.ndarray:
                     y = y.astype(np.float32)
+                    if y.ndim == 4:
+                        # 4D - NCHW->NHWC
+                        y = y.transpose([0,2,3,1])
                 inp = tf.math.subtract(x, y)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:

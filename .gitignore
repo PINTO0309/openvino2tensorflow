@@ -3,3 +3,8 @@ dist/
 openvino2tensorflow.egg-info/
 openvino2tensorflow/debug/
 openvino2tensorflow/saved_model/
+.vscode
+
+*.bin
+*.xml
+saved_model/
