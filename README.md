@@ -22,7 +22,8 @@ Work in progress now.
 - PyTorch v1.10.0+
 - TorchVision
 - TorchAudio
-- OpenVINO 2021.4.582 **`(Not yet supported after 2022.1, opset8)`**
+- OpenVINO 2021.4.582
+  - **`(Not yet supported after 2022.1, opset8, https://github.com/openvinotoolkit/open_model_zoo/tree/2022.1.0)`**
 - TensorRT 8.2+
 - MXNet
 - trtexec
