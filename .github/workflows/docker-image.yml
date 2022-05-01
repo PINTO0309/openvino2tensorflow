@@ -20,6 +20,8 @@ jobs:
         run: |
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo swapoff -a
+          sudo rm -f /swapfile
           docker rmi $(docker image ls -aq)
           df -h
 
