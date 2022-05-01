@@ -78,7 +78,9 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade ninja \
     && python3 -m pip install onnx_graphsurgeon \
         --index-url https://pypi.ngc.nvidia.com \
-    && pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu115 \
+    && pip install --upgrade torch-1.12.0a0+gite36d25f-cp38-cp38-linux_x86_64.whl \
+    && pip install --upgrade torchvision-0.13.0a0+ecbff88-cp38-cp38-linux_x86_64.whl \
+    && pip install --upgrade torchaudio-0.12.0a0+a71e3a4-cp38-cp38-linux_x86_64.whl \
     && pip install pycuda==2021.1 \
     && pip install scikit-image \
     && pip install performance-monitor \
@@ -194,9 +196,7 @@ RUN sudo chown ${USERNAME}:${USERNAME} ${WKDIR} \
     && sudo chmod 777 ${WKDIR}/.bashrc
 
 # OpenCL settings - https://github.com/intel/compute-runtime/releases
-RUN cd ${OPENVINOROOTDIR}/install_dependencies/ \
-    && yes | sudo -E ./install_NEO_OCL_driver.sh \
-    && cd ${WKDIR} \
+RUN cd ${WKDIR} \
     && sudo dpkg -i libigdgmm12_22.1.2_amd64.deb \
     && sudo dpkg -i intel-igc-core_1.0.11061_amd64.deb \
     && sudo dpkg -i intel-igc-opencl_1.0.11061_amd64.deb \
@@ -211,7 +211,6 @@ RUN cd ${OPENVINOROOTDIR}/install_dependencies/ \
     && rm intel-opencl-icd_22.17.23034_amd64.deb \
     && rm intel-opencl-icd-dbgsym_22.17.23034_amd64.deb \
     && rm libigdgmm12_22.1.2_amd64.deb \
-    && sudo apt --fix-broken install -y \
     && sudo apt clean \
     && sudo rm -rf /var/lib/apt/lists/*
 

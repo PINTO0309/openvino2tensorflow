@@ -19,7 +19,7 @@ Work in progress now.
 ## 1. Environment
 - Python 3.8+
 - TensorFlow v2.9.0+
-- PyTorch v1.11.0+
+- PyTorch v1.12.0+
 - TorchVision
 - TorchAudio
 - OpenVINO 2021.4.582
