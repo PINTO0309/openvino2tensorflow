@@ -18,13 +18,13 @@ Work in progress now.
 
 ## 1. Environment
 - Python 3.8+
-- TensorFlow v2.8.0+
-- PyTorch v1.10.0+
+- TensorFlow v2.9.0+
+- PyTorch v1.11.0+
 - TorchVision
 - TorchAudio
 - OpenVINO 2021.4.582
   - **`(Not yet supported after 2022.1, opset8, https://github.com/openvinotoolkit/open_model_zoo/tree/2022.1.0)`**
-- TensorRT 8.2+
+- TensorRT 8.4+
 - MXNet
 - trtexec
 - pycuda 2021.1
@@ -69,7 +69,6 @@ Work in progress now.
 - Intel iHD GPU (iGPU) support
 - OpenCL
 - gluoncv
-- TVM (ONNX, CUDA, TensorRT, TensorFlow, PyTorch)
 - LLVM
 - NNPACK
 - WSL2 OpenCL
@@ -248,11 +247,14 @@ Work in progress now.
 
 ## 4. Setup
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
-You do not need to install any packages other than Docker. It consumes 26.7GB of storage.
+You do not need to install any packages other than Docker. It consumes 29.6GB of storage.
 ```bash
 $ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
-$ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest --build-arg APPVER=v1.29.0 .
+# $ docker build \
+# -t ghcr.io/pinto0309/openvino2tensorflow:base.11.6.2-cudnn8-tf2.9.0rc0-trt8.4.0-openvino2021.4.582 \
+# -f Dockerfile.base .
+$ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest .
 
 # If you don't need to access the GUI of the HostPC and the USB camera.
 $ docker run -it --rm \

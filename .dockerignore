@@ -1,0 +1,11 @@
+openvino2tensorflow
+packages
+sample_npy
+scripts
+weights_sample
+LICENSE
+README.md
+.vscode
+
+*.sh
+*.json
