@@ -251,9 +251,11 @@ You do not need to install any packages other than Docker. It consumes 29.6GB of
 ```bash
 $ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
+# $ mv .dockerignore d
 # $ docker build \
 # -t ghcr.io/pinto0309/openvino2tensorflow:base.11.6.2-cudnn8-tf2.9.0rc0-trt8.4.0-openvino2021.4.582 \
 # -f Dockerfile.base .
+# $ mv d .dockerignore
 $ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest .
 
 # If you don't need to access the GUI of the HostPC and the USB camera.
