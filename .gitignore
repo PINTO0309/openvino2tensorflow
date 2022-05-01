@@ -8,3 +8,4 @@ openvino2tensorflow/saved_model/
 *.bin
 *.xml
 saved_model/
+packages/
