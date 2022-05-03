@@ -85,6 +85,8 @@ RUN pip3 install --upgrade pip \
     && pip install pycuda==2021.1 \
     && pip install scikit-image \
     && pip install performance-monitor \
+    && pip install graphviz \
+    && pip install pydot \
     && ldconfig \
     && pip cache purge \
     && apt clean \
