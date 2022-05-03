@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y \
         openbox libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
         libtbb2 libtbb-dev libopenblas-dev libopenmpi-dev \
         python-is-python3 software-properties-common \
+        libxcb-xinerama0 \
     && sed -i 's/# set linenumbers/set linenumbers/g' /etc/nanorc \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
