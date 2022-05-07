@@ -62,19 +62,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade tf_slim \
     && pip install --upgrade pandas \
     && pip install --upgrade numexpr \
-    && pip install --upgrade onnx2json \
-    && pip install --upgrade json2onnx \
-    && pip install --upgrade sne4onnx \
-    && pip install --upgrade snd4onnx \
-    && pip install --upgrade snc4onnx \
-    && pip install --upgrade scs4onnx \
-    && pip install --upgrade sog4onnx \
-    && pip install --upgrade sam4onnx \
-    && pip install --upgrade soc4onnx \
-    && pip install --upgrade scc4onnx \
-    && pip install --upgrade sna4onnx \
-    && pip install --upgrade sbi4onnx \
-    && pip install --upgrade sor4onnx \
+    && pip install --upgrade simple-onnx-processing-tools \
     && pip install --upgrade gluoncv \
     && pip install --upgrade dgl \
     && pip install --upgrade cmake \
