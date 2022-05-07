@@ -1945,6 +1945,7 @@ def convert(
 
                 dilations = [int(s) for s in data.attrib['dilations'].split(',')]
 
+                inp = None
                 if int(port1[1]) > 1:
                     # Conv2D with groups
                     filters = int(port0[1])
@@ -1986,9 +1987,37 @@ def convert(
                                     kernel_initializer=Constant(kernel[:,:,:,i])
                                 )
                             )
-                    x_splits = tf.split(orig, groups, -1)
-                    x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
-                    inp = tf.concat(x_outputs, -1)
+
+                    try:
+                        x_splits = tf.split(orig, groups, -1)
+                        x_outputs = [conv(x_split) for x_split, conv in zip(x_splits, convs)]
+                        inp = tf.concat(x_outputs, -1)
+                    except Exception as e:
+                        if len(port1) == 5:
+                            kernel = None
+                            temp_val = None
+                            filters = None
+                            try:
+                                temp_val = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                                filters = temp_val.shape[0] * temp_val.shape[1]
+                                temp_val = temp_val.reshape([filters, temp_val.shape[2], temp_val.shape[3], temp_val.shape[4]])
+                                kernel = temp_val.transpose([2,3,1,0])
+                            except:
+                                temp_val = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy()
+                                filters = temp_val.shape[0] * temp_val.shape[1]
+                                temp_val = temp_val.reshape([filters, temp_val.shape[2], temp_val.shape[3], temp_val.shape[4]])
+                                kernel = temp_val.transpose([2,3,1,0])
+                            inp = Conv2D(
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                padding=padding,
+                                groups=groups,
+                                use_bias=False,
+                                kernel_initializer=Constant(kernel)
+                            )(orig)
+
+                        else:
+                            raise e
 
                 else:
                     # DepthwiseConv2D
@@ -3800,31 +3829,128 @@ def convert(
                             wr_config[layer_id],
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                         )
-                        tf_layers_dict[layer_id] = tf.linalg.matmul(
-                            inp,
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                            transpose_a,
-                            transpose_b
-                        )
+                        try:
+                            tf_layers_dict[layer_id] = tf.linalg.matmul(
+                                inp,
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                transpose_a,
+                                transpose_b
+                            )
+                        except Exception as e:
+                            sub_inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                            if len(inp.shape) == 2 and len(sub_inp.shape) == 2:
+                                inp1 = tf.transpose(inp, perm=[1,0])
+                                inp2 = tf.transpose(sub_inp, perm=[1,0])
+                                tf_layers_dict[layer_id] = tf.linalg.matmul(
+                                    inp1,
+                                    inp2,
+                                    transpose_a,
+                                    transpose_b
+                                )
+                            elif len(inp.shape) == 3 and len(sub_inp.shape) == 3:
+                                inp1 = tf.transpose(inp, perm=[0,2,1])
+                                inp2 = tf.transpose(sub_inp, perm=[0,2,1])
+                                tf_layers_dict[layer_id] = tf.linalg.matmul(
+                                    inp1,
+                                    inp2,
+                                    transpose_a,
+                                    transpose_b
+                                )
+                            elif len(inp.shape) == 3 and len(sub_inp.shape) == 2:
+                                inp1 = tf.transpose(inp, perm=[0,2,1])
+                                tf_layers_dict[layer_id] = tf.linalg.matmul(
+                                    inp1,
+                                    sub_inp,
+                                    transpose_a,
+                                    transpose_b
+                                )
+                            else:
+                                raise e
 
                     elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = tf.linalg.matmul(
+                        try:
+                            inp = tf.linalg.matmul(
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
+                                transpose_a,
+                                transpose_b
+                            )
+                        except Exception as e:
+                            main_inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            sub_inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                            if len(main_inp.shape) == 2 and len(sub_inp.shape) == 2:
+                                inp1 = tf.transpose(main_inp, perm=[1,0])
+                                inp2 = tf.transpose(sub_inp, perm=[1,0])
+                                inp = tf.linalg.matmul(
+                                    inp1,
+                                    inp2,
+                                    transpose_a,
+                                    transpose_b
+                                )
+                            elif len(main_inp.shape) == 3 and len(sub_inp.shape) == 3:
+                                inp1 = tf.transpose(main_inp, perm=[0,2,1])
+                                inp2 = tf.transpose(sub_inp, perm=[0,2,1])
+                                inp = tf.linalg.matmul(
+                                    inp1,
+                                    inp2,
+                                    transpose_a,
+                                    transpose_b
+                                )
+                            elif len(main_inp.shape) == 3 and len(sub_inp.shape) == 2:
+                                inp1 = tf.transpose(main_inp, perm=[0,2,1])
+                                inp = tf.linalg.matmul(
+                                    inp1,
+                                    sub_inp,
+                                    transpose_a,
+                                    transpose_b
+                                )
+                            else:
+                                raise e
+
+                        tf_layers_dict[layer_id] = extrapolation_of_layers(
+                            wr_config[layer_id],
+                            inp
+                        )
+
+                else:
+                    try:
+                        tf_layers_dict[layer_id] = tf.linalg.matmul(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
                             transpose_a,
                             transpose_b
                         )
-                        tf_layers_dict[layer_id] = extrapolation_of_layers(
-                            wr_config[layer_id],
-                            inp
-                        )
-                else:
-                    tf_layers_dict[layer_id] = tf.linalg.matmul(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)],
-                        transpose_a,
-                        transpose_b
-                    )
+                    except Exception as e:
+                        main_inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                        sub_inp = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                        if len(main_inp.shape) == 2 and len(sub_inp.shape) == 2:
+                            main_inp = tf.transpose(main_inp, perm=[1,0])
+                            sub_inp = tf.transpose(sub_inp, perm=[1,0])
+                            tf_layers_dict[layer_id] = tf.linalg.matmul(
+                                main_inp,
+                                sub_inp,
+                                transpose_a,
+                                transpose_b
+                            )
+                        elif len(main_inp.shape) == 3 and len(sub_inp.shape) == 3:
+                            main_inp = tf.transpose(main_inp, perm=[0,2,1])
+                            sub_inp = tf.transpose(sub_inp, perm=[0,2,1])
+                            tf_layers_dict[layer_id] = tf.linalg.matmul(
+                                main_inp,
+                                sub_inp,
+                                transpose_a,
+                                transpose_b
+                            )
+                        elif len(main_inp.shape) == 3 and len(sub_inp.shape) == 2:
+                            main_inp = tf.transpose(main_inp, perm=[0,2,1])
+                            tf_layers_dict[layer_id] = tf.linalg.matmul(
+                                main_inp,
+                                sub_inp,
+                                transpose_a,
+                                transpose_b
+                            )
+                        else:
+                            raise e
 
             ### Reshape - TODO
             elif layer.attrib['type'] == 'Reshape':
@@ -5451,9 +5577,10 @@ def convert(
                     # type_spec.dtype
                     if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.dtype != tf.bool:
                         input_type = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].type_spec.dtype
+                        input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
                         mask = tf.math.not_equal(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.constant([0], dtype=input_type)
+                            tf.zeros(input_shape, dtype=input_type)
                         )
                         inp = tf.expand_dims(
                             tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
@@ -5463,7 +5590,7 @@ def convert(
                         temp_op = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], output_type)
                         mask = tf.math.not_equal(
                             temp_op,
-                            tf.constant([0], dtype=output_type)
+                            tf.zeros(temp_op.shape, dtype=output_type)
                         )
                         inp = tf.expand_dims(
                             tf.boolean_mask(temp_op, mask),
@@ -5473,9 +5600,10 @@ def convert(
                     # dtype
                     if tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype != tf.bool:
                         input_type = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].dtype
+                        input_shape = tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)].shape
                         mask = tf.math.not_equal(
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                            tf.constant([0], dtype=input_type)
+                            tf.zeros(input_shape, dtype=input_type)
                         )
                         inp = tf.expand_dims(
                             tf.boolean_mask(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], mask),
@@ -5485,7 +5613,7 @@ def convert(
                         temp_op = tf.cast(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)], output_type)
                         mask = tf.math.not_equal(
                             temp_op,
-                            tf.constant([0], dtype=output_type)
+                            tf.zeros(temp_op.shape, dtype=output_type)
                         )
                         inp = tf.expand_dims(
                             tf.boolean_mask(temp_op, mask),
