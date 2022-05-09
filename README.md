@@ -39,18 +39,7 @@ Work in progress now.
 - onnxconverter-common
 - onnxmltools
 - onnx-tensorrt
-- onnx2json
-- json2onnx
 - tf2onnx
-- sne4onnx
-- snd4onnx
-- snc4onnx
-- scs4onnx
-- sog4onnx
-- sam4onnx
-- soc4onnx
-- scc4onnx
-- sna4onnx
 - torch2trt
 - onnx-tf
 - tensorflow-datasets
@@ -58,6 +47,7 @@ Work in progress now.
 - edgetpu_compiler
 - tflite2tensorflow
 - openvino2tensorflow
+- simple-onnx-processing-tools
 - gdown
 - pandas
 - matplotlib
@@ -132,116 +122,120 @@ Work in progress now.
 ## 3. Supported Layers
 - Currently, there are problems with the **`Reshape`** and **`Transpose`** operation of 2D,3D,5D Tensor. Since it is difficult to accurately predict the shape of a simple shape change, I have added support for forced replacement of transposition parameters using JSON files. [#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-or-cast-or-squeeze-or-unsqueeze-or-add-or-multiply-just-beforeafter-the-operation-specified-by-layer_id](#6-7-replace-weights-or-constant-values-in-const-op-and-add-transpose-or-reshape-or-cast-or-squeeze-or-unsqueeze-or-add-or-multiply-just-beforeafter-the-operation-specified-by-layer_id)
 
-|No.|OpenVINO Layer|TF Layer|Remarks|
-|:--:|:--|:--|:--|
-|1|Parameter|Input|Convert to NHWC (Default) or NCHW|
-|2|Const|Constant, Bias||
-|3|Convolution|Conv1D, Conv2D, Conv3D|Conv3D has limited support|
-|4|Add|Add||
-|5|ReLU|ReLU||
-|6|PReLU|PReLU|Maximum(0.0,x)+Minimum(0.0,alpha\*x)|
-|7|MaxPool|MaxPool2D||
-|8|AvgPool|AveragePooling2D||
-|9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat||
-|10|ConvolutionBackpropData|Conv2DTranspose, Conv3DTranspose|Conv3DTranspose has limited support|
-|11|Concat|Concat||
-|12|Multiply|Multiply||
-|13|Tan|Tan||
-|14|Tanh|Tanh||
-|15|Elu|Elu||
-|16|Sigmoid|Sigmoid||
-|17|HardSigmoid|hard_sigmoid||
-|18|SoftPlus|SoftPlus||
-|19|Swish|Swish|You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
-|20|Interpolate|ResizeNearestNeighbor, ResizeBilinear|4D [N,H,W,C] or 5D [N,D,H,W,C]|
-|21|ShapeOf|Shape||
-|22|Convert|Cast||
-|23|StridedSlice|Strided_Slice||
-|24|Pad|Pad, MirrorPad||
-|25|Clamp|ReLU6, Clip||
-|26|TopK|ArgMax, top_k||
-|27|Transpose|Transpose||
-|28|Squeeze|Squeeze||
-|29|Unsqueeze|Identity, expand_dims|WIP|
-|30|ReduceMean|reduce_mean||
-|31|ReduceMax|reduce_max||
-|32|ReduceMin|reduce_min||
-|33|ReduceSum|reduce_sum||
-|34|ReduceProd|reduce_prod||
-|35|Subtract|Subtract||
-|36|MatMul|MatMul||
-|37|Reshape|Reshape||
-|38|Range|Range|WIP|
-|39|Exp|Exp||
-|40|Abs|Abs||
-|41|SoftMax|SoftMax||
-|42|Negative|Negative||
-|43|Maximum|Maximum|No broadcast|
-|44|Minimum|Minimum|No broadcast|
-|45|Acos|Acos||
-|46|Acosh|Acosh||
-|47|Asin|Asin||
-|48|Asinh|Asinh||
-|49|Atan|Atan||
-|50|Atanh|Atanh||
-|51|Ceiling|Ceil||
-|52|Cos|Cos||
-|53|Cosh|Cosh||
-|54|Sin|Sin||
-|55|Sinh|Sinh||
-|56|Gather|Gather||
-|57|Divide|Divide, FloorDiv||
-|58|Erf|Erf||
-|59|Floor|Floor||
-|60|FloorMod|FloorMod||
-|61|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667, You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
-|62|Log|Log||
-|63|Power|Pow|No broadcast|
-|64|Mish|Mish|x\*Tanh(softplus(x))|
-|65|Selu|Selu||
-|66|Equal|equal||
-|67|NotEqual|not_equal||
-|68|Greater|greater||
-|69|GreaterEqual|greater_equal||
-|70|Less|less||
-|71|LessEqual|less_equal||
-|72|Select|Select|No broadcast|
-|73|LogicalAnd|logical_and||
-|74|LogicalNot|logical_not||
-|75|LogicalOr|logical_or||
-|76|LogicalXor|logical_xor||
-|77|Broadcast|broadcast_to, ones, Multiply|numpy / bidirectional mode, WIP|
-|78|Split|Split||
-|79|VariadicSplit|Split, Slice, SplitV||
-|80|MVN|reduce_mean, sqrt, reduce_variance|(x - reduce_mean(x)) / sqrt(reduce_variance(x) + eps)|
-|81|NonZero|not_equal, boolean_mask||
-|82|ReduceL2|square, reduce_sum, sqrt||
-|83|SpaceToDepth|SpaceToDepth||
-|84|DepthToSpace|DepthToSpace||
-|85|Sqrt|sqrt||
-|86|SquaredDifference|squared_difference||
-|87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add||
-|88|Tile|tile||
-|89|GatherND|gather_nd, reshape, cumprod, multiply, reduce_sum, gather, concat||
-|90|NonMaxSuppression|non_max_suppression|WIP. Only available for batch size 1.|
-|91|Gelu|gelu||
-|92|NormalizeL2|tf.math.add, tf.math.l2_normalize|x/sqrt(max(sum(x\*\*2), eps)) or x/sqrt(add(sum(x\*\*2), eps))|
-|93|ScatterElementsUpdate|shape, rank, floormod, add, cast, range, expand_dims, meshgrid, concat, reshape, tensor_scatter_nd_update||
-|94|ROIAlign|crop_and_resize, avg_pool, max_pool||
-|95|ScatterNDUpdate|tensor_scatter_nd_update||
-|96|GatherElements|rank, add, shape, cast, floormod, range, tensor_scatter_nd_update, constant, transpose, meshgrid, expand_dims, concat, gather_nd|WIP|
-|97|ConvertLike|Cast||
-|98|ReduceL1|Abs, ReduceSum||
-|99|ShuffleChannels|reshape, transpose||
-|100|PriorBoxClustered|Constant||
-|101|CumSum|cumsum||
-|102|PriorBox|Constant||
-|103|ReverseSequence|reverse||
-|104|ExtractImagePatches|extract_patches||
-|105|LogSoftmax|reduce_max, log, reduce_sum, exp||
-|106|Einsum|einsum||
-|107|ScatterUpdate|scatter_update||
-|108|Result|Identity|Output|
+  **<details><summary>Supported Layers</summary><div>**
+
+  |No.|OpenVINO Layer|TF Layer|Remarks|
+  |:--:|:--|:--|:--|
+  |1|Parameter|Input|Convert to NHWC (Default) or NCHW|
+  |2|Const|Constant, Bias||
+  |3|Convolution|Conv1D, Conv2D, Conv3D|Conv3D has limited support|
+  |4|Add|Add||
+  |5|ReLU|ReLU||
+  |6|PReLU|PReLU|Maximum(0.0,x)+Minimum(0.0,alpha\*x)|
+  |7|MaxPool|MaxPool2D||
+  |8|AvgPool|AveragePooling2D||
+  |9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat||
+  |10|ConvolutionBackpropData|Conv2DTranspose, Conv3DTranspose|Conv3DTranspose has limited support|
+  |11|Concat|Concat||
+  |12|Multiply|Multiply||
+  |13|Tan|Tan||
+  |14|Tanh|Tanh||
+  |15|Elu|Elu||
+  |16|Sigmoid|Sigmoid||
+  |17|HardSigmoid|hard_sigmoid||
+  |18|SoftPlus|SoftPlus||
+  |19|Swish|Swish|You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
+  |20|Interpolate|ResizeNearestNeighbor, ResizeBilinear|4D [N,H,W,C] or 5D [N,D,H,W,C]|
+  |21|ShapeOf|Shape||
+  |22|Convert|Cast||
+  |23|StridedSlice|Strided_Slice||
+  |24|Pad|Pad, MirrorPad||
+  |25|Clamp|ReLU6, Clip||
+  |26|TopK|ArgMax, top_k||
+  |27|Transpose|Transpose||
+  |28|Squeeze|Squeeze||
+  |29|Unsqueeze|Identity, expand_dims|WIP|
+  |30|ReduceMean|reduce_mean||
+  |31|ReduceMax|reduce_max||
+  |32|ReduceMin|reduce_min||
+  |33|ReduceSum|reduce_sum||
+  |34|ReduceProd|reduce_prod||
+  |35|Subtract|Subtract||
+  |36|MatMul|MatMul||
+  |37|Reshape|Reshape||
+  |38|Range|Range|WIP|
+  |39|Exp|Exp||
+  |40|Abs|Abs||
+  |41|SoftMax|SoftMax||
+  |42|Negative|Negative||
+  |43|Maximum|Maximum|No broadcast|
+  |44|Minimum|Minimum|No broadcast|
+  |45|Acos|Acos||
+  |46|Acosh|Acosh||
+  |47|Asin|Asin||
+  |48|Asinh|Asinh||
+  |49|Atan|Atan||
+  |50|Atanh|Atanh||
+  |51|Ceiling|Ceil||
+  |52|Cos|Cos||
+  |53|Cosh|Cosh||
+  |54|Sin|Sin||
+  |55|Sinh|Sinh||
+  |56|Gather|Gather||
+  |57|Divide|Divide, FloorDiv||
+  |58|Erf|Erf||
+  |59|Floor|Floor||
+  |60|FloorMod|FloorMod||
+  |61|HSwish|HardSwish|x\*ReLU6(x+3)\*0.16666667, You can replace swish and hard-swish with each other by using the "--replace_swish_and_hardswish" option|
+  |62|Log|Log||
+  |63|Power|Pow|No broadcast|
+  |64|Mish|Mish|x\*Tanh(softplus(x))|
+  |65|Selu|Selu||
+  |66|Equal|equal||
+  |67|NotEqual|not_equal||
+  |68|Greater|greater||
+  |69|GreaterEqual|greater_equal||
+  |70|Less|less||
+  |71|LessEqual|less_equal||
+  |72|Select|Select|No broadcast|
+  |73|LogicalAnd|logical_and||
+  |74|LogicalNot|logical_not||
+  |75|LogicalOr|logical_or||
+  |76|LogicalXor|logical_xor||
+  |77|Broadcast|broadcast_to, ones, Multiply|numpy / bidirectional mode, WIP|
+  |78|Split|Split||
+  |79|VariadicSplit|Split, Slice, SplitV||
+  |80|MVN|reduce_mean, sqrt, reduce_variance|(x - reduce_mean(x)) / sqrt(reduce_variance(x) + eps)|
+  |81|NonZero|not_equal, boolean_mask||
+  |82|ReduceL2|square, reduce_sum, sqrt||
+  |83|SpaceToDepth|SpaceToDepth||
+  |84|DepthToSpace|DepthToSpace||
+  |85|Sqrt|sqrt||
+  |86|SquaredDifference|squared_difference||
+  |87|FakeQuantize|subtract, multiply, round, greater, where, less_equal, add||
+  |88|Tile|tile||
+  |89|GatherND|gather_nd, reshape, cumprod, multiply, reduce_sum, gather, concat||
+  |90|NonMaxSuppression|non_max_suppression|WIP. Only available for batch size 1.|
+  |91|Gelu|gelu||
+  |92|NormalizeL2|tf.math.add, tf.math.l2_normalize|x/sqrt(max(sum(x\*\*2), eps)) or x/sqrt(add(sum(x\*\*2), eps))|
+  |93|ScatterElementsUpdate|shape, rank, floormod, add, cast, range, expand_dims, meshgrid, concat, reshape, tensor_scatter_nd_update||
+  |94|ROIAlign|crop_and_resize, avg_pool, max_pool||
+  |95|ScatterNDUpdate|tensor_scatter_nd_update||
+  |96|GatherElements|rank, add, shape, cast, floormod, range, tensor_scatter_nd_update, constant, transpose, meshgrid, expand_dims, concat, gather_nd|WIP|
+  |97|ConvertLike|Cast||
+  |98|ReduceL1|Abs, ReduceSum||
+  |99|ShuffleChannels|reshape, transpose||
+  |100|PriorBoxClustered|Constant||
+  |101|CumSum|cumsum||
+  |102|PriorBox|Constant||
+  |103|ReverseSequence|reverse||
+  |104|ExtractImagePatches|extract_patches||
+  |105|LogSoftmax|reduce_max, log, reduce_sum, exp||
+  |106|Einsum|einsum||
+  |107|ScatterUpdate|scatter_update||
+  |108|Result|Identity|Output|
+
+  </div></details>
 
 **[↥ Back to top](#openvino2tensorflow)**
 
