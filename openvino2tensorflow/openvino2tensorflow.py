@@ -1277,7 +1277,7 @@ def convert(
                                         shared_axes=shared_axes
                                     )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-                elif alpha_len >= 2:
+                elif alpha_len == 3:
                     if replace_prelu_and_minmax:
                         if wr_config and layer_id in wr_config and format_version >= 2:
                             if wr_config[layer_id]['replace_mode'] == 'insert_before':
@@ -1340,7 +1340,7 @@ def convert(
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
-                else:
+                elif alpha_len == 1:
                     # alpha_len == 1 (LeakyReLU)
                     if replace_prelu_and_minmax:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -1437,6 +1437,10 @@ def convert(
                                     alpha_initializer=Constant(temp_alpha),
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+                else:
+                    print(f'{Color.RED}ERROR:{Color.RESET} Unsupported PReLU parameter dimension of {alpha_len}. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### Clamp
             elif layer.attrib['type'] == 'Clamp':
