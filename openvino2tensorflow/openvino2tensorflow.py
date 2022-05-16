@@ -1309,13 +1309,13 @@ def convert(
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
                                 tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(temp_alpha),
+                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
                                     shared_axes=shared_axes
                                 )(inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
                                 inp = PReLU(
-                                    alpha_initializer=Constant(temp_alpha),
+                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
@@ -1324,14 +1324,14 @@ def convert(
                                 )
                             else:
                                 tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(temp_alpha),
+                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                         else:
                             try:
                                 tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(temp_alpha),
+                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
                                     shared_axes=shared_axes
                                 )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                             except:
