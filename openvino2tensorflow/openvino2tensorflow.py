@@ -1285,21 +1285,35 @@ def convert(
                                     wr_config[layer_id],
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
-                                tf_layers_dict[layer_id] = \
-                                    tf.maximum(0.0, inp) + \
-                                        tf.minimum(0.0, temp_alpha.transpose(1, 2, 0) * inp)
+                                if temp_alpha.shape[1] == 1 and temp_alpha.shape[2] == 1:
+                                    tf_layers_dict[layer_id] = \
+                                        tf.maximum(0.0, inp) + \
+                                            tf.minimum(0.0, temp_alpha.transpose(1, 2, 0) * inp)
+                                else:
+                                    tf_layers_dict[layer_id] = \
+                                        tf.maximum(0.0, inp) + \
+                                            tf.minimum(0.0, temp_alpha * inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                                inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, temp_alpha.transpose(1, 2, 0) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                if temp_alpha.shape[1] == 1 and temp_alpha.shape[2] == 1:
+                                    inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                        tf.minimum(0.0, temp_alpha.transpose(1, 2, 0) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                else:
+                                    inp = tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                        tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
                                 )
                         else:
-                            tf_layers_dict[layer_id] = \
-                                tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
-                                    tf.minimum(0.0, temp_alpha.transpose(1, 2, 0) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            if temp_alpha.shape[1] == 1 and temp_alpha.shape[2] == 1:
+                                tf_layers_dict[layer_id] = \
+                                    tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                        tf.minimum(0.0, temp_alpha.transpose(1, 2, 0) * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            else:
+                                tf_layers_dict[layer_id] = \
+                                    tf.maximum(0.0, tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]) + \
+                                        tf.minimum(0.0, temp_alpha * tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                     else:
                         if wr_config and layer_id in wr_config and format_version >= 2:
@@ -1308,32 +1322,56 @@ def convert(
                                     wr_config[layer_id],
                                     tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                                 )
-                                tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
-                                    shared_axes=shared_axes
-                                )(inp)
+                                if temp_alpha.shape[1] == 1 and temp_alpha.shape[2] == 1:
+                                    tf_layers_dict[layer_id] = PReLU(
+                                        alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
+                                        shared_axes=shared_axes
+                                    )(inp)
+                                else:
+                                    tf_layers_dict[layer_id] = PReLU(
+                                        alpha_initializer=Constant(temp_alpha),
+                                        shared_axes=shared_axes
+                                    )(inp)
 
                             elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                                inp = PReLU(
-                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
-                                    shared_axes=shared_axes
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                if temp_alpha.shape[1] == 1 and temp_alpha.shape[2] == 1:
+                                    inp = PReLU(
+                                        alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
+                                        shared_axes=shared_axes
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                else:
+                                    inp = PReLU(
+                                        alpha_initializer=Constant(temp_alpha),
+                                        shared_axes=shared_axes
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                                 tf_layers_dict[layer_id] = extrapolation_of_layers(
                                     wr_config[layer_id],
                                     inp
                                 )
                             else:
-                                tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
-                                    shared_axes=shared_axes
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                if temp_alpha.shape[1] == 1 and temp_alpha.shape[2] == 1:
+                                    tf_layers_dict[layer_id] = PReLU(
+                                        alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
+                                        shared_axes=shared_axes
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                else:
+                                    tf_layers_dict[layer_id] = PReLU(
+                                        alpha_initializer=Constant(temp_alpha),
+                                        shared_axes=shared_axes
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                         else:
                             try:
-                                tf_layers_dict[layer_id] = PReLU(
-                                    alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
-                                    shared_axes=shared_axes
-                                )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                if temp_alpha.shape[1] == 1 and temp_alpha.shape[2] == 1:
+                                    tf_layers_dict[layer_id] = PReLU(
+                                        alpha_initializer=Constant(temp_alpha.transpose(1, 2, 0)),
+                                        shared_axes=shared_axes
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                                else:
+                                    tf_layers_dict[layer_id] = PReLU(
+                                        alpha_initializer=Constant(temp_alpha),
+                                        shared_axes=shared_axes
+                                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
                             except:
                                 tf_layers_dict[layer_id] = PReLU(
                                     alpha_initializer=Constant(temp_alpha),
