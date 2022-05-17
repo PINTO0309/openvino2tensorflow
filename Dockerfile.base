@@ -2,7 +2,7 @@ FROM nvidia/cuda:11.6.2-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu2004
-ARG TENSORFLOWVER=2.9.0rc0
+ARG TENSORFLOWVER=2.9.0
 ARG CPVER=cp38
 ARG OPENVINOVER=2021.4.582
 ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
@@ -69,7 +69,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade ninja \
     && python3 -m pip install onnx_graphsurgeon \
         --index-url https://pypi.ngc.nvidia.com \
-    && pip install --upgrade torch-1.12.0a0+gite36d25f-cp38-cp38-linux_x86_64.whl \
+    && pip install --upgrade torch-1.12.0a0+gite68686b-cp38-cp38-linux_x86_64.whl \
     && pip install --upgrade torchvision-0.13.0a0+ecbff88-cp38-cp38-linux_x86_64.whl \
     && pip install --upgrade torchaudio-0.12.0a0+a71e3a4-cp38-cp38-linux_x86_64.whl \
     && pip install pycuda==2021.1 \
