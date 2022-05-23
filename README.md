@@ -246,7 +246,7 @@ $ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
 # $ mv .dockerignore d
 # $ docker build \
-# -t ghcr.io/pinto0309/openvino2tensorflow:base.11.6.2-cudnn8-tf2.9.0-trt8.4.0-openvino2021.4.582 \
+# -t ghcr.io/pinto0309/openvino2tensorflow:base.11.6.2-cudnn8-tf2.9.0-trt8.4.0-openvino2022.1.0 \
 # -f Dockerfile.base .
 # $ mv d .dockerignore
 $ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest .
