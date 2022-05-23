@@ -4,8 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu2004
 ARG TENSORFLOWVER=2.9.0
 ARG CPVER=cp38
-ARG OPENVINOVER=2021.4.582
-ARG OPENVINOROOTDIR=/opt/intel/openvino_2021
+ARG OPENVINOVER=2022.1.0
 ARG TENSORRTVER=cuda11.6-trt8.4.0.6-ea-20220212
 ARG ONNXRUNTIMEVER=1.12.0
 ARG WKDIR=/home/user
@@ -19,7 +18,8 @@ WORKDIR ${WKDIR}
 COPY packages/* ${WKDIR}/
 
 # Install dependencies (1)
-RUN apt-get update && apt-get install -y \
+RUN apt-get update \
+    && apt-get install -y \
         automake autoconf libpng-dev nano python3-pip \
         curl zip unzip libtool swig zlib1g-dev pkg-config \
         python3-mock libpython3-dev libpython3-all-dev \
@@ -31,14 +31,14 @@ RUN apt-get update && apt-get install -y \
         openbox libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
         libtbb2 libtbb-dev libopenblas-dev libopenmpi-dev \
         python-is-python3 software-properties-common \
-        libxcb-xinerama0 \
+        libxcb-xinerama0 patchelf libusb-1.0-0-dev \
     && sed -i 's/# set linenumbers/set linenumbers/g' /etc/nanorc \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies (2)
 RUN pip3 install --upgrade pip \
-    && pip install --upgrade numpy==1.19.5 \
+    && pip install --upgrade numpy==1.22.4 \
     && pip install --upgrade tensorflowjs \
     && pip install --upgrade coremltools \
     && pip install --upgrade paddlepaddle \
@@ -67,11 +67,22 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade dgl \
     && pip install --upgrade cmake \
     && pip install --upgrade ninja \
-    && python3 -m pip install onnx_graphsurgeon \
+    && pip install --upgrade Cython \
+    && pip install --upgrade setuptools \
+    && pip install --upgrade wheel \
+    && pip install --upgrade pafy \
+    && pip install --upgrade youtube-dl \
+    && pip uninstall -y onnxruntime onnxruntime-gpu \
+    && pip install ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
+    && rm ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
+    && python -m pip install onnx_graphsurgeon \
         --index-url https://pypi.ngc.nvidia.com \
-    && pip install --upgrade torch-1.12.0a0+gite68686b-cp38-cp38-linux_x86_64.whl \
-    && pip install --upgrade torchvision-0.13.0a0+ecbff88-cp38-cp38-linux_x86_64.whl \
-    && pip install --upgrade torchaudio-0.12.0a0+a71e3a4-cp38-cp38-linux_x86_64.whl \
+    && pip install ${WKDIR}/torch-1.12.0a0+gite68686b-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && pip install ${WKDIR}/torchvision-0.13.0a0+ecbff88-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && pip install ${WKDIR}/torchaudio-0.12.0a0+a71e3a4-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && rm ${WKDIR}/torch-1.12.0a0+gite68686b-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && rm ${WKDIR}/torchvision-0.13.0a0+ecbff88-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && rm ${WKDIR}/torchaudio-0.12.0a0+a71e3a4-${CPVER}-${CPVER}-linux_x86_64.whl \
     && pip install pycuda==2021.1 \
     && pip install scikit-image \
     && pip install performance-monitor \
@@ -82,7 +93,8 @@ RUN pip3 install --upgrade pip \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install custom tflite_runtime, flatc, edgetpu-compiler
+# Install custom tflite_runtime (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled), flatc, edgetpu-compiler
+# https://github.com/PINTO0309/TensorflowLite-bin
 RUN chmod +x ${WKDIR}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
     && pip3 install --force-reinstall ${WKDIR}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
     && rm ${WKDIR}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
@@ -94,27 +106,6 @@ RUN chmod +x ${WKDIR}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64
     && echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | tee /etc/apt/sources.list.d/coral-edgetpu.list \
     && apt-get update \
     && apt-get install edgetpu-compiler \
-    && pip cache purge \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install OpenVINO
-RUN tar xf ${WKDIR}/l_openvino_toolkit_p_${OPENVINOVER}.tgz \
-    && rm ${WKDIR}/l_openvino_toolkit_p_${OPENVINOVER}.tgz \
-    && l_openvino_toolkit_p_${OPENVINOVER}/install_openvino_dependencies.sh -y \
-    && sed -i 's/decline/accept/g' l_openvino_toolkit_p_${OPENVINOVER}/silent.cfg \
-    && l_openvino_toolkit_p_${OPENVINOVER}/install.sh --silent l_openvino_toolkit_p_${OPENVINOVER}/silent.cfg \
-    && source ${OPENVINOROOTDIR}/bin/setupvars.sh \
-    && ${INTEL_OPENVINO_DIR}/install_dependencies/install_openvino_dependencies.sh \
-    && sed -i 's/sudo -E //g' ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/install_prerequisites/install_prerequisites.sh \
-    && sed -i 's/tensorflow/#tensorflow/g' ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/requirements.txt \
-    && sed -i 's/numpy/#numpy/g' ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/requirements.txt \
-    && sed -i 's/onnx/#onnx/g' ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/requirements.txt \
-    && ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/install_prerequisites/install_prerequisites.sh \
-    && rm -rf l_openvino_toolkit_p_${OPENVINOVER} \
-    && echo "source ${OPENVINOROOTDIR}/bin/setupvars.sh" >> .bashrc \
-    && echo "${OPENVINOROOTDIR}/deployment_tools/ngraph/lib/" >> /etc/ld.so.conf \
-    && echo "${OPENVINOROOTDIR}/deployment_tools/inference_engine/lib/intel64/" >> /etc/ld.so.conf \
     && pip cache purge \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
@@ -131,12 +122,6 @@ RUN dpkg -i ${WKDIR}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && make \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
-
-# onnxruntime-gpu (CUDA, TensorRT)
-# https://zenn.dev/pinto0309/scraps/9e3b1f98ba6bd4
-RUN pip uninstall -y onnxruntime onnxruntime-gpu \
-    && pip install ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
-    && rm ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl
 
 # Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
 # https://github.com/PINTO0309/Tensorflow-bin
@@ -172,6 +157,14 @@ RUN wget https://apt.llvm.org/llvm.sh \
     && ./llvm.sh 14 \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
+
+# OpenVINO
+# https://github.com/PINTO0309/20220228_intel_deeplearning_day_hitnet_demo#4-4-building-openvino--openvino%E3%81%AE%E3%83%93%E3%83%AB%E3%83%89
+RUN pip install ${WKDIR}/openvino-${OPENVINOVER}-000-${CPVER}-none-manylinux_2_31_x86_64.whl \
+    && pip install ${WKDIR}/openvino_dev-${OPENVINOVER}-000-py3-none-any.whl \
+    && rm ${WKDIR}/openvino-${OPENVINOVER}-000-${CPVER}-none-manylinux_2_31_x86_64.whl \
+    && rm ${WKDIR}/openvino_dev-${OPENVINOVER}-000-py3-none-any.whl \
+    && pip cache purge
 
 # Clear caches
 RUN apt clean \
