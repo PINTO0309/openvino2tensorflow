@@ -72,6 +72,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade wheel \
     && pip install --upgrade pafy \
     && pip install --upgrade youtube-dl \
+    && pip install --upgrade blobconverter \
     && pip uninstall -y onnxruntime onnxruntime-gpu \
     && pip install ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
     && rm ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
