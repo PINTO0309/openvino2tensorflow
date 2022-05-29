@@ -54,6 +54,7 @@ Work in progress now.
 - paddle2onnx
 - pycocotools
 - scipy
+- blobconverter
 - Intel-Media-SDK
 - Intel iHD GPU (iGPU) support
 - OpenCL
