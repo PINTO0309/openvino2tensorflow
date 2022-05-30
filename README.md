@@ -839,6 +839,21 @@ Structure of JSON sample
             ]
         },
         {
+            "layer_id": "550",
+            "type": "StridedSlice",
+            "replace_mode": "replace",
+            "values": [
+                [0,0,0,8],
+                [2,7,11,16],
+                [1,1,1,1],
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        {
             "layer_id": "600",
             "type": "MaxPool",
             "replace_mode": "change_padding_mode",
