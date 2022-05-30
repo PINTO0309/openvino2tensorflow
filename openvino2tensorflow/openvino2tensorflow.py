@@ -336,7 +336,7 @@ def convert(
         'Concat': ['change_axis'],
         'SoftMax': ['change_axis'],
         'ShuffleChannels': ['change_axis'],
-        'StridedSlice': ['change_attributes'],
+        'StridedSlice': ['change_attributes', 'replace'],
         'MaxPool': ['change_padding_mode'],
         'PReLU': ['change_shared_axes'],
         'ReverseSequence': ['change_batch_axis', 'change_seq_axis'],
@@ -2973,14 +2973,6 @@ def convert(
                         shrink_axis_mask[0], shrink_axis_mask[2], shrink_axis_mask[3], shrink_axis_mask[1]
                 shrink_axis_mask = np.argmin(shrink_axis_mask)
 
-                if wr_config and layer_id in wr_config and format_version >= 2:
-                    if wr_config[layer_id]['type'] == 'StridedSlice' and wr_config[layer_id]['replace_mode'] == 'change_attributes':
-                        begin_mask = int(wr_config[layer_id]['values'][0])
-                        end_mask = int(wr_config[layer_id]['values'][1])
-                        ellipsis_mask = int(wr_config[layer_id]['values'][2])
-                        new_axis_mask = int(wr_config[layer_id]['values'][3])
-                        shrink_axis_mask = int(wr_config[layer_id]['values'][4])
-
                 # begin, end, strides
                 begin   = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]])
                 end     = np.asarray([int(val) for val in tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 2)]])
@@ -2999,6 +2991,25 @@ def convert(
 
                 if len(strides) == 4:
                     strides[0], strides[1], strides[2], strides[3] = strides[0], strides[2], strides[3], strides[1]
+
+                # Replacement
+                if wr_config and layer_id in wr_config and format_version >= 2:
+                    if wr_config[layer_id]['type'] == 'StridedSlice' and wr_config[layer_id]['replace_mode'] == 'change_attributes':
+                        begin_mask = int(wr_config[layer_id]['values'][0])
+                        end_mask = int(wr_config[layer_id]['values'][1])
+                        ellipsis_mask = int(wr_config[layer_id]['values'][2])
+                        new_axis_mask = int(wr_config[layer_id]['values'][3])
+                        shrink_axis_mask = int(wr_config[layer_id]['values'][4])
+
+                    elif wr_config[layer_id]['type'] == 'StridedSlice' and wr_config[layer_id]['replace_mode'] == 'replace':
+                        begin = wr_config[layer_id]['values'][0]
+                        end = wr_config[layer_id]['values'][1]
+                        strides = wr_config[layer_id]['values'][2]
+                        begin_mask = int(wr_config[layer_id]['values'][3])
+                        end_mask = int(wr_config[layer_id]['values'][4])
+                        ellipsis_mask = int(wr_config[layer_id]['values'][5])
+                        new_axis_mask = int(wr_config[layer_id]['values'][6])
+                        shrink_axis_mask = int(wr_config[layer_id]['values'][7])
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
