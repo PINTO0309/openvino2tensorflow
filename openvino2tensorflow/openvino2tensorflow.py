@@ -5754,8 +5754,7 @@ def convert(
             ### Sqrt
             elif layer.attrib['type'] == 'Sqrt':
                 inp = tf.math.sqrt(
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
                 )
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
