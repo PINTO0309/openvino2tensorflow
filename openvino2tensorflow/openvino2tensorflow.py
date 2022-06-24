@@ -140,6 +140,9 @@ def convert(
         'I32'  : ['i', 4],
         'I16'  : ['h', 2],
         'I8'   : ['b', 1],
+        'U64'  : ['Q', 8],
+        'U32'  : ['I', 4],
+        'U16'  : ['H', 2],
         'U8'   : ['B', 1],
         'BOOL' : ['?', 1]
     }
@@ -527,7 +530,8 @@ def convert(
                                                                                                                 layer.attrib['type'] == 'ReverseSequence' or \
                                                                                                                     layer.attrib['type'] == 'Range' or \
                                                                                                                         layer.attrib['type'] == 'Einsum' or \
-                                                                                                                            layer.attrib['type'] == 'ScatterUpdate':
+                                                                                                                            layer.attrib['type'] == 'ScatterUpdate' or \
+                                                                                                                                layer.attrib['type'] == 'Interpolate':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:

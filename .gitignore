@@ -7,6 +7,8 @@ openvino2tensorflow/saved_model/
 
 *.bin
 *.xml
-replace.json
+*.json
+!weight_replacement_config_sample.json
 saved_model/
 packages/
+.pkl*
