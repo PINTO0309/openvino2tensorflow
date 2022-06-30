@@ -121,7 +121,7 @@ def convert(
     tf.get_logger().setLevel(logging.ERROR)
     import tensorflow_datasets as tfds
     from tensorflow.keras import Model, Input
-    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, AveragePooling2D, Conv2DTranspose, PReLU, Lambda, LeakyReLU, Conv3D
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, SeparableConv2D, AveragePooling2D, Conv2DTranspose, PReLU, Lambda, LeakyReLU, Conv3D
     from tensorflow.keras.initializers import Constant
     from tensorflow.keras.activations import elu
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
@@ -531,7 +531,8 @@ def convert(
                                                                                                                     layer.attrib['type'] == 'Range' or \
                                                                                                                         layer.attrib['type'] == 'Einsum' or \
                                                                                                                             layer.attrib['type'] == 'ScatterUpdate' or \
-                                                                                                                                layer.attrib['type'] == 'Interpolate':
+                                                                                                                                layer.attrib['type'] == 'Interpolate' or \
+                                                                                                                                    layer.attrib['type'] == 'GroupConvolution':
                         concat_port_list.setdefault(to_layer, []).append(f'{from_layer}:{to_layer_port}')
 
         for layer in layers:
@@ -2066,9 +2067,10 @@ def convert(
                             raise e
 
                 else:
-                    # DepthwiseConv2D
-                    try:
-                        inp = DepthwiseConv2D(
+                    if int(port0[1]) > int(port1[0]):
+                        # SeparableConv2D
+                        inp = SeparableConv2D(
+                            filters=int(port1[0]),
                             kernel_size=kernel_size,
                             strides=strides,
                             padding=padding,
@@ -2077,16 +2079,28 @@ def convert(
                             use_bias=False,
                             depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0))
                         )(orig)
-                    except:
-                        inp = DepthwiseConv2D(
-                            kernel_size=kernel_size,
-                            strides=strides,
-                            padding=padding,
-                            depth_multiplier=depth_multiplier,
-                            dilation_rate=dilations,
-                            use_bias=False,
-                            depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0))
-                        )(orig)
+                    else:
+                        # DepthwiseConv2D
+                        try:
+                            inp = DepthwiseConv2D(
+                                kernel_size=kernel_size,
+                                strides=strides,
+                                padding=padding,
+                                depth_multiplier=depth_multiplier,
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].transpose(3,4,1,2,0))
+                            )(orig)
+                        except:
+                            inp = DepthwiseConv2D(
+                                kernel_size=kernel_size,
+                                strides=strides,
+                                padding=padding,
+                                depth_multiplier=depth_multiplier,
+                                dilation_rate=dilations,
+                                use_bias=False,
+                                depthwise_initializer=Constant(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)].numpy().transpose(3,4,1,2,0))
+                            )(orig)
 
                 if wr_config and layer_id in wr_config and format_version >= 2:
                     if wr_config[layer_id]['replace_mode'] == 'insert_before':
