@@ -2057,6 +2057,7 @@ def convert(
                             inp = Conv2D(
                                 filters=filters,
                                 kernel_size=kernel_size,
+                                strides=strides,
                                 padding=padding,
                                 groups=groups,
                                 use_bias=False,
