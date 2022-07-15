@@ -7611,7 +7611,7 @@ def main():
     parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
     parser.add_argument('--layerids_of_the_terminating_output', type=str, default='', help='A comma-separated list of layer IDs to be used as output layers. Default: \'\'')
     parser.add_argument('--keep_input_tensor_in_nchw', action='store_true', help='Does not convert the input to NHWC, but keeps the NCHW format. Transpose is inserted right after the input layer, and the model internals are handled by NHWC. Only 4D input is supported.')
-    parser.add_argument('--disable_per_channel', action='store_true', help='Disable per-channel quantization for A311D inference')
+    parser.add_argument('--disable_per_channel', action='store_true', help='Disable per-channel quantization for tflite')
     parser.add_argument('--non_verbose', action='store_true', help='Do not show all the weight information of each layer in the conversion log')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
