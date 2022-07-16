@@ -359,6 +359,7 @@ usage: openvino2tensorflow
   [--restricted_resize_image_mode]
   [--weight_replacement_config WEIGHT_REPLACEMENT_CONFIG]
   [--disable_experimental_new_quantizer]
+  [--disable_per_channel]
   [--optimizing_barracuda]
   [--layerids_of_the_terminating_output LAYERIDS_OF_THE_TERMINATING_OUTPUT]
   [--keep_input_tensor_in_nchw]
@@ -480,6 +481,8 @@ optional arguments:
   --disable_experimental_new_quantizer
               Disable MLIRs new quantization feature during INT8 quantization
               in TensorFlowLite.
+  --disable_per_channel
+              Disable per-channel quantization for tflite.
   --optimizing_barracuda
               Generates ONNX by replacing Barracuda unsupported layers
               with standard layers. For example, GatherND.
@@ -533,6 +536,7 @@ usage: saved_model_to_tflite
   [--disable_onnx_nchw_conversion]
   [--disable_onnx_optimization]
   [--disable_experimental_new_quantizer]
+  [--disable_per_channel]
 
 optional arguments:
   -h, --help
@@ -621,6 +625,8 @@ optional arguments:
   --disable_experimental_new_quantizer
               Disable MLIRs new quantization feature during INT8 quantization
               in TensorFlowLite.
+  --disable_per_channel
+              Disable per-channel quantization for tflite.
 ```
 **[↥ Back to top](#openvino2tensorflow)**
 
