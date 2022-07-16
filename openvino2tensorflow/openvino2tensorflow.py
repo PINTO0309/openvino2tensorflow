@@ -7294,6 +7294,7 @@ def convert(
             print(f'{Color.REVERCE}Full Integer Quantization started{Color.RESET}', '=' * 51)
             converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
             converter.experimental_new_quantizer = use_experimental_new_quantizer
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             inf_type = None
