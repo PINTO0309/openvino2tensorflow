@@ -70,7 +70,8 @@ def convert(
     onnx_extra_opset,
     use_onnx_nchw_conversion,
     use_onnx_optimization,
-    use_experimental_new_quantizer
+    use_experimental_new_quantizer,
+    use_per_channel
     ):
 
     print(f'{Color.REVERCE}Start conversion process from saved_model to tflite{Color.RESET}', '=' * 38)
@@ -121,6 +122,7 @@ def convert(
         try:
             print(f'{Color.REVERCE}Dynamic Range Quantization started{Color.RESET}', '=' * 50)
             converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
             tflite_model = converter.convert()
@@ -137,6 +139,7 @@ def convert(
         try:
             print(f'{Color.REVERCE}Weight Quantization started{Color.RESET}', '=' * 57)
             converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
             tflite_model = converter.convert()
@@ -247,6 +250,7 @@ def convert(
             print(f'{Color.REVERCE}Integer Quantization started{Color.RESET}', '=' * 56)
             converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
             converter.experimental_new_quantizer = use_experimental_new_quantizer
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             converter.representative_dataset = representative_dataset_gen
@@ -265,6 +269,7 @@ def convert(
             print(f'{Color.REVERCE}Full Integer Quantization started{Color.RESET}', '=' * 51)
             converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
             converter.experimental_new_quantizer = use_experimental_new_quantizer
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             inf_type = None
@@ -542,7 +547,7 @@ def main():
     parser.add_argument('--disable_onnx_nchw_conversion', action='store_true', help='Disable onnx NCHW conversion.')
     parser.add_argument('--disable_onnx_optimization', action='store_true', help='Disable onnx optimization.')
     parser.add_argument('--disable_experimental_new_quantizer', action='store_true', help='Disable MLIR\'s new quantization feature during INT8 quantization in TensorFlowLite.')
-
+    parser.add_argument('--disable_per_channel', action='store_true', help='Disable per-channel quantization for tflite')
     args = parser.parse_args()
     saved_model_dir_path = args.saved_model_dir_path
     signature_def = args.signature_def
@@ -586,6 +591,7 @@ def main():
     use_onnx_nchw_conversion = not args.disable_onnx_nchw_conversion
     use_onnx_optimization = not args.disable_onnx_optimization
     use_experimental_new_quantizer = not args.disable_experimental_new_quantizer
+    use_per_channel = not args.disable_per_channel
 
     if not output_no_quant_float32_tflite and \
         not output_dynamic_range_quant_tflite and \
@@ -685,7 +691,8 @@ def main():
         onnx_extra_opset,
         use_onnx_nchw_conversion,
         use_onnx_optimization,
-        use_experimental_new_quantizer
+        use_experimental_new_quantizer,
+        use_per_channel
     )
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 

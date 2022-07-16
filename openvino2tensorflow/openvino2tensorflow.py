@@ -109,6 +109,7 @@ def convert(
     optimizing_barracuda,
     layerids_of_the_terminating_output,
     keep_input_tensor_in_nchw,
+    use_per_channel,
     verbose
 ):
 
@@ -7146,6 +7147,7 @@ def convert(
         try:
             print(f'{Color.REVERCE}Dynamic Range Quantization started{Color.RESET}', '=' * 50)
             converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
             tflite_model = converter.convert()
@@ -7162,6 +7164,7 @@ def convert(
         try:
             print(f'{Color.REVERCE}Weight Quantization started{Color.RESET}', '=' * 57)
             converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
             tflite_model = converter.convert()
@@ -7272,6 +7275,7 @@ def convert(
             print(f'{Color.REVERCE}Integer Quantization started{Color.RESET}', '=' * 56)
             converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
             converter.experimental_new_quantizer = use_experimental_new_quantizer
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             converter.representative_dataset = representative_dataset_gen
@@ -7290,6 +7294,7 @@ def convert(
             print(f'{Color.REVERCE}Full Integer Quantization started{Color.RESET}', '=' * 51)
             converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
             converter.experimental_new_quantizer = use_experimental_new_quantizer
+            converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
             inf_type = None
@@ -7607,6 +7612,7 @@ def main():
     parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
     parser.add_argument('--layerids_of_the_terminating_output', type=str, default='', help='A comma-separated list of layer IDs to be used as output layers. Default: \'\'')
     parser.add_argument('--keep_input_tensor_in_nchw', action='store_true', help='Does not convert the input to NHWC, but keeps the NCHW format. Transpose is inserted right after the input layer, and the model internals are handled by NHWC. Only 4D input is supported.')
+    parser.add_argument('--disable_per_channel', action='store_true', help='Disable per-channel quantization for tflite')
     parser.add_argument('--non_verbose', action='store_true', help='Do not show all the weight information of each layer in the conversion log')
     args = parser.parse_args()
     model, ext = os.path.splitext(args.model_path)
@@ -7662,6 +7668,7 @@ def main():
     if layerids_of_the_terminating_output_tmp:
         layerids_of_the_terminating_output = [ids.strip() for ids in layerids_of_the_terminating_output_tmp.split(',')]
     keep_input_tensor_in_nchw = args.keep_input_tensor_in_nchw
+    use_per_channel = not args.disable_per_channel
     verbose = not args.non_verbose
 
     if not output_saved_model and \
@@ -7763,7 +7770,7 @@ def main():
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax, replace_argmax, replace_argmax_indices_to_float32,
             restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
-            optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw, verbose)
+            optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw, use_per_channel, verbose)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
