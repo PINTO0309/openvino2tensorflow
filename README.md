@@ -133,7 +133,7 @@ Work in progress now.
   |5|ReLU|ReLU||
   |6|PReLU|PReLU|Maximum(0.0,x)+Minimum(0.0,alpha\*x)|
   |7|MaxPool|MaxPool2D||
-  |8|AvgPool|AveragePooling2D||
+  |8|AvgPool|AveragePooling1D, AveragePooling2D, AveragePooling3D||
   |9|GroupConvolution|DepthwiseConv2D, Conv2D/Split/Concat||
   |10|ConvolutionBackpropData|Conv2DTranspose, Conv3DTranspose|Conv3DTranspose has limited support|
   |11|Concat|Concat||
@@ -363,6 +363,7 @@ usage: openvino2tensorflow
   [--optimizing_barracuda]
   [--layerids_of_the_terminating_output LAYERIDS_OF_THE_TERMINATING_OUTPUT]
   [--keep_input_tensor_in_nchw]
+  [--input_as_ncdhw]
   [--non_verbose]
 
 optional arguments:
@@ -494,6 +495,10 @@ optional arguments:
               Does not convert the input to NHWC, but keeps the NCHW format.
               Transpose is inserted right after the input layer, and
               the model internals are handled by NHWC. Only 4D input is supported.
+  --input_as_ncdhw
+              Specify when the shape of INPUT is the 5D tensor of NCDHW.
+              When converting to TensorFlow, the input geometry is automatically
+              converted to NDHWC format.
   --non_verbose
               Do not show all the weight information of each layer in the
               conversion log.

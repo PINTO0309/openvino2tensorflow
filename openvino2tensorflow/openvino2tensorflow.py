@@ -109,6 +109,7 @@ def convert(
     optimizing_barracuda,
     layerids_of_the_terminating_output,
     keep_input_tensor_in_nchw,
+    input_as_ncdhw,
     use_per_channel,
     verbose
 ):
@@ -122,7 +123,19 @@ def convert(
     tf.get_logger().setLevel(logging.ERROR)
     import tensorflow_datasets as tfds
     from tensorflow.keras import Model, Input
-    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, SeparableConv2D, AveragePooling2D, Conv2DTranspose, PReLU, Lambda, LeakyReLU, Conv3D
+    from tensorflow.keras.layers import (
+        Conv2D,
+        DepthwiseConv2D,
+        SeparableConv2D,
+        AveragePooling1D,
+        AveragePooling2D,
+        AveragePooling3D,
+        Conv2DTranspose,
+        PReLU,
+        Lambda,
+        LeakyReLU,
+        Conv3D,
+    )
     from tensorflow.keras.initializers import Constant
     from tensorflow.keras.activations import elu
     from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
@@ -606,9 +619,17 @@ def convert(
                         else:
                             nchw = Input(shape=(shape[1], shape[2], shape[3]), batch_size=shape[0], name=layer_name)
                             tf_layers_dict[layer_id] = tf.transpose(nchw, perm=[0,2,3,1])
+                    elif len(shape) == 5:
+                        if input_as_ncdhw:
+                            tf_layers_dict[layer_id] = Input(shape=[shape[2], shape[3], shape[4], shape[1]], batch_size=shape[0], name=layer_name)
+                        else:
+                            tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
                     else:
                         if keep_input_tensor_in_nchw:
                             print(f'{Color.RED}ERROR:{Color.RESET} The keep_input_tensor_in_nchw parameter only supports 4D input. layer_id: {layer_id} input_shape: {shape}')
+                            sys.exit(-1)
+                        if input_as_ncdhw:
+                            print(f'{Color.RED}ERROR:{Color.RESET} The input_as_ncdhw parameter only supports 5D input. layer_id: {layer_id} input_shape: {shape}')
                             sys.exit(-1)
                         tf_layers_dict[layer_id] = Input(shape=[inp for inp in shape[1:]], batch_size=shape[0], name=layer_name)
 
@@ -1922,35 +1943,106 @@ def convert(
                 if not data is None and 'rounding_type' in data.attrib and data.attrib['rounding_type'] == 'ceil':
                     padding = 'same'
 
-                if wr_config and layer_id in wr_config and format_version >= 2:
-                    if wr_config[layer_id]['replace_mode'] == 'insert_before':
-                        inp = extrapolation_of_layers(
-                            wr_config[layer_id],
-                            tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                        )
-                        tf_layers_dict[layer_id] = AveragePooling2D(
-                            pool_size=kernel_size,
-                            strides=strides,
-                            padding=padding
-                        )(inp)
+                if len(strides) == 1:
+                    # AvgPool1D
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = AveragePooling1D(
+                                pool_size=kernel_size,
+                                strides=strides,
+                                padding=padding
+                            )(inp)
 
-                    elif wr_config[layer_id]['replace_mode'] == 'insert_after':
-                        inp = AveragePooling2D(
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = AveragePooling1D(
+                                pool_size=kernel_size,
+                                strides=strides,
+                                padding=padding
+                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+
+                    else:
+                        tf_layers_dict[layer_id] = AveragePooling1D(
                             pool_size=kernel_size,
                             strides=strides,
                             padding=padding
                         )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
-                        tf_layers_dict[layer_id] = extrapolation_of_layers(
-                            wr_config[layer_id],
-                            inp
-                        )
+
+                elif len(strides) == 2:
+                    # AvgPool2D
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = AveragePooling2D(
+                                pool_size=kernel_size,
+                                strides=strides,
+                                padding=padding
+                            )(inp)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = AveragePooling2D(
+                                pool_size=kernel_size,
+                                strides=strides,
+                                padding=padding
+                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+
+                    else:
+                        tf_layers_dict[layer_id] = AveragePooling2D(
+                            pool_size=kernel_size,
+                            strides=strides,
+                            padding=padding
+                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+
+                elif len(strides) == 3:
+                    # AvgPool3D
+                    if wr_config and layer_id in wr_config and format_version >= 2:
+                        if wr_config[layer_id]['replace_mode'] == 'insert_before':
+                            inp = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+                            )
+                            tf_layers_dict[layer_id] = AveragePooling3D(
+                                pool_size=kernel_size,
+                                strides=strides,
+                                padding=padding
+                            )(inp)
+
+                        elif wr_config[layer_id]['replace_mode'] == 'insert_after':
+                            inp = AveragePooling3D(
+                                pool_size=kernel_size,
+                                strides=strides,
+                                padding=padding
+                            )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                            tf_layers_dict[layer_id] = extrapolation_of_layers(
+                                wr_config[layer_id],
+                                inp
+                            )
+
+                    else:
+                        tf_layers_dict[layer_id] = AveragePooling3D(
+                            pool_size=kernel_size,
+                            strides=strides,
+                            padding=padding
+                        )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
 
                 else:
-                    tf_layers_dict[layer_id] = AveragePooling2D(
-                        pool_size=kernel_size,
-                        strides=strides,
-                        padding=padding
-                    )(tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)])
+                    # Other
+                    print(f'{Color.RED}ERROR:{Color.RESET} AveragePooling supports only AveragePooling1D, AveragePooling2D, and AveragePooling3D. layer_id: {layer_id}')
+                    sys.exit(-1)
 
             ### GroupConvolution
             elif layer.attrib['type'] == 'GroupConvolution':
@@ -7612,6 +7704,7 @@ def main():
     parser.add_argument('--optimizing_barracuda', action='store_true', help='Generates ONNX by replacing Barracuda\'s unsupported layers with standard layers.')
     parser.add_argument('--layerids_of_the_terminating_output', type=str, default='', help='A comma-separated list of layer IDs to be used as output layers. Default: \'\'')
     parser.add_argument('--keep_input_tensor_in_nchw', action='store_true', help='Does not convert the input to NHWC, but keeps the NCHW format. Transpose is inserted right after the input layer, and the model internals are handled by NHWC. Only 4D input is supported.')
+    parser.add_argument('--input_as_ncdhw', action='store_true', help='Specify when the shape of INPUT is the 5D tensor of NCDHW. When converting to TensorFlow, the input geometry is automatically converted to NDHWC format.')
     parser.add_argument('--disable_per_channel', action='store_true', help='Disable per-channel quantization for tflite')
     parser.add_argument('--non_verbose', action='store_true', help='Do not show all the weight information of each layer in the conversion log')
     args = parser.parse_args()
@@ -7668,6 +7761,7 @@ def main():
     if layerids_of_the_terminating_output_tmp:
         layerids_of_the_terminating_output = [ids.strip() for ids in layerids_of_the_terminating_output_tmp.split(',')]
     keep_input_tensor_in_nchw = args.keep_input_tensor_in_nchw
+    input_as_ncdhw = args.input_as_ncdhw
     use_per_channel = not args.disable_per_channel
     verbose = not args.non_verbose
 
@@ -7770,7 +7864,7 @@ def main():
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax, replace_argmax, replace_argmax_indices_to_float32,
             restricted_resize_image_mode, weight_replacement_config, use_experimental_new_quantizer,
-            optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw, use_per_channel, verbose)
+            optimizing_barracuda, layerids_of_the_terminating_output, keep_input_tensor_in_nchw, input_as_ncdhw, use_per_channel, verbose)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
