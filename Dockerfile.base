@@ -1,12 +1,14 @@
-FROM nvidia/cuda:11.6.2-cudnn8-devel-ubuntu20.04
+# https://github.com/PINTO0309/openvino2tensorflow
+FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu2004
-ARG TENSORFLOWVER=2.9.0
+ARG TENSORFLOWVER=2.10.0rc1
 ARG CPVER=cp38
-ARG OPENVINOVER=2022.1.0
-ARG TENSORRTVER=cuda11.6-trt8.4.0.6-ea-20220212
-ARG ONNXRUNTIMEVER=1.12.0
+ARG OPENVINOGEN=2022
+ARG OPENVINOVER=${OPENVINOGEN}.1.0
+ARG TENSORRTVER=cuda11.6-trt8.4.3.1-ga-20220813
+ARG ONNXRUNTIMEVER=1.12.1
 ARG WKDIR=/home/user
 
 # dash -> bash
@@ -38,7 +40,7 @@ RUN apt-get update \
 
 # Install dependencies (2)
 RUN pip3 install --upgrade pip \
-    && pip install --upgrade numpy==1.22.4 \
+    && pip install --upgrade numpy==1.23.2 \
     && pip install --upgrade tensorflowjs \
     && pip install --upgrade coremltools \
     && pip install --upgrade paddlepaddle \
@@ -78,13 +80,13 @@ RUN pip3 install --upgrade pip \
     && rm ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
     && python -m pip install onnx_graphsurgeon \
         --index-url https://pypi.ngc.nvidia.com \
-    && pip install ${WKDIR}/torch-1.12.0a0+gite68686b-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && pip install ${WKDIR}/torchvision-0.13.0a0+ecbff88-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && pip install ${WKDIR}/torchaudio-0.12.0a0+a71e3a4-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && rm ${WKDIR}/torch-1.12.0a0+gite68686b-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && rm ${WKDIR}/torchvision-0.13.0a0+ecbff88-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && rm ${WKDIR}/torchaudio-0.12.0a0+a71e3a4-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && pip install pycuda==2021.1 \
+    && pip install ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && pip install ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && pip install ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && rm ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && rm ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && rm ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && pip install pycuda==2022.1 \
     && pip install scikit-image \
     && pip install performance-monitor \
     && pip install graphviz \
@@ -113,7 +115,7 @@ RUN chmod +x ${WKDIR}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64
 
 # Install TensorRT additional package
 RUN dpkg -i ${WKDIR}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
-    && apt-key add /var/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}/7fa2af80.pub \
+    && apt-key add /var/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}/c1c4ee19.pub \
     && apt-get update \
     && apt-get install -y \
         tensorrt uff-converter-tf graphsurgeon-tf \
@@ -135,7 +137,7 @@ RUN pip install --force-reinstall ${WKDIR}/tensorflow-${TENSORFLOWVER}-${CPVER}-
 # Install onnx-tensorrt
 RUN git clone --recursive https://github.com/onnx/onnx-tensorrt \
     && cd onnx-tensorrt \
-    && git checkout 4ebfd965edb2737d02c3202749a7bc499d53c585 \
+    && git checkout bf5f48f2ffcdd4734f2a07c08571313180adeffd \
     && mkdir build \
     && cd build \
     && cmake .. -DTENSORRT_ROOT=/usr/src/tensorrt \
@@ -145,7 +147,7 @@ RUN git clone --recursive https://github.com/onnx/onnx-tensorrt \
 # Install torch2trt
 RUN git clone https://github.com/NVIDIA-AI-IOT/torch2trt \
     && cd torch2trt \
-    && git checkout 458394febf25b879cb6ea2e12f0060ef4beae7a3 \
+    && git checkout 540520700f969e13b921be1bb944c44d299ff406 \
     && python3 setup.py install
 
 # Download the ultra-small sample data set for INT8 calibration
@@ -160,12 +162,38 @@ RUN wget https://apt.llvm.org/llvm.sh \
     && rm -rf /var/lib/apt/lists/*
 
 # OpenVINO
-# https://github.com/PINTO0309/20220228_intel_deeplearning_day_hitnet_demo#4-4-building-openvino--openvino%E3%81%AE%E3%83%93%E3%83%AB%E3%83%89
-RUN pip install ${WKDIR}/openvino-${OPENVINOVER}-000-${CPVER}-none-manylinux_2_31_x86_64.whl \
-    && pip install ${WKDIR}/openvino_dev-${OPENVINOVER}-000-py3-none-any.whl \
-    && rm ${WKDIR}/openvino-${OPENVINOVER}-000-${CPVER}-none-manylinux_2_31_x86_64.whl \
-    && rm ${WKDIR}/openvino_dev-${OPENVINOVER}-000-py3-none-any.whl \
-    && pip cache purge
+RUN wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+    && apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+    && echo "deb https://apt.repos.intel.com/openvino/${OPENVINOGEN} focal main" | \
+        tee /etc/apt/sources.list.d/intel-openvino-${OPENVINOGEN}.list \
+    && apt update \
+    && apt install -y openvino-${OPENVINOVER} \
+    && pip install openvino-dev==${OPENVINOVER} --no-deps \
+    && pip install \
+        defusedxml \
+        addict \
+        fast-ctc-decode \
+        imagecodecs \
+        jstyleson~=0.0.2 \
+        lmdb \
+        nibabel \
+        nltk \
+        openvino-telemetry \
+        parasail \
+        progress \
+        py-cpuinfo \
+        pyclipper \
+        pydicom \
+        rawpy \
+        sentencepiece \
+        shapely \
+        texttable~=1.6.3 \
+        tokenizers~=0.10.1 \
+        transformers \
+        requests>=2.25.1 \
+    && /opt/intel/openvino_${OPENVINOGEN}/install_dependencies/install_openvino_dependencies.sh -y \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Clear caches
 RUN apt clean \
@@ -209,4 +237,5 @@ RUN echo 'GPU=$(python3 -c "import torch;print(torch.cuda.is_available())")' >> 
     && echo "sudo python setup.py install" >> ${HOME}/.bashrc \
     && echo "fi" >> ${HOME}/.bashrc \
     && echo "cd ${WKDIR}" >> ${HOME}/.bashrc \
-    && echo "cd ${HOME}/workdir" >> ${HOME}/.bashrc
+    && echo "cd ${HOME}/workdir" >> ${HOME}/.bashrc \
+    && echo "source /opt/intel/openvino_${OPENVINOGEN}/setupvars.sh" >> ${HOME}/.bashrc
