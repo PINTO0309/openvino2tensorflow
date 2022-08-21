@@ -18,15 +18,14 @@ Work in progress now.
 
 ## 1. Environment
 - Python 3.8+
-- TensorFlow v2.9.0+
-- PyTorch v1.12.0+ (with grid_sample)
+- TensorFlow v2.10.0+
+- PyTorch v1.12.1+
 - TorchVision
 - TorchAudio
 - OpenVINO 2022.1.0
-  - **`(Not yet supported after 2022.1, opset8, https://github.com/openvinotoolkit/open_model_zoo/tree/2022.1.0)`**
-- TensorRT 8.4+
+- TensorRT 8.4.3+
 - trtexec
-- pycuda 2021.1
+- pycuda 2022.1
 - tensorflowjs
 - coremltools
 - paddle2onnx
@@ -241,13 +240,13 @@ Work in progress now.
 
 ## 4. Setup
 ### 4-1. **[Environment construction pattern 1]** Execution by Docker (`strongly recommended`)
-You do not need to install any packages other than Docker. It consumes 26.3GB of storage.
+You do not need to install any packages other than Docker. It consumes 23.4GB of storage.
 ```bash
 $ docker pull ghcr.io/pinto0309/openvino2tensorflow:latest
 or
 # $ mv .dockerignore d
 # $ docker build \
-# -t ghcr.io/pinto0309/openvino2tensorflow:base.11.6.2-cudnn8-tf2.9.0-trt8.4.0-openvino2022.1.0 \
+# -t ghcr.io/pinto0309/openvino2tensorflow:base.11.7.1-cudnn8-tf2.10.0-trt8.4.3-openvino2022.1.0 \
 # -f Dockerfile.base .
 # $ mv d .dockerignore
 $ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest .
