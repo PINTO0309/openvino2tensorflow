@@ -249,7 +249,7 @@ or
 # -t ghcr.io/pinto0309/openvino2tensorflow:base.11.7.1-cudnn8-tf2.10.0-trt8.4.3-openvino2022.1.0 \
 # -f Dockerfile.base .
 # $ mv d .dockerignore
-$ docker build -t ghcr.io/pinto0309/openvino2tensorflow:latest .
+$ docker build --no-cache -t ghcr.io/pinto0309/openvino2tensorflow:latest .
 
 # If you don't need to access the GUI of the HostPC and the USB camera.
 $ docker run -it --rm \
