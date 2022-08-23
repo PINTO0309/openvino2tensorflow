@@ -67,6 +67,7 @@ def convert(
     output_h5,
     output_weight_and_json,
     output_pb,
+    dont_save_keras_model,
     output_no_quant_float32_tflite,
     output_dynamic_range_quant_tflite,
     output_weight_quant_tflite,
@@ -7219,11 +7220,21 @@ def convert(
             import traceback
             traceback.print_exc()
 
+    def get_TFLiteConverter():
+        if dont_save_keras_model:
+            run_model = tf.function(lambda x : model(x))
+            concrete_func = run_model.get_concrete_function(
+                tf.TensorSpec(model.inputs[0].shape, model.inputs[0].dtype)
+            )
+            return tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
+        else:
+            return tf.lite.TFLiteConverter.from_keras_model(model)
+
     # No Quantization - Input/Output=float32
     if output_no_quant_float32_tflite:
         try:
             print(f'{Color.REVERCE}tflite Float32 convertion started{Color.RESET}', '=' * 51)
-            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter = get_TFLiteConverter()
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
             tflite_model = converter.convert()
             with open(f'{model_output_path}/model_float32.tflite', 'wb') as w:
@@ -7238,7 +7249,7 @@ def convert(
     if output_dynamic_range_quant_tflite:
         try:
             print(f'{Color.REVERCE}Dynamic Range Quantization started{Color.RESET}', '=' * 50)
-            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter = get_TFLiteConverter()
             converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
@@ -7255,7 +7266,7 @@ def convert(
     if output_weight_quant_tflite:
         try:
             print(f'{Color.REVERCE}Weight Quantization started{Color.RESET}', '=' * 57)
-            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter = get_TFLiteConverter()
             converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
@@ -7272,7 +7283,7 @@ def convert(
     if output_float16_quant_tflite:
         try:
             print(f'{Color.REVERCE}Float16 Quantization started{Color.RESET}', '=' * 56)
-            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter = get_TFLiteConverter()
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_types = [tf.float16]
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
@@ -7365,7 +7376,7 @@ def convert(
     if output_integer_quant_tflite:
         try:
             print(f'{Color.REVERCE}Integer Quantization started{Color.RESET}', '=' * 56)
-            converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
+            converter = get_TFLiteConverter()
             converter.experimental_new_quantizer = use_experimental_new_quantizer
             converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -7384,7 +7395,7 @@ def convert(
     if output_full_integer_quant_tflite:
         try:
             print(f'{Color.REVERCE}Full Integer Quantization started{Color.RESET}', '=' * 51)
-            converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
+            converter = get_TFLiteConverter()
             converter.experimental_new_quantizer = use_experimental_new_quantizer
             converter._experimental_disable_per_channel = not use_per_channel
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -7661,6 +7672,7 @@ def main():
     parser.add_argument('--output_h5', action='store_true', help='.h5 output switch')
     parser.add_argument('--output_weight_and_json', action='store_true', help='weight of h5 and json output switch')
     parser.add_argument('--output_pb', action='store_true', help='.pb output switch')
+    parser.add_argument('--dont_save_keras_model', action='store_true', help='use TFLiteConverter.from_concrete_functions to avoid saving Keras model to disk during TFLite conversion')
     parser.add_argument('--output_no_quant_float32_tflite', action='store_true', help='float32 tflite output switch')
     parser.add_argument('--output_dynamic_range_quant_tflite', action='store_true', help='dynamic range quant tflite output switch')
     parser.add_argument('--output_weight_quant_tflite', action='store_true', help='weight quant tflite output switch')
@@ -7717,6 +7729,7 @@ def main():
     output_h5 = args.output_h5
     output_weight_and_json = args.output_weight_and_json
     output_pb = args.output_pb
+    dont_save_keras_model = args.dont_save_keras_model
     output_no_quant_float32_tflite =  args.output_no_quant_float32_tflite
     output_dynamic_range_quant_tflite = args.output_dynamic_range_quant_tflite
     output_weight_quant_tflite = args.output_weight_quant_tflite
@@ -7852,7 +7865,7 @@ def main():
 
     del package_list
     os.makedirs(model_output_path, exist_ok=True)
-    convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb,
+    convert(model, model_output_path, output_saved_model, output_h5, output_weight_and_json, output_pb, dont_save_keras_model,
             output_no_quant_float32_tflite, output_dynamic_range_quant_tflite, output_weight_quant_tflite, output_float16_quant_tflite,
             output_integer_quant_tflite, output_full_integer_quant_tflite, output_integer_quant_type,
             string_formulas_for_normalization,
