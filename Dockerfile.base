@@ -1,13 +1,13 @@
 # https://github.com/PINTO0309/openvino2tensorflow
-FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.6.2-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG OSVER=ubuntu2004
-ARG TENSORFLOWVER=2.10.0rc1
+ARG TENSORFLOWVER=2.10.0
 ARG CPVER=cp38
 ARG OPENVINOGEN=2022
 ARG OPENVINOVER=${OPENVINOGEN}.1.0
-ARG TENSORRTVER=cuda11.6-trt8.4.3.1-ga-20220813
+ARG TENSORRTVER=cuda11.6-trt8.4.0.6-ea-20220212
 ARG ONNXRUNTIMEVER=1.12.1
 ARG WKDIR=/home/user
 
@@ -75,18 +75,24 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade pafy \
     && pip install --upgrade youtube-dl \
     && pip install --upgrade blobconverter \
+    && pip install pycuda==2022.1 \
     && pip uninstall -y onnxruntime onnxruntime-gpu \
     && pip install ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
     && rm ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
     && python -m pip install onnx_graphsurgeon \
         --index-url https://pypi.ngc.nvidia.com \
-    && pip install ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && pip install ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && pip install ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && rm ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && rm ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && rm ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
-    && pip install pycuda==2022.1 \
+    # && pip install ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
+    # && pip install ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
+    # && pip install ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
+    # && rm ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
+    # && rm ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
+    # && rm ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
+    && pip install \
+        --force-reinstall \
+        --extra-index-url https://download.pytorch.org/whl/cu116 \
+            torch==1.12.1+cu116 \
+            torchvision==0.13.1+cu116 \
+            torchaudio==0.12.1+cu116 \
     && pip install scikit-image \
     && pip install performance-monitor \
     && pip install graphviz \
@@ -114,19 +120,35 @@ RUN chmod +x ${WKDIR}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64
     && rm -rf /var/lib/apt/lists/*
 
 # Install TensorRT additional package
-RUN dpkg -i ${WKDIR}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
-    && apt-key add /var/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}/c1c4ee19.pub \
+RUN ls -l /etc/apt/sources.list.d \
+    && dpkg -i ${WKDIR}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
+    && apt-key add /var/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}/7fa2af80.pub \
     && apt-get update \
-    && apt-get install -y \
-        tensorrt uff-converter-tf graphsurgeon-tf \
-        python3-libnvinfer-dev onnx-graphsurgeon \
+    && apt-get install -y --no-install-recommends \
+        tensorrt=8.4.0.6-1+cuda11.6 \
+        uff-converter-tf=8.4.0-1+cuda11.6 \
+        graphsurgeon-tf=8.4.0-1+cuda11.6 \
+        libnvinfer-dev=8.4.0-1+cuda11.6 \
+        python3-libnvinfer=8.4.0-1+cuda11.6 \
+        libnvinfer8=8.4.0-1+cuda11.6 \
+        libnvinfer-plugin8=8.4.0-1+cuda11.6 \
+        libnvparsers8=8.4.0-1+cuda11.6 \
+        libnvinfer-bin=8.4.0-1+cuda11.6 \
+        libnvinfer-plugin-dev=8.4.0-1+cuda11.6 \
+        python3-libnvinfer-dev=8.4.0-1+cuda11.6 \
+        libnvparsers-dev=8.4.0-1+cuda11.6 \
+        libnvonnxparsers8=8.4.0-1+cuda11.6 \
+        libnvonnxparsers-dev=8.4.0-1+cuda11.6 \
+        libnvinfer-samples=8.4.0-1+cuda11.6 \
+        libnvinfer-doc=8.4.0-1+cuda11.6 \
+        onnx-graphsurgeon=8.4.0-1+cuda11.6 \
     && rm ${WKDIR}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && cd /usr/src/tensorrt/samples/trtexec \
     && make \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
+# # Install Custom TensorFlow (MediaPipe Custom OP, FlexDelegate, XNNPACK enabled)
 # https://github.com/PINTO0309/Tensorflow-bin
 RUN pip install --force-reinstall ${WKDIR}/tensorflow-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
     && rm ${WKDIR}/tensorflow-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64.whl \
@@ -135,9 +157,12 @@ RUN pip install --force-reinstall ${WKDIR}/tensorflow-${TENSORFLOWVER}-${CPVER}-
     && rm -rf /var/lib/apt/lists/*
 
 # Install onnx-tensorrt
+# https://forums.developer.nvidia.com/t/subnormal-fp16-values-detected/220070
+# https://github.com/NVIDIA/TensorRT/issues/2186
 RUN git clone --recursive https://github.com/onnx/onnx-tensorrt \
     && cd onnx-tensorrt \
-    && git checkout bf5f48f2ffcdd4734f2a07c08571313180adeffd \
+    # && git checkout bf5f48f2ffcdd4734f2a07c08571313180adeffd \
+    && git checkout 9f82b2b6072be6c01f65306388e5c07621d3308f \
     && mkdir build \
     && cd build \
     && cmake .. -DTENSORRT_ROOT=/usr/src/tensorrt \
@@ -147,7 +172,8 @@ RUN git clone --recursive https://github.com/onnx/onnx-tensorrt \
 # Install torch2trt
 RUN git clone https://github.com/NVIDIA-AI-IOT/torch2trt \
     && cd torch2trt \
-    && git checkout 540520700f969e13b921be1bb944c44d299ff406 \
+    # && git checkout 540520700f969e13b921be1bb944c44d299ff406 \
+    && git checkout 458394febf25b879cb6ea2e12f0060ef4beae7a3 \
     && python3 setup.py install
 
 # Download the ultra-small sample data set for INT8 calibration
