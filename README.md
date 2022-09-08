@@ -23,7 +23,7 @@ Work in progress now.
 - TorchVision
 - TorchAudio
 - OpenVINO 2022.1.0
-- TensorRT 8.4.3+
+- TensorRT 8.4.0+
 - trtexec
 - pycuda 2022.1
 - tensorflowjs
