@@ -81,12 +81,6 @@ RUN pip3 install --upgrade pip \
     && rm ${WKDIR}/onnxruntime_gpu-${ONNXRUNTIMEVER}-${CPVER}-none-linux_x86_64.whl \
     && python -m pip install onnx_graphsurgeon \
         --index-url https://pypi.ngc.nvidia.com \
-    # && pip install ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
-    # && pip install ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
-    # && pip install ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
-    # && rm ${WKDIR}/torch-1.12.0a0+git664058f-${CPVER}-${CPVER}-linux_x86_64.whl \
-    # && rm ${WKDIR}/torchvision-0.13.1a0+bddbd7e-${CPVER}-${CPVER}-linux_x86_64.whl \
-    # && rm ${WKDIR}/torchaudio-0.12.1+58da317-${CPVER}-${CPVER}-linux_x86_64.whl \
     && pip install \
         --force-reinstall \
         --extra-index-url https://download.pytorch.org/whl/cu116 \
