@@ -120,8 +120,7 @@ RUN chmod +x ${WKDIR}/tflite_runtime-${TENSORFLOWVER}-${CPVER}-none-linux_x86_64
     && rm -rf /var/lib/apt/lists/*
 
 # Install TensorRT additional package
-RUN ls -l /etc/apt/sources.list.d \
-    && dpkg -i ${WKDIR}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
+RUN dpkg -i ${WKDIR}/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}_1-1_amd64.deb \
     && apt-key add /var/nv-tensorrt-repo-${OSVER}-${TENSORRTVER}/7fa2af80.pub \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
