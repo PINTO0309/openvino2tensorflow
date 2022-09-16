@@ -50,6 +50,7 @@ RUN pip3 install --upgrade pip \
     && pip install --upgrade paddle2onnx \
     && pip install --upgrade onnx \
     && pip install --upgrade onnxruntime-extensions \
+    && pip install --upgrade onnxoptimizer \
     && pip install --upgrade onnxsim \
     && pip install --upgrade onnxmltools \
     && pip install --upgrade onnxconverter-common \
