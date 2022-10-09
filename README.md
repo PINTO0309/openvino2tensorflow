@@ -1,6 +1,6 @@
 # openvino2tensorflow
 
-**For those who lack skills in converting from ONNX to TensorFlow, we recommend using this tool. It is a tool in the making, so there are lots of bugs, but it is much easier than going through OpenVINO.**
+**For those who lack skills in converting from ONNX to TensorFlow, I recommend using this tool. It is a tool in the making, so there are lots of bugs, but it is much easier than going through OpenVINO.**
 
 "Self-Created Tools to convert ONNX files (NCHW) to TensorFlow format (NHWC). The purpose of this tool is to solve the massive Transpose extrapolation problem in onnx-tensorflow (onnx-tf)."
 
